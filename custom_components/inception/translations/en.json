@@ -1,0 +1,19 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "description": "Connect to InnerRange inception",
+                "data": {
+                    "username": "Username",
+                    "password": "Password",
+                    "host": "Host"
+                }
+            }
+        },
+        "error": {
+            "auth": "Unable to authenticate to Inception",
+            "connection": "Unable to connect to Inception.",
+            "unknown": "Unknown error occurred."
+        }
+    }
+}
