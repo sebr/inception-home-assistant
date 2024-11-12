@@ -66,7 +66,39 @@ class InceptionApiClient:
             path="/control/input",
         )
 
-        print(inputs)  # noqa: T201
+        initial_state = await self._api_wrapper(
+            method="post",
+            path="/monitor-updates",
+            data=[
+                {
+                    "ID": "AreaStateRequest",
+                    "RequestType": "MonitorEntityStates",
+                    "InputData": {"stateType": "AreaState", "timeSinceUpdate": "0"},
+                },
+                {
+                    "ID": "InputStateRequest",
+                    "RequestType": "MonitorEntityStates",
+                    "InputData": {
+                        "stateType": "InputState",
+                        "timeSinceUpdate": "0",
+                    },
+                },
+                {
+                    "ID": "OutputStateRequest",
+                    "RequestType": "MonitorEntityStates",
+                    "InputData": {
+                        "stateType": "OutputState",
+                        "timeSinceUpdate": "0",
+                    },
+                },
+                {
+                    "ID": "DoorStateRequest",
+                    "RequestType": "MonitorEntityStates",
+                    "InputData": {"stateType": "DoorState", "timeSinceUpdate": "0"},
+                },
+            ],
+        )
+        # print(json.dumps(initial_state, indent=2))
 
         return {CONF_DOORS: doors, CONF_INPUTS: inputs}
 
@@ -82,7 +114,7 @@ class InceptionApiClient:
         return True
 
     async def _api_wrapper(
-        self, method: str, path: str, data: dict | None = None
+        self, method: str, path: str, data: Any | None = None
     ) -> Any:
         """Get information from the API."""
         try:
