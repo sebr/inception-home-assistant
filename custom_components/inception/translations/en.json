@@ -4,8 +4,8 @@
             "user": {
                 "description": "Connect to InnerRange inception",
                 "data": {
-                    "username": "Username",
-                    "password": "Password",
+                    "name": "Name",
+                    "token": "Token",
                     "host": "Host"
                 }
             }

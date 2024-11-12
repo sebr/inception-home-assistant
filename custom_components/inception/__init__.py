@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_USERNAME, Platform
+from homeassistant.const import CONF_HOST, CONF_TOKEN, Platform
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.loader import async_get_loaded_integration
 
@@ -40,8 +40,7 @@ async def async_setup_entry(
     )
     entry.runtime_data = InceptionData(
         client=InceptionApiClient(
-            username=entry.data[CONF_USERNAME],
-            password=entry.data[CONF_PASSWORD],
+            token=entry.data[CONF_TOKEN],
             host=entry.data[CONF_HOST],
             session=async_get_clientsession(hass),
         ),
