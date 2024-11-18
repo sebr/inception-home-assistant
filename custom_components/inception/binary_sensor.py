@@ -9,8 +9,9 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
     BinarySensorEntityDescription,
 )
+from sqlalchemy import desc
 
-from .const import CONF_INPUTS
+from .const import DOMAIN
 from .entity import InceptionEntity
 
 if TYPE_CHECKING:
@@ -19,11 +20,12 @@ if TYPE_CHECKING:
 
     from .coordinator import InceptionUpdateCoordinator
     from .data import InceptionConfigEntry
+    from .schema import InceptionObject
 
-ENTITY_DESCRIPTIONS = (
+INPUT_BINARY_SENSOR: tuple[BinarySensorEntityDescription, ...] = (
     BinarySensorEntityDescription(
         key="inception",
-        name="Inception Binary Sensor",
+        name="Inception Input",
         device_class=BinarySensorDeviceClass.CONNECTIVITY,
     ),
 )
@@ -71,34 +73,28 @@ def is_entity_registry_enabled_default(name: str) -> bool:
     )
 
 
-def ensure_complete_data(data: dict) -> bool:
-    """Ensure that all required data is present."""
-    return all(data.get(key) for key in ("ID", "Name", "ReportingID"))
-
-
 async def async_setup_entry(
-    hass: HomeAssistant,  # noqa: ARG001 Unused function argument: `hass`
+    hass: HomeAssistant,
     entry: InceptionConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the binary_sensor platform."""
-    inception_inputs = entry.runtime_data.coordinator.data.get(CONF_INPUTS, [])
+    coordinator: InceptionUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
 
-    entities = [
+    entities: list[InceptionBinarySensor] = [
         InceptionBinarySensor(
-            coordinator=entry.runtime_data.coordinator,
+            coordinator=coordinator,
             entity_description=BinarySensorEntityDescription(
-                key=inception_input.get("ID"),
-                name=inception_input.get("Name"),
-                device_class=get_device_class(inception_input.get("Name")),
+                key=inception_input.ID,
+                name=inception_input.Name,
+                device_class=get_device_class(inception_input.Name),
                 entity_registry_enabled_default=is_entity_registry_enabled_default(
-                    inception_input.get("Name")
+                    inception_input.Name
                 ),
             ),
             data=inception_input,
         )
-        for inception_input in inception_inputs
-        if ensure_complete_data(inception_input)
+        for inception_input in coordinator.data.inputs.values()
     ]
 
     async_add_entities(entities)
@@ -111,14 +107,16 @@ class InceptionBinarySensor(InceptionEntity, BinarySensorEntity):
         self,
         coordinator: InceptionUpdateCoordinator,
         entity_description: BinarySensorEntityDescription,
-        data: dict,
+        data: InceptionObject,
     ) -> None:
         """Initialize the binary_sensor class."""
-        super().__init__(coordinator)
+        super().__init__(
+            coordinator, description=entity_description, inception_object=data
+        )
         self.entity_description = entity_description
-        self.unique_id = data.get("ID")
-        self.name = data.get("Name")
-        self.reportingId = data.get("ReportingID")
+        self.unique_id = data.ID
+        self.name = data.Name
+        self.reportingId = data.ReportingID
 
     @property
     def is_on(self) -> bool:

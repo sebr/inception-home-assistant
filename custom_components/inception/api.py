@@ -3,15 +3,13 @@
 from __future__ import annotations
 
 import socket
+from turtle import update
 from typing import Any
 
 import aiohttp
 import async_timeout
 
-from .const import (
-    CONF_DOORS,
-    CONF_INPUTS,
-)
+from custom_components.inception.schema import Area, Door, Input
 
 
 class InceptionApiClientError(Exception):
@@ -54,56 +52,26 @@ class InceptionApiClient:
         self._host = host.rstrip("/")
         self._session = session
 
-    async def async_get_data(self) -> dict:
-        """Get data from the API."""
-        doors = await self._api_wrapper(
+    async def get_doors(self) -> list[Door]:
+        """Get doors from the API."""
+        return await self._api_wrapper(
             method="get",
             path="/control/door",
         )
 
-        inputs = await self._api_wrapper(
+    async def get_inputs(self) -> list[Input]:
+        """Get doors from the API."""
+        return await self._api_wrapper(
             method="get",
             path="/control/input",
         )
 
-        initial_state = await self._api_wrapper(
-            method="post",
-            path="/monitor-updates",
-            data=[
-                {
-                    "ID": "AreaStateRequest",
-                    "RequestType": "MonitorEntityStates",
-                    "InputData": {"stateType": "AreaState", "timeSinceUpdate": "0"},
-                },
-                {
-                    "ID": "InputStateRequest",
-                    "RequestType": "MonitorEntityStates",
-                    "InputData": {
-                        "stateType": "InputState",
-                        "timeSinceUpdate": "0",
-                    },
-                },
-                {
-                    "ID": "OutputStateRequest",
-                    "RequestType": "MonitorEntityStates",
-                    "InputData": {
-                        "stateType": "OutputState",
-                        "timeSinceUpdate": "0",
-                    },
-                },
-                {
-                    "ID": "DoorStateRequest",
-                    "RequestType": "MonitorEntityStates",
-                    "InputData": {"stateType": "DoorState", "timeSinceUpdate": "0"},
-                },
-            ],
+    async def get_areas(self) -> list[Area]:
+        """Get doors from the API."""
+        return await self._api_wrapper(
+            method="get",
+            path="/control/areas",
         )
-        # print(json.dumps(initial_state, indent=2))
-
-        return {CONF_DOORS: doors, CONF_INPUTS: inputs}
-
-    async def async_set_title(self, value: str) -> Any:
-        """Get data from the API."""
 
     async def authenticate(self) -> bool:
         """Authenticate with the API."""
@@ -112,6 +80,24 @@ class InceptionApiClient:
             path="/control/input",
         )
         return True
+
+    async def monitor_updates(
+        self,
+    ) -> None:
+        """Monitor updates from the API."""
+        update_monitor = [
+            {
+                "ID": "LiveReviewEvents",
+                "RequestType": "LiveReviewEvents",
+                "InputData": {"referenceId": "null", "referenceTime": "null"},
+            }
+        ]
+
+        await self._api_wrapper(
+            method="post",
+            data=update_monitor,
+            path="/control/monitor-updates",
+        )
 
     async def _api_wrapper(
         self, method: str, path: str, data: Any | None = None
