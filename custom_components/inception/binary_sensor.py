@@ -9,7 +9,6 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
     BinarySensorEntityDescription,
 )
-from sqlalchemy import desc
 
 from .const import DOMAIN
 from .entity import InceptionEntity

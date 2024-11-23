@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
 import socket
-from turtle import update
 from typing import Any
 
 import aiohttp
 import async_timeout
 
-from custom_components.inception.schema import Area, Door, Input
+from .data import InceptionData
+from .schema import Area, Door, Input
 
 
 class InceptionApiClientError(Exception):
@@ -51,6 +53,10 @@ class InceptionApiClient:
         self._token = token
         self._host = host.rstrip("/")
         self._session = session
+        self.data: dict[str, InceptionData] = {}
+        self.data_update_cbs: list = []
+        self.loop: asyncio.AbstractEventLoop = asyncio.get_running_loop()
+        self.rest_task: asyncio.Task | None = None
 
     async def get_doors(self) -> list[Door]:
         """Get doors from the API."""
@@ -98,6 +104,35 @@ class InceptionApiClient:
             data=update_monitor,
             path="/control/monitor-updates",
         )
+
+    def _schedule_data_callback(self, cb) -> None:
+        """Schedule a data callback."""
+        self.loop.call_soon_threadsafe(cb, self.data)
+
+    def _schedule_data_callbacks(self) -> None:
+        """Schedule a data callbacks."""
+        for cb in self.data_update_cbs:
+            self._schedule_data_callback(cb)
+
+    def register_monitor_callback(self, callback) -> None:
+        """Register a data update callback."""
+        if callback not in self.data_update_cbs:
+            self.data_update_cbs.append(callback)
+
+    async def _rest_task(self) -> None:
+        """Poll data periodically via Rest."""
+        while True:
+            await self.monitor_updates()
+            self._schedule_data_callbacks()
+            await asyncio.sleep(30)
+
+    async def close(self) -> None:
+        """Close the session."""
+        if self.rest_task:
+            if not self.rest_task.cancelled():
+                self.rest_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await asyncio.gather(self.rest_task)
 
     async def _api_wrapper(
         self, method: str, path: str, data: Any | None = None
