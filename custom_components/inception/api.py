@@ -4,14 +4,16 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import logging
 import socket
 from typing import Any
 
 import aiohttp
-import async_timeout
 
-from .data import InceptionData
+from .data import InceptionApiData, InceptionEntryData
 from .schema import Area, Door, Input
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class InceptionApiClientError(Exception):
@@ -53,31 +55,36 @@ class InceptionApiClient:
         self._token = token
         self._host = host.rstrip("/")
         self._session = session
-        self.data: dict[str, InceptionData] = {}
+        self._is_connected = False
+        self.data: InceptionApiData | None = None
         self.data_update_cbs: list = []
         self.loop: asyncio.AbstractEventLoop = asyncio.get_running_loop()
         self.rest_task: asyncio.Task | None = None
+        self._last_update = None
 
     async def get_doors(self) -> list[Door]:
         """Get doors from the API."""
-        return await self._api_wrapper(
+        data = await self._api_wrapper(
             method="get",
             path="/control/door",
         )
+        return [Door(**item) for item in data]
 
     async def get_inputs(self) -> list[Input]:
         """Get doors from the API."""
-        return await self._api_wrapper(
+        data = await self._api_wrapper(
             method="get",
             path="/control/input",
         )
+        return [Input(**item) for item in data]
 
     async def get_areas(self) -> list[Area]:
         """Get doors from the API."""
-        return await self._api_wrapper(
+        data = await self._api_wrapper(
             method="get",
-            path="/control/areas",
+            path="/control/area",
         )
+        return [Area(**item) for item in data]
 
     async def authenticate(self) -> bool:
         """Authenticate with the API."""
@@ -87,7 +94,34 @@ class InceptionApiClient:
         )
         return True
 
-    async def monitor_updates(
+    async def connect(self) -> None:
+        self._schedule_data_callbacks()
+        self.rest_task = asyncio.create_task(self._rest_task())
+
+    async def get_status(self) -> InceptionApiData:
+        """Get the status of the API."""
+        _LOGGER.debug(
+            "get_status: %s / %s",
+            self._is_connected,
+            self.data,
+        )
+        if not self._is_connected or self.data is None:
+            i_data = InceptionApiData()
+            inputs, doors, areas = await asyncio.gather(
+                self.get_inputs(), self.get_doors(), self.get_areas()
+            )
+            i_data.inputs = {i.ID: i for i in inputs}
+            i_data.doors = {i.ID: i for i in doors}
+            i_data.areas = {i.ID: i for i in areas}
+
+            self.data = i_data
+            self._is_connected = True
+
+        await self._monitor_updates()
+
+        return self.data
+
+    async def _monitor_updates(
         self,
     ) -> None:
         """Monitor updates from the API."""
@@ -99,10 +133,15 @@ class InceptionApiClient:
             }
         ]
 
-        await self._api_wrapper(
+        response = await self._api_wrapper(
             method="post",
             data=update_monitor,
-            path="/control/monitor-updates",
+            path="/monitor-updates",
+            timeout=aiohttp.ClientTimeout(total=60),
+        )
+        _LOGGER.debug(
+            "Monitor update response: %s",
+            response,
         )
 
     def _schedule_data_callback(self, cb) -> None:
@@ -114,7 +153,7 @@ class InceptionApiClient:
         for cb in self.data_update_cbs:
             self._schedule_data_callback(cb)
 
-    def register_monitor_callback(self, callback) -> None:
+    def register_data_callback(self, callback) -> None:
         """Register a data update callback."""
         if callback not in self.data_update_cbs:
             self.data_update_cbs.append(callback)
@@ -122,9 +161,9 @@ class InceptionApiClient:
     async def _rest_task(self) -> None:
         """Poll data periodically via Rest."""
         while True:
-            await self.monitor_updates()
+            # await self.connect()
             self._schedule_data_callbacks()
-            await asyncio.sleep(30)
+            await asyncio.sleep(60)
 
     async def close(self) -> None:
         """Close the session."""
@@ -135,7 +174,11 @@ class InceptionApiClient:
                 await asyncio.gather(self.rest_task)
 
     async def _api_wrapper(
-        self, method: str, path: str, data: Any | None = None
+        self,
+        method: str,
+        path: str,
+        data: Any | None = None,
+        timeout: aiohttp.ClientTimeout = aiohttp.ClientTimeout(total=10),
     ) -> Any:
         """Get information from the API."""
         try:
@@ -145,21 +188,16 @@ class InceptionApiClient:
             if path.startswith("/"):
                 path = path[1:]
 
-            async with async_timeout.timeout(10):
-                response = await self._session.request(
-                    method=method,
-                    url=f"{self._host}/api/v1/{path}",
-                    headers=headers,
-                    json=data,
-                )
-                _verify_response_or_raise(response)
-                return await response.json()
+            response = await self._session.request(
+                method=method,
+                url=f"{self._host}/api/v1/{path}",
+                headers=headers,
+                json=data,
+                timeout=timeout,
+            )
+            _verify_response_or_raise(response)
+            return await response.json()
 
-        except TimeoutError as exception:
-            msg = f"Timeout error fetching information - {exception}"
-            raise InceptionApiClientCommunicationError(
-                msg,
-            ) from exception
         except (aiohttp.ClientError, socket.gaierror) as exception:
             msg = f"Error fetching information - {exception}"
             raise InceptionApiClientCommunicationError(

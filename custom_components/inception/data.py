@@ -15,11 +15,11 @@ if TYPE_CHECKING:
     from .coordinator import InceptionUpdateCoordinator
 
 
-type InceptionConfigEntry = ConfigEntry[InceptionData]
+type InceptionConfigEntry = ConfigEntry[InceptionEntryData]
 
 
 @dataclass
-class InceptionData:
+class InceptionEntryData:
     """Data for the Inception integration."""
 
     client: InceptionApiClient

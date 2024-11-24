@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import timedelta
 from typing import TYPE_CHECKING
 
+from homeassistant.const import CONF_HOST, CONF_TOKEN
 from homeassistant.core import callback
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+
+from custom_components.inception.api import InceptionApiClient
 
 from .const import DOMAIN, LOGGER
 from .data import InceptionApiData
@@ -15,6 +20,8 @@ if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
 
     from .data import InceptionConfigEntry
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class InceptionUpdateCoordinator(DataUpdateCoordinator[InceptionApiData]):
@@ -25,6 +32,7 @@ class InceptionUpdateCoordinator(DataUpdateCoordinator[InceptionApiData]):
     def __init__(
         self,
         hass: HomeAssistant,
+        entry: InceptionConfigEntry,
     ) -> None:
         """Initialize."""
         super().__init__(
@@ -34,28 +42,37 @@ class InceptionUpdateCoordinator(DataUpdateCoordinator[InceptionApiData]):
             update_interval=timedelta(seconds=5),
             always_update=False,
         )
-        self._client = self.config_entry.runtime_data.client
+        self.config_entry = entry
+        self._client = InceptionApiClient(
+            token=entry.data[CONF_TOKEN],
+            host=entry.data[CONF_HOST],
+            session=async_get_clientsession(hass),
+        )
+
         self.monitor_connected: bool = False
 
-    async def _async_setup(self) -> InceptionApiData:
-        """Set up the data."""
-        i_data = InceptionApiData()
-        for i_input in await self._client.get_inputs():
-            i_data.inputs[i_input.ID] = i_input
-        for i_door in await self._client.get_doors():
-            i_data.doors[i_door.ID] = i_door
-        for i_area in await self._client.get_areas():
-            i_data.areas[i_area.ID] = i_area
-
-        return i_data
-
-    async def _async_update_data(self) -> None:
+    async def _async_update_data(self) -> InceptionApiData:
         """Fetch data from the API."""
         if not self.monitor_connected:
-            await self._client.monitor_updates()
-            self._client.register_monitor_callback(self.callback)
+            _LOGGER.debug(
+                "Connecting to Inception",
+            )
+            await self._client.connect()
+            self._client.register_data_callback(self.callback)
+            self.monitor_connected = True
+        try:
+            data = await self._client.get_status()
+            _LOGGER.debug("Data fetched: %s", data)
+            return data
+        except Exception as err:
+            _LOGGER.debug("Failed to fetch data: %s", err)
+            raise UpdateFailed(err) from err
 
     @callback
     def callback(self, data: InceptionApiData) -> None:
-        """Process websocket callbacks and write them to the DataUpdateCoordinator."""
+        """Process long-poll callbacks and write them to the DataUpdateCoordinator."""
+        _LOGGER.debug(
+            "Long poll update: %s",
+            data,
+        )
         self.async_set_updated_data(data)
