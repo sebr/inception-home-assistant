@@ -10,8 +10,10 @@ from typing import Any
 
 import aiohttp
 
-from .data import InceptionApiData, InceptionEntryData
-from .schema import Area, Door, Input
+from custom_components.inception.pyinception.states_schema import InputPublicStates
+
+from .data import InceptionApiData
+from .schema import Area, Door, Input, InputStateResponse, LiveReviewEventsResult
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -60,7 +62,7 @@ class InceptionApiClient:
         self.data_update_cbs: list = []
         self.loop: asyncio.AbstractEventLoop = asyncio.get_running_loop()
         self.rest_task: asyncio.Task | None = None
-        self._last_update = None
+        self._last_update: str | int = "null"
 
     async def get_doors(self) -> list[Door]:
         """Get doors from the API."""
@@ -95,16 +97,12 @@ class InceptionApiClient:
         return True
 
     async def connect(self) -> None:
+        """Connect to the API."""
         self._schedule_data_callbacks()
         self.rest_task = asyncio.create_task(self._rest_task())
 
     async def get_status(self) -> InceptionApiData:
         """Get the status of the API."""
-        _LOGGER.debug(
-            "get_status: %s / %s",
-            self._is_connected,
-            self.data,
-        )
         if not self._is_connected or self.data is None:
             i_data = InceptionApiData()
             inputs, doors, areas = await asyncio.gather(
@@ -117,32 +115,80 @@ class InceptionApiClient:
             self.data = i_data
             self._is_connected = True
 
-        await self._monitor_updates()
+        await self._monitor_entity_states()
 
         return self.data
 
-    async def _monitor_updates(
+    async def _monitor_entity_states(self) -> None:
+        """Monitor updates from the API."""
+        payload = [
+            # {
+            #     "ID": "AreaStateRequest",
+            #     "RequestType": "MonitorEntityStates",
+            #     "InputData": {"stateType": "AreaState", "timeSinceUpdate": "0"},
+            # },
+            {
+                "ID": "InputStateRequest",
+                "RequestType": "MonitorEntityStates",
+                "InputData": {"stateType": "InputState", "timeSinceUpdate": "0"},
+            },
+            # {
+            #     "ID": "OutputStateRequest",
+            #     "RequestType": "MonitorEntityStates",
+            #     "InputData": {"stateType": "OutputState", "timeSinceUpdate": "0"},
+            # },
+            # {
+            #     "ID": "DoorStateRequest",
+            #     "RequestType": "MonitorEntityStates",
+            #     "InputData": {"stateType": "DoorState", "timeSinceUpdate": "0"},
+            # },
+        ]
+        response = await self._api_wrapper(
+            method="post",
+            data=payload,
+            path="/monitor-updates",
+            timeout=aiohttp.ClientTimeout(total=60),
+        )
+        _LOGGER.debug("Monitor entity states response: %s", response)
+        events = [
+            InputStateResponse(**item) for item in response["Result"]["stateData"]
+        ]
+        if self.data is not None:
+            for event in events:
+                state_description = InputPublicStates.get_state_description(
+                    event.PublicState
+                )
+                self.data.inputs[event.ID].extra_fields["state_description"] = (
+                    state_description
+                )
+                self.data.inputs[event.ID].PublicState = event.PublicState
+
+    async def _monitor_live_review_events(
         self,
     ) -> None:
         """Monitor updates from the API."""
-        update_monitor = [
+        payload = [
             {
                 "ID": "LiveReviewEvents",
                 "RequestType": "LiveReviewEvents",
-                "InputData": {"referenceId": "null", "referenceTime": "null"},
+                "InputData": {
+                    "referenceId": "null",
+                    "referenceTime": self._last_update,
+                },
             }
         ]
 
         response = await self._api_wrapper(
             method="post",
-            data=update_monitor,
+            data=payload,
             path="/monitor-updates",
             timeout=aiohttp.ClientTimeout(total=60),
         )
-        _LOGGER.debug(
-            "Monitor update response: %s",
-            response,
-        )
+
+        events = [LiveReviewEventsResult(**item) for item in response["Result"]]
+
+        if events:
+            self._last_update = events[-1].WhenTicks
 
     def _schedule_data_callback(self, cb) -> None:
         """Schedule a data callback."""
@@ -178,11 +224,17 @@ class InceptionApiClient:
         method: str,
         path: str,
         data: Any | None = None,
-        timeout: aiohttp.ClientTimeout = aiohttp.ClientTimeout(total=10),
+        timeout: aiohttp.ClientTimeout | None = None,
     ) -> Any:
         """Get information from the API."""
         try:
-            headers = {"Authorization": f"APIToken {self._token}"}
+            if timeout is None:
+                timeout = aiohttp.ClientTimeout(total=10)
+            headers = {
+                "Authorization": f"APIToken {self._token}",
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            }
 
             # If path begins with a slash, remove it
             if path.startswith("/"):
@@ -196,7 +248,7 @@ class InceptionApiClient:
                 timeout=timeout,
             )
             _verify_response_or_raise(response)
-            return await response.json()
+            return await response.json(content_type=None)
 
         except (aiohttp.ClientError, socket.gaierror) as exception:
             msg = f"Error fetching information - {exception}"

@@ -8,13 +8,13 @@ from homeassistant.const import CONF_HOST, CONF_NAME, CONF_TOKEN
 from homeassistant.helpers import selector
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 
-from .api import (
+from .const import DOMAIN, LOGGER
+from .pyinception.api import (
     InceptionApiClient,
     InceptionApiClientAuthenticationError,
     InceptionApiClientCommunicationError,
     InceptionApiClientError,
 )
-from .const import DOMAIN, LOGGER
 
 
 class InceptionFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):

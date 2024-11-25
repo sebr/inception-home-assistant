@@ -14,7 +14,7 @@ from .coordinator import InceptionUpdateCoordinator
 if TYPE_CHECKING:
     from homeassistant.helpers.entity import EntityDescription
 
-    from .schema import InceptionObject
+    from .pyinception.schema import InceptionObject
 
 
 class InceptionEntity(CoordinatorEntity[InceptionUpdateCoordinator]):

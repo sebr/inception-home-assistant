@@ -10,6 +10,8 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntityDescription,
 )
 
+from custom_components.inception.pyinception.states_schema import InputPublicStates
+
 from .const import DOMAIN
 from .entity import InceptionEntity
 
@@ -19,7 +21,7 @@ if TYPE_CHECKING:
 
     from .coordinator import InceptionUpdateCoordinator
     from .data import InceptionConfigEntry
-    from .schema import InceptionObject
+    from .pyinception.schema import InceptionObject
 
 INPUT_BINARY_SENSOR: tuple[BinarySensorEntityDescription, ...] = (
     BinarySensorEntityDescription(
@@ -120,4 +122,5 @@ class InceptionBinarySensor(InceptionEntity, BinarySensorEntity):
     @property
     def is_on(self) -> bool:
         """Return true if the binary_sensor is on."""
-        return True
+
+        return InputPublicStates.get_state(self.entity_description.PublicState)

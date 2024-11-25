@@ -11,10 +11,10 @@ from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from custom_components.inception.api import InceptionApiClient
+from custom_components.inception.pyinception.api import InceptionApiClient
 
 from .const import DOMAIN, LOGGER
-from .data import InceptionApiData
+from .pyinception.data import InceptionApiData
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -61,9 +61,7 @@ class InceptionUpdateCoordinator(DataUpdateCoordinator[InceptionApiData]):
             self._client.register_data_callback(self.callback)
             self.monitor_connected = True
         try:
-            data = await self._client.get_status()
-            _LOGGER.debug("Data fetched: %s", data)
-            return data
+            return await self._client.get_status()
         except Exception as err:
             _LOGGER.debug("Failed to fetch data: %s", err)
             raise UpdateFailed(err) from err
