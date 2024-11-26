@@ -6,7 +6,7 @@ import asyncio
 import contextlib
 import logging
 import socket
-from typing import Any
+from typing import Any, ClassVar
 
 import aiohttp
 
@@ -46,6 +46,8 @@ def _verify_response_or_raise(response: aiohttp.ClientResponse) -> None:
 
 class InceptionApiClient:
     """Inception API Client."""
+
+    _monitor_update_times: ClassVar[dict[str, int]] = {}
 
     def __init__(
         self,
@@ -101,9 +103,9 @@ class InceptionApiClient:
         self._schedule_data_callbacks()
         self.rest_task = asyncio.create_task(self._rest_task())
 
-    async def get_status(self) -> InceptionApiData:
+    async def get_data(self) -> InceptionApiData:
         """Get the status of the API."""
-        if not self._is_connected or self.data is None:
+        if self.data is None:
             i_data = InceptionApiData()
             inputs, doors, areas = await asyncio.gather(
                 self.get_inputs(), self.get_doors(), self.get_areas()
@@ -113,35 +115,24 @@ class InceptionApiClient:
             i_data.areas = {i.ID: i for i in areas}
 
             self.data = i_data
-            self._is_connected = True
-
-        await self._monitor_entity_states()
 
         return self.data
 
-    async def _monitor_entity_states(self) -> None:
+    async def monitor_entity_states(self) -> None:
         """Monitor updates from the API."""
+
         payload = [
-            # {
-            #     "ID": "AreaStateRequest",
-            #     "RequestType": "MonitorEntityStates",
-            #     "InputData": {"stateType": "AreaState", "timeSinceUpdate": "0"},
-            # },
             {
-                "ID": "InputStateRequest",
+                "ID": entity_request_type,
                 "RequestType": "MonitorEntityStates",
-                "InputData": {"stateType": "InputState", "timeSinceUpdate": "0"},
-            },
-            # {
-            #     "ID": "OutputStateRequest",
-            #     "RequestType": "MonitorEntityStates",
-            #     "InputData": {"stateType": "OutputState", "timeSinceUpdate": "0"},
-            # },
-            # {
-            #     "ID": "DoorStateRequest",
-            #     "RequestType": "MonitorEntityStates",
-            #     "InputData": {"stateType": "DoorState", "timeSinceUpdate": "0"},
-            # },
+                "InputData": {
+                    "stateType": "InputState",
+                    "timeSinceUpdate": self._monitor_update_times.get(
+                        entity_request_type, "0"
+                    ),
+                },
+            }
+            for entity_request_type in ["InputStateRequest"]
         ]
         response = await self._api_wrapper(
             method="post",
@@ -149,19 +140,32 @@ class InceptionApiClient:
             path="/monitor-updates",
             timeout=aiohttp.ClientTimeout(total=60),
         )
-        _LOGGER.debug("Monitor entity states response: %s", response)
-        events = [
-            InputStateResponse(**item) for item in response["Result"]["stateData"]
-        ]
+        response_id = response["ID"]
+        update_time = response["Result"]["updateTime"]
+        state_data = response["Result"]["stateData"]
+
+        self._monitor_update_times[response_id] = update_time
+
+        events = [InputStateResponse(**item) for item in state_data]
         if self.data is not None:
             for event in events:
                 state_description = InputPublicStates.get_state_description(
                     event.PublicState
                 )
+                _LOGGER.debug(
+                    "Event: %s, %s, %s",
+                    self.data.inputs[event.ID].Name,
+                    event.PublicState,
+                    state_description,
+                )
                 self.data.inputs[event.ID].extra_fields["state_description"] = (
                     state_description
                 )
                 self.data.inputs[event.ID].PublicState = event.PublicState
+        else:
+            _LOGGER.debug("state monitor: no data to update")
+
+        self._schedule_data_callbacks()
 
     async def _monitor_live_review_events(
         self,
@@ -188,7 +192,13 @@ class InceptionApiClient:
         events = [LiveReviewEventsResult(**item) for item in response["Result"]]
 
         if events:
+            for event in events:
+                _LOGGER.debug(
+                    "Event: %s, %s, %s", event.ID, event.What, event.Description
+                )
             self._last_update = events[-1].WhenTicks
+        else:
+            _LOGGER.debug("No events from state monitor")
 
     def _schedule_data_callback(self, cb) -> None:
         """Schedule a data callback."""
@@ -207,9 +217,8 @@ class InceptionApiClient:
     async def _rest_task(self) -> None:
         """Poll data periodically via Rest."""
         while True:
-            # await self.connect()
+            await self.monitor_entity_states()
             self._schedule_data_callbacks()
-            await asyncio.sleep(60)
 
     async def close(self) -> None:
         """Close the session."""

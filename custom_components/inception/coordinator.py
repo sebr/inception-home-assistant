@@ -53,24 +53,24 @@ class InceptionUpdateCoordinator(DataUpdateCoordinator[InceptionApiData]):
 
     async def _async_update_data(self) -> InceptionApiData:
         """Fetch data from the API."""
+        try:
+            data = await self._client.get_data()
+        except Exception as err:
+            _LOGGER.debug("Failed to fetch data: %s", err)
+            _LOGGER.exception("Error fetching data from Inception")
+            raise UpdateFailed(err) from err
+
         if not self.monitor_connected:
             _LOGGER.debug(
-                "Connecting to Inception",
+                "Connecting to Inception Monitor",
             )
             await self._client.connect()
             self._client.register_data_callback(self.callback)
             self.monitor_connected = True
-        try:
-            return await self._client.get_status()
-        except Exception as err:
-            _LOGGER.debug("Failed to fetch data: %s", err)
-            raise UpdateFailed(err) from err
+
+        return data
 
     @callback
     def callback(self, data: InceptionApiData) -> None:
         """Process long-poll callbacks and write them to the DataUpdateCoordinator."""
-        _LOGGER.debug(
-            "Long poll update: %s",
-            data,
-        )
         self.async_set_updated_data(data)

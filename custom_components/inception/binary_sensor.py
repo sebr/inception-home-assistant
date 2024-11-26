@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from homeassistant.components.binary_sensor import (
@@ -10,18 +11,19 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntityDescription,
 )
 
-from custom_components.inception.pyinception.states_schema import InputPublicStates
-
 from .const import DOMAIN
 from .entity import InceptionEntity
+from .pyinception.states_schema import InputPublicStates
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from homeassistant.core import HomeAssistant
     from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
     from .coordinator import InceptionUpdateCoordinator
     from .data import InceptionConfigEntry
-    from .pyinception.schema import InceptionObject
+    from .pyinception.schema import Input
 
 INPUT_BINARY_SENSOR: tuple[BinarySensorEntityDescription, ...] = (
     BinarySensorEntityDescription(
@@ -30,6 +32,13 @@ INPUT_BINARY_SENSOR: tuple[BinarySensorEntityDescription, ...] = (
         device_class=BinarySensorDeviceClass.CONNECTIVITY,
     ),
 )
+
+
+@dataclass(frozen=True, kw_only=True)
+class InceptionBinarySensorEntityDescription(BinarySensorEntityDescription):
+    """Describes Inception binary sensor entity."""
+
+    value_fn: Callable[[Input], bool]
 
 
 def get_device_class(name: str) -> BinarySensorDeviceClass:
@@ -85,10 +94,11 @@ async def async_setup_entry(
     entities: list[InceptionBinarySensor] = [
         InceptionBinarySensor(
             coordinator=coordinator,
-            entity_description=BinarySensorEntityDescription(
+            entity_description=InceptionBinarySensorEntityDescription(
                 key=inception_input.ID,
-                name=inception_input.Name,
                 device_class=get_device_class(inception_input.Name),
+                value_fn=lambda data: data.PublicState is not None
+                and bool(data.PublicState & InputPublicStates.ACTIVE),
                 entity_registry_enabled_default=is_entity_registry_enabled_default(
                     inception_input.Name
                 ),
@@ -104,16 +114,20 @@ async def async_setup_entry(
 class InceptionBinarySensor(InceptionEntity, BinarySensorEntity):
     """inception binary_sensor class."""
 
+    entity_description: InceptionBinarySensorEntityDescription
+    data: Input
+
     def __init__(
         self,
         coordinator: InceptionUpdateCoordinator,
-        entity_description: BinarySensorEntityDescription,
-        data: InceptionObject,
+        entity_description: InceptionBinarySensorEntityDescription,
+        data: Input,
     ) -> None:
         """Initialize the binary_sensor class."""
         super().__init__(
             coordinator, description=entity_description, inception_object=data
         )
+        self.data = data
         self.entity_description = entity_description
         self.unique_id = data.ID
         self.name = data.Name
@@ -121,6 +135,5 @@ class InceptionBinarySensor(InceptionEntity, BinarySensorEntity):
 
     @property
     def is_on(self) -> bool:
-        """Return true if the binary_sensor is on."""
-
-        return InputPublicStates.get_state(self.entity_description.PublicState)
+        """Return the state of the binary sensor."""
+        return self.entity_description.value_fn(self.data)

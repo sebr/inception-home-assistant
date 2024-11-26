@@ -2,8 +2,17 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Callable
 
+from homeassistant.components.binary_sensor import (
+    DOMAIN as BINARY_SENSOR_DOMAIN,
+)
+from homeassistant.components.binary_sensor import (
+    BinarySensorDeviceClass,
+    BinarySensorEntity,
+    BinarySensorEntityDescription,
+)
 from homeassistant.core import callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -40,6 +49,7 @@ class InceptionEntity(CoordinatorEntity[InceptionUpdateCoordinator]):
             name=inception_object.Name,
             manufacturer=MANUFACTURER,
         )
+        self._inception_object = inception_object
         self._update_attrs()
 
     def _update_attrs(self) -> None:
