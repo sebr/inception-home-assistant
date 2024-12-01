@@ -69,29 +69,22 @@ class InceptionApiClient:
         self.rest_task: asyncio.Task | None = None
         self._last_update: str | int = "null"
 
-    async def get_doors(self) -> list[Door]:
-        """Get doors from the API."""
-        data = await self._api_wrapper(
-            method="get",
-            path="/control/door",
-        )
-        return [Door(**item) for item in data]
+    async def get_controls(self, control_type: str) -> list[Any]:
+        """Get entities from the API."""
+        path_map = {
+            "door": Door,
+            "input": Input,
+            "area": Area,
+        }
+        if control_type not in path_map:
+            msg = f"Unsupported entity type: {control_type}"
+            raise ValueError(msg)
 
-    async def get_inputs(self) -> list[Input]:
-        """Get doors from the API."""
         data = await self._api_wrapper(
             method="get",
-            path="/control/input",
+            path=f"/control/{control_type}",
         )
-        return [Input(**item) for item in data]
-
-    async def get_areas(self) -> list[Area]:
-        """Get doors from the API."""
-        data = await self._api_wrapper(
-            method="get",
-            path="/control/area",
-        )
-        return [Area(**item) for item in data]
+        return [path_map[control_type](**item) for item in data]
 
     async def authenticate(self) -> bool:
         """Authenticate with the API."""
@@ -111,7 +104,9 @@ class InceptionApiClient:
         if self.data is None:
             i_data = InceptionApiData()
             inputs, doors, areas = await asyncio.gather(
-                self.get_inputs(), self.get_doors(), self.get_areas()
+                self.get_controls("inputs"),
+                self.get_controls("doors"),
+                self.get_controls("areas"),
             )
             i_data.inputs = {i.ID: i for i in inputs}
             i_data.doors = {i.ID: i for i in doors}
@@ -191,7 +186,7 @@ class InceptionApiClient:
             method="post",
             data=payload,
             path="/monitor-updates",
-            timeout=aiohttp.ClientTimeout(total=60),
+            api_timeout=aiohttp.ClientTimeout(total=60),
         )
 
         events = [LiveReviewEventsResult(**item) for item in response["Result"]]
