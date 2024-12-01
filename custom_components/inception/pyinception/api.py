@@ -6,7 +6,7 @@ import asyncio
 import contextlib
 import logging
 import socket
-from typing import Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
 import aiohttp
 
@@ -14,6 +14,9 @@ from custom_components.inception.pyinception.states_schema import InputPublicSta
 
 from .data import InceptionApiData
 from .schema import Area, Door, Input, InputStateResponse, LiveReviewEventsResult
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -120,25 +123,27 @@ class InceptionApiClient:
 
     async def monitor_entity_states(self) -> None:
         """Monitor updates from the API."""
-
         payload = [
             {
                 "ID": entity_request_type,
                 "RequestType": "MonitorEntityStates",
                 "InputData": {
-                    "stateType": "InputState",
+                    "stateType": state_type,
                     "timeSinceUpdate": self._monitor_update_times.get(
                         entity_request_type, "0"
                     ),
                 },
             }
-            for entity_request_type in ["InputStateRequest"]
+            for (entity_request_type, state_type) in [
+                ("InputStateRequest", "InputState"),
+                ("DoorStateRequest", "DoorState"),
+            ]
         ]
         response = await self._api_wrapper(
             method="post",
             data=payload,
             path="/monitor-updates",
-            timeout=aiohttp.ClientTimeout(total=60),
+            api_timeout=aiohttp.ClientTimeout(total=60),
         )
         response_id = response["ID"]
         update_time = response["Result"]["updateTime"]
@@ -200,7 +205,7 @@ class InceptionApiClient:
         else:
             _LOGGER.debug("No events from state monitor")
 
-    def _schedule_data_callback(self, cb) -> None:
+    def _schedule_data_callback(self, cb: Callable) -> None:
         """Schedule a data callback."""
         self.loop.call_soon_threadsafe(cb, self.data)
 
@@ -209,7 +214,7 @@ class InceptionApiClient:
         for cb in self.data_update_cbs:
             self._schedule_data_callback(cb)
 
-    def register_data_callback(self, callback) -> None:
+    def register_data_callback(self, callback: Callable) -> None:
         """Register a data update callback."""
         if callback not in self.data_update_cbs:
             self.data_update_cbs.append(callback)
@@ -233,12 +238,12 @@ class InceptionApiClient:
         method: str,
         path: str,
         data: Any | None = None,
-        timeout: aiohttp.ClientTimeout | None = None,
+        api_timeout: aiohttp.ClientTimeout | None = None,
     ) -> Any:
         """Get information from the API."""
         try:
-            if timeout is None:
-                timeout = aiohttp.ClientTimeout(total=10)
+            if api_timeout is None:
+                api_timeout = aiohttp.ClientTimeout(total=10)
             headers = {
                 "Authorization": f"APIToken {self._token}",
                 "Content-Type": "application/json",
@@ -254,7 +259,7 @@ class InceptionApiClient:
                 url=f"{self._host}/api/v1/{path}",
                 headers=headers,
                 json=data,
-                timeout=timeout,
+                timeout=api_timeout,
             )
             _verify_response_or_raise(response)
             return await response.json(content_type=None)
