@@ -10,10 +10,13 @@ from typing import TYPE_CHECKING, Any, ClassVar
 
 import aiohttp
 
-from custom_components.inception.pyinception.states_schema import InputPublicStates
+from custom_components.inception.pyinception.states_schema import (
+    DoorPublicStates,
+    InputPublicStates,
+)
 
 from .data import InceptionApiData
-from .schema import Area, Door, Input, InputStateResponse, LiveReviewEventsResult
+from .schema import Area, Door, Input, LiveReviewEventsResult, MonitorStateResponse
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -80,7 +83,7 @@ class InceptionApiClient:
             msg = f"Unsupported entity type: {control_type}"
             raise ValueError(msg)
 
-        data = await self._api_wrapper(
+        data = await self.request(
             method="get",
             path=f"/control/{control_type}",
         )
@@ -88,7 +91,7 @@ class InceptionApiClient:
 
     async def authenticate(self) -> bool:
         """Authenticate with the API."""
-        await self._api_wrapper(
+        await self.request(
             method="get",
             path="/control/input",
         )
@@ -104,9 +107,9 @@ class InceptionApiClient:
         if self.data is None:
             i_data = InceptionApiData()
             inputs, doors, areas = await asyncio.gather(
-                self.get_controls("inputs"),
-                self.get_controls("doors"),
-                self.get_controls("areas"),
+                self.get_controls("input"),
+                self.get_controls("door"),
+                self.get_controls("area"),
             )
             i_data.inputs = {i.ID: i for i in inputs}
             i_data.doors = {i.ID: i for i in doors}
@@ -118,50 +121,76 @@ class InceptionApiClient:
 
     async def monitor_entity_states(self) -> None:
         """Monitor updates from the API."""
+        request_types = [
+            {
+                "entity_request_type": "InputStateRequest",
+                "state_type": "InputState",
+                "public_state": InputPublicStates,
+                "api_data": "inputs",
+            },
+            {
+                "entity_request_type": "DoorStateRequest",
+                "state_type": "DoorState",
+                "public_state": DoorPublicStates,
+                "api_data": "doors",
+            },
+        ]
+
         payload = [
             {
-                "ID": entity_request_type,
+                "ID": request_type["entity_request_type"],
                 "RequestType": "MonitorEntityStates",
                 "InputData": {
-                    "stateType": state_type,
+                    "stateType": request_type["state_type"],
                     "timeSinceUpdate": self._monitor_update_times.get(
-                        entity_request_type, "0"
+                        request_type["entity_request_type"], "0"
                     ),
                 },
             }
-            for (entity_request_type, state_type) in [
-                ("InputStateRequest", "InputState"),
-                ("DoorStateRequest", "DoorState"),
-            ]
+            for request_type in request_types
         ]
-        response = await self._api_wrapper(
+        response = await self.request(
             method="post",
             data=payload,
             path="/monitor-updates",
             api_timeout=aiohttp.ClientTimeout(total=60),
         )
+        _LOGGER.debug("%s", response)
         response_id = response["ID"]
         update_time = response["Result"]["updateTime"]
         state_data = response["Result"]["stateData"]
 
         self._monitor_update_times[response_id] = update_time
 
-        events = [InputStateResponse(**item) for item in state_data]
+        events = [MonitorStateResponse(**item) for item in state_data]
         if self.data is not None:
+            request_type = next(
+                (
+                    req
+                    for req in request_types
+                    if req["entity_request_type"] == response_id
+                ),
+                None,
+            )
+            if request_type is None:
+                _LOGGER.error("Unknown response ID: %s", response_id)
+                return
+
             for event in events:
-                state_description = InputPublicStates.get_state_description(
+                state_description = request_type["public_state"].get_state_description(
                     event.PublicState
                 )
+                entity_data = getattr(self.data, request_type["api_data"])
                 _LOGGER.debug(
                     "Event: %s, %s, %s",
-                    self.data.inputs[event.ID].Name,
+                    entity_data[event.ID].Name,
                     event.PublicState,
                     state_description,
                 )
-                self.data.inputs[event.ID].extra_fields["state_description"] = (
+                entity_data[event.ID].extra_fields["state_description"] = (
                     state_description
                 )
-                self.data.inputs[event.ID].PublicState = event.PublicState
+                entity_data[event.ID].PublicState = event.PublicState
         else:
             _LOGGER.debug("state monitor: no data to update")
 
@@ -182,7 +211,7 @@ class InceptionApiClient:
             }
         ]
 
-        response = await self._api_wrapper(
+        response = await self.request(
             method="post",
             data=payload,
             path="/monitor-updates",
@@ -228,7 +257,7 @@ class InceptionApiClient:
             with contextlib.suppress(asyncio.CancelledError):
                 await asyncio.gather(self.rest_task)
 
-    async def _api_wrapper(
+    async def request(
         self,
         method: str,
         path: str,

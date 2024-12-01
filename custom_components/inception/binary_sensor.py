@@ -25,14 +25,6 @@ if TYPE_CHECKING:
     from .data import InceptionConfigEntry
     from .pyinception.schema import Input
 
-INPUT_BINARY_SENSOR: tuple[BinarySensorEntityDescription, ...] = (
-    BinarySensorEntityDescription(
-        key="inception",
-        name="Inception Input",
-        device_class=BinarySensorDeviceClass.CONNECTIVITY,
-    ),
-)
-
 
 @dataclass(frozen=True, kw_only=True)
 class InceptionBinarySensorEntityDescription(BinarySensorEntityDescription):

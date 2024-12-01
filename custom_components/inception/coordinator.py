@@ -43,7 +43,7 @@ class InceptionUpdateCoordinator(DataUpdateCoordinator[InceptionApiData]):
             always_update=False,
         )
         self.config_entry = entry
-        self._client = InceptionApiClient(
+        self.api = InceptionApiClient(
             token=entry.data[CONF_TOKEN],
             host=entry.data[CONF_HOST],
             session=async_get_clientsession(hass),
@@ -54,7 +54,7 @@ class InceptionUpdateCoordinator(DataUpdateCoordinator[InceptionApiData]):
     async def _async_update_data(self) -> InceptionApiData:
         """Fetch data from the API."""
         try:
-            data = await self._client.get_data()
+            data = await self.api.get_data()
         except Exception as err:
             _LOGGER.debug("Failed to fetch data: %s", err)
             _LOGGER.exception("Error fetching data from Inception")
@@ -64,8 +64,8 @@ class InceptionUpdateCoordinator(DataUpdateCoordinator[InceptionApiData]):
             _LOGGER.debug(
                 "Connecting to Inception Monitor",
             )
-            await self._client.connect()
-            self._client.register_data_callback(self.callback)
+            await self.api.connect()
+            self.api.register_data_callback(self.callback)
             self.monitor_connected = True
 
         return data

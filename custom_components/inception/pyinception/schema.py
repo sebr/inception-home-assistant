@@ -1,4 +1,7 @@
-from custom_components.inception.pyinception.states_schema import InputPublicStates
+from custom_components.inception.pyinception.states_schema import (
+    DoorPublicStates,
+    InputPublicStates,
+)
 
 
 class InceptionObject:
@@ -39,6 +42,8 @@ class Output(InceptionObject):
 class Door(InceptionObject):
     """An inception Door."""
 
+    PublicState: DoorPublicStates | None = None
+
 
 class Area(InceptionObject):
     """An inception Area."""
@@ -67,8 +72,8 @@ class LiveReviewEventsResult:
         )
 
 
-class InputStateResponse:
-    """Input State Response from update monitor."""
+class MonitorStateResponse:
+    """State Response from update monitor."""
 
     def __init__(self, **kwargs) -> None:  # noqa: ANN003
         """Initialize the object."""

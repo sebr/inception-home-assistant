@@ -56,3 +56,44 @@ class InputPublicStates(IntFlag):
     def get_state(state_value: int) -> bool:
         """Get the state of the input."""
         return bool(state_value & InputPublicStates.ACTIVE)
+
+
+class DoorPublicStates(IntFlag):
+    """Door public states."""
+
+    UNLOCKED = 0x001
+    OPEN = 0x002
+    LOCKED_OUT = 0x004
+    FORCED = 0x008
+    HELD_OPEN_WARNING = 0x010
+    HELD_OPEN_TOO_LONG = 0x020
+    BREAKGLASS = 0x040
+    READER_TAMPER = 0x080
+    LOCKED = 0x100
+    CLOSED = 0x200
+    HELD_RESPONSE_MUTED = 0x400
+    BATTERY_LOW = 0x800
+    LOCK_OFFLINE = 0x1000
+
+    @staticmethod
+    def get_state_description(state_value: int) -> list[str]:
+        """Get the list of state descriptions for the given state value."""
+        descriptions = {
+            DoorPublicStates.UNLOCKED: "Door is unlocked",
+            DoorPublicStates.OPEN: "Door is open",
+            DoorPublicStates.LOCKED_OUT: "Door is locked out",
+            DoorPublicStates.FORCED: "Door has been forced open",
+            DoorPublicStates.HELD_OPEN_WARNING: "Door has nearly been held open too long",
+            DoorPublicStates.HELD_OPEN_TOO_LONG: "Door has been held open too long",
+            DoorPublicStates.BREAKGLASS: "Door's breakglass detector has been triggered",
+            DoorPublicStates.READER_TAMPER: "A reader connected to the door has been tampered with",
+            DoorPublicStates.LOCKED: "Door is locked",
+            DoorPublicStates.CLOSED: "Door is closed",
+            DoorPublicStates.HELD_RESPONSE_MUTED: "Door's Held Open response has been muted by a user",
+            DoorPublicStates.BATTERY_LOW: "Door Wireless Lock has Low Battery",
+            DoorPublicStates.LOCK_OFFLINE: "Door Wireless Lock Offline",
+        }
+
+        return [
+            descriptions[state] for state in DoorPublicStates if state_value & state
+        ]

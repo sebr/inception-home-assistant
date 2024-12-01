@@ -42,13 +42,13 @@ class InceptionEntity(CoordinatorEntity[InceptionUpdateCoordinator]):
         """Initialize the Hydrawise entity."""
         super().__init__(coordinator=coordinator)
         self.entity_description = description
-        self._device_id = inception_object.ID
+        # self._device_id = inception_object.ID
         self._attr_unique_id = inception_object.ID
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, self._device_id)},
-            name=inception_object.Name,
-            manufacturer=MANUFACTURER,
-        )
+        # self._attr_device_info = DeviceInfo(
+        #     identifiers={(DOMAIN, self._device_id)},
+        #     name=inception_object.Name,
+        #     manufacturer=MANUFACTURER,
+        # )
         self._inception_object = inception_object
         self._update_attrs()
 
