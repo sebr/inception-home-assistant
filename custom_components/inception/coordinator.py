@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 from datetime import timedelta
 from typing import TYPE_CHECKING
 
@@ -20,8 +19,6 @@ if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
 
     from .data import InceptionConfigEntry
-
-_LOGGER = logging.getLogger(__name__)
 
 
 class InceptionUpdateCoordinator(DataUpdateCoordinator[InceptionApiData]):
@@ -56,12 +53,12 @@ class InceptionUpdateCoordinator(DataUpdateCoordinator[InceptionApiData]):
         try:
             data = await self.api.get_data()
         except Exception as err:
-            _LOGGER.debug("Failed to fetch data: %s", err)
-            _LOGGER.exception("Error fetching data from Inception")
+            LOGGER.debug("Failed to fetch data: %s", err)
+            LOGGER.exception("Error fetching data from Inception")
             raise UpdateFailed(err) from err
 
         if not self.monitor_connected:
-            _LOGGER.debug(
+            LOGGER.debug(
                 "Connecting to Inception Monitor",
             )
             await self.api.connect()

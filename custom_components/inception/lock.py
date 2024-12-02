@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
@@ -23,8 +22,6 @@ if TYPE_CHECKING:
     from .coordinator import InceptionUpdateCoordinator
     from .data import InceptionConfigEntry
     from .pyinception.schema import Door
-
-_LOGGER = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -75,8 +72,6 @@ class InceptionLock(InceptionEntity, LockEntity):
         self.unique_id = data.ID
         self.name = data.Name
         self.reportingId = data.ReportingID
-
-        _LOGGER.debug("InceptionLock: %s", data)
 
         # TODO(sebr): Check lock support
         self._attr_supported_features = LockEntityFeature.OPEN

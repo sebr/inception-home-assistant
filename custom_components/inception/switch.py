@@ -1,4 +1,4 @@
-"""Binary sensor platform for inception."""
+"""switch platform for inception."""
 
 from __future__ import annotations
 
@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 
 
 @dataclass(frozen=True, kw_only=True)
-class InceptionSwitchEntityDescription(SwitchEntityDescription):
+class InceptionSwitchDescription(SwitchEntityDescription):
     """Describes Inception switch entity."""
 
     value_fn: Callable[[Output], bool]
@@ -38,13 +38,13 @@ async def async_setup_entry(
     entry: InceptionConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up the binary_sensor platform."""
+    """Set up the switch platform."""
     coordinator: InceptionUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
 
     entities: list[InceptionSwitch] = [
         InceptionSwitch(
             coordinator=coordinator,
-            entity_description=InceptionSwitchEntityDescription(
+            entity_description=InceptionSwitchDescription(
                 key=output.ID,
                 device_class=SwitchDeviceClass.SWITCH,
                 value_fn=lambda data: data.PublicState is not None
@@ -59,19 +59,19 @@ async def async_setup_entry(
 
 
 class InceptionSwitch(InceptionEntity, SwitchEntity):
-    """inception binary_sensor class."""
+    """inception switch class."""
 
-    entity_description: InceptionSwitchEntityDescription
+    entity_description: InceptionSwitchDescription
     data: Output
     name: str
 
     def __init__(
         self,
         coordinator: InceptionUpdateCoordinator,
-        entity_description: InceptionSwitchEntityDescription,
+        entity_description: InceptionSwitchDescription,
         data: Output,
     ) -> None:
-        """Initialize the binary_sensor class."""
+        """Initialize the switch class."""
         super().__init__(
             coordinator, description=entity_description, inception_object=data
         )
@@ -83,7 +83,7 @@ class InceptionSwitch(InceptionEntity, SwitchEntity):
 
     @property
     def is_on(self) -> bool:
-        """Return the state of the binary sensor."""
+        """Return the state of the switch."""
         return self.entity_description.value_fn(self.data)
 
     @property
