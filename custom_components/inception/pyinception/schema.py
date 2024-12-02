@@ -1,6 +1,7 @@
 from custom_components.inception.pyinception.states_schema import (
     DoorPublicStates,
     InputPublicStates,
+    OutputPublicStates,
 )
 
 
@@ -37,6 +38,8 @@ class Input(InceptionObject):
 
 class Output(InceptionObject):
     """An inception Output."""
+
+    PublicState: OutputPublicStates | None = None
 
 
 class Door(InceptionObject):

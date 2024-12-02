@@ -97,3 +97,22 @@ class DoorPublicStates(IntFlag):
         return [
             descriptions[state] for state in DoorPublicStates if state_value & state
         ]
+
+
+class OutputPublicStates(IntFlag):
+    """Output public states."""
+
+    ON = 0x001
+    OFF = 0x002
+
+    @staticmethod
+    def get_state_description(state_value: int) -> list[str]:
+        """Get the list of state descriptions for the given state value."""
+        descriptions = {
+            OutputPublicStates.ON: "Output is active",
+            OutputPublicStates.OFF: "Output is inactive",
+        }
+
+        return [
+            descriptions[state] for state in OutputPublicStates if state_value & state
+        ]

@@ -13,10 +13,18 @@ import aiohttp
 from custom_components.inception.pyinception.states_schema import (
     DoorPublicStates,
     InputPublicStates,
+    OutputPublicStates,
 )
 
 from .data import InceptionApiData
-from .schema import Area, Door, Input, LiveReviewEventsResult, MonitorStateResponse
+from .schema import (
+    Area,
+    Door,
+    Input,
+    LiveReviewEventsResult,
+    MonitorStateResponse,
+    Output,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -77,6 +85,7 @@ class InceptionApiClient:
         path_map = {
             "door": Door,
             "input": Input,
+            "output": Output,
             "area": Area,
         }
         if control_type not in path_map:
@@ -106,14 +115,16 @@ class InceptionApiClient:
         """Get the status of the API."""
         if self.data is None:
             i_data = InceptionApiData()
-            inputs, doors, areas = await asyncio.gather(
+            inputs, doors, areas, outputs = await asyncio.gather(
                 self.get_controls("input"),
                 self.get_controls("door"),
                 self.get_controls("area"),
+                self.get_controls("output"),
             )
             i_data.inputs = {i.ID: i for i in inputs}
             i_data.doors = {i.ID: i for i in doors}
             i_data.areas = {i.ID: i for i in areas}
+            i_data.outputs = {i.ID: i for i in outputs}
 
             self.data = i_data
 
@@ -133,6 +144,12 @@ class InceptionApiClient:
                 "state_type": "DoorState",
                 "public_state": DoorPublicStates,
                 "api_data": "doors",
+            },
+            {
+                "entity_request_type": "OutputStateRequest",
+                "state_type": "OutputState",
+                "public_state": OutputPublicStates,
+                "api_data": "outputs",
             },
         ]
 
