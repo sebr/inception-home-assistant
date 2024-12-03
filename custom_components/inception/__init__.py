@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     from .data import InceptionConfigEntry
 
 PLATFORMS: list[Platform] = [
+    Platform.ALARM_CONTROL_PANEL,
     Platform.BINARY_SENSOR,
     Platform.LOCK,
     Platform.SWITCH,

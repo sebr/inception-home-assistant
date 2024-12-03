@@ -1,21 +1,5 @@
 # ruff: noqa: E501
 
-# class AreaPublicStates:
-#     ARMED = 0x001
-#     DETECTING_ACTIVE_INPUTS = 0x040
-#     STAY_ARM = 0x200
-
-#     @staticmethod
-#     def get_active_states(state_value):
-#         active_states = []
-#         if state_value & AreaPublicStates.ARMED:
-#             active_states.append("Armed")
-#         if state_value & AreaPublicStates.DETECTING_ACTIVE_INPUTS:
-#             active_states.append("DetectingActiveInputs")
-#         if state_value & AreaPublicStates.STAY_ARM:
-#             active_states.append("StayArm")
-#         return active_states
-
 
 from enum import IntFlag
 
@@ -115,4 +99,45 @@ class OutputPublicStates(IntFlag):
 
         return [
             descriptions[state] for state in OutputPublicStates if state_value & state
+        ]
+
+
+class AreaPublicStates(IntFlag):
+    """Area public states."""
+
+    ARMED = 0x0001
+    ALARM = 0x0002
+    ENTRY_DELAY = 0x0004
+    EXIT_DELAY = 0x0008
+    ARM_WARNING = 0x0010
+    DEFER_DISARMED = 0x0020
+    DETECTING_ACTIVE_INPUTS = 0x0040
+    WALK_TEST_ACTIVE = 0x0080
+    AWAY_ARM = 0x0100
+    STAY_ARM = 0x0200
+    SLEEP_ARM = 0x0400
+    DISARMED = 0x0800
+    ARM_READY = 0x1000
+
+    @staticmethod
+    def get_state_description(state_value: int) -> list[str]:
+        """Get the list of state descriptions for the given state value."""
+        descriptions = {
+            AreaPublicStates.ARMED: "Area is armed",
+            AreaPublicStates.ALARM: "Area is in alarm",
+            AreaPublicStates.ENTRY_DELAY: "Area is in entry delay",
+            AreaPublicStates.EXIT_DELAY: "Area is in exit delay",
+            AreaPublicStates.ARM_WARNING: "Area is in arm warning",
+            AreaPublicStates.DEFER_DISARMED: "Area has been defer disarmed (temporarily disarmed)",
+            AreaPublicStates.DETECTING_ACTIVE_INPUTS: "One or more inputs in this area are currently unsealed",
+            AreaPublicStates.WALK_TEST_ACTIVE: "A walk test is currently active for this area",
+            AreaPublicStates.AWAY_ARM: "Area is armed in Full mode",
+            AreaPublicStates.STAY_ARM: "Area is armed in Perimeter mode",
+            AreaPublicStates.SLEEP_ARM: "Area is armed in Night mode",
+            AreaPublicStates.DISARMED: "Area is disarmed",
+            AreaPublicStates.ARM_READY: "Area is ready to arm (i.e. no active inputs)",
+        }
+
+        return [
+            descriptions[state] for state in AreaPublicStates if state_value & state
         ]

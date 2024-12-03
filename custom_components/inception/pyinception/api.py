@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any, ClassVar
 import aiohttp
 
 from custom_components.inception.pyinception.states_schema import (
+    AreaPublicStates,
     DoorPublicStates,
     InputPublicStates,
     OutputPublicStates,
@@ -150,6 +151,12 @@ class InceptionApiClient:
                 "state_type": "OutputState",
                 "public_state": OutputPublicStates,
                 "api_data": "outputs",
+            },
+            {
+                "entity_request_type": "AreaStateRequest",
+                "state_type": "AreaState",
+                "public_state": AreaPublicStates,
+                "api_data": "areas",
             },
         ]
 

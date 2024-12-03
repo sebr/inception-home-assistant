@@ -1,4 +1,5 @@
 from custom_components.inception.pyinception.states_schema import (
+    AreaPublicStates,
     DoorPublicStates,
     InputPublicStates,
     OutputPublicStates,
@@ -50,6 +51,8 @@ class Door(InceptionObject):
 
 class Area(InceptionObject):
     """An inception Area."""
+
+    PublicState: AreaPublicStates | None = None
 
 
 class LiveReviewEventsResult:
