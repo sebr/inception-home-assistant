@@ -18,9 +18,10 @@ if TYPE_CHECKING:
 
 
 class InceptionEntity(CoordinatorEntity[InceptionUpdateCoordinator]):
-    """Entity class for Inception devices."""
+    """Entity class for Inception entities."""
 
     _attr_has_entity_name = True
+    _attr_name = None
 
     def __init__(
         self,
@@ -34,15 +35,14 @@ class InceptionEntity(CoordinatorEntity[InceptionUpdateCoordinator]):
         self.entity_description = description
         self._attr_attribution = f"Data provided by {coordinator.api._host}"  # noqa: SLF001
         self._attr_unique_id = inception_object.ID
-        self._device_id = inception_object.ID
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, self._device_id)},
-            name=inception_object.Name,
-            manufacturer=MANUFACTURER,
-        )
         self._inception_object = inception_object
         self._attr_extra_state_attributes = inception_object.extra_fields
         self._update_attrs()
+
+    @property
+    def name(self) -> str:
+        """Return the name of the entity."""
+        return self._inception_object.Name
 
     def _update_attrs(self) -> None:
         """Update state attributes."""

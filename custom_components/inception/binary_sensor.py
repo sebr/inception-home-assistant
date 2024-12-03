@@ -122,7 +122,6 @@ class InceptionBinarySensor(InceptionEntity, BinarySensorEntity):
         self.data = data
         self.entity_description = entity_description
         self.unique_id = data.ID
-        self.name = data.Name
         self.reportingId = data.ReportingID
 
     @property

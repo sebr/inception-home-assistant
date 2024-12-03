@@ -70,7 +70,6 @@ class InceptionLock(InceptionEntity, LockEntity):
         self.data = data
         self.entity_description = entity_description
         self.unique_id = data.ID
-        self.name = data.Name
         self.reportingId = data.ReportingID
 
         # TODO(sebr): Check lock support

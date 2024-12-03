@@ -63,7 +63,6 @@ class InceptionSwitch(InceptionEntity, SwitchEntity):
 
     entity_description: InceptionSwitchDescription
     data: Output
-    name: str
 
     def __init__(
         self,
@@ -78,7 +77,6 @@ class InceptionSwitch(InceptionEntity, SwitchEntity):
         self.data = data
         self.entity_description = entity_description
         self.unique_id = data.ID
-        self.name = data.Name
         self.reportingId = data.ReportingID
 
     @property

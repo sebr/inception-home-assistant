@@ -179,7 +179,6 @@ class InceptionApiClient:
             path="/monitor-updates",
             api_timeout=aiohttp.ClientTimeout(total=60),
         )
-        _LOGGER.debug("%s", response)
         response_id = response["ID"]
         update_time = response["Result"]["updateTime"]
         state_data = response["Result"]["stateData"]
@@ -211,10 +210,13 @@ class InceptionApiClient:
                     event.PublicState,
                     state_description,
                 )
+
+                entity_data[event.ID].PublicState = event.PublicState
+                entity_data[event.ID].extra_fields.update(event.extra_fields)
+
                 entity_data[event.ID].extra_fields["state_description"] = (
                     state_description
                 )
-                entity_data[event.ID].PublicState = event.PublicState
         else:
             _LOGGER.debug("state monitor: no data to update")
 

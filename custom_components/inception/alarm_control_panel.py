@@ -57,7 +57,6 @@ class InceptionAlarm(InceptionEntity, AlarmControlPanelEntity):
 
     entity_description: InceptionAlarmDescription
     data: Area
-    name: str
 
     _attr_code_arm_required: bool = False
     _attr_supported_features = (
@@ -80,7 +79,6 @@ class InceptionAlarm(InceptionEntity, AlarmControlPanelEntity):
         self.data = data
         self.entity_description = entity_description
         self.unique_id = data.ID
-        self.name = data.Name
         self.reportingId = data.ReportingID
 
     @property
