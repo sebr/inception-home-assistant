@@ -81,7 +81,6 @@ class InceptionLock(InceptionEntity, LockEntity):
             manufacturer=MANUFACTURER,
         )
 
-        # TODO(sebr): Check lock support
         self._attr_supported_features = LockEntityFeature.OPEN
 
     @property

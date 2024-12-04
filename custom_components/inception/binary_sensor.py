@@ -36,7 +36,7 @@ class InceptionBinarySensorDescription(BinarySensorEntityDescription):
     value_fn: Callable[[InceptionObject], bool]
 
 
-def get_device_class(name: str) -> BinarySensorDeviceClass:
+def get_device_class_for_name(name: str) -> BinarySensorDeviceClass:
     """Define device class from device name."""
     device_classes = {
         "motion": BinarySensorDeviceClass.MOTION,
@@ -71,6 +71,19 @@ def get_device_class(name: str) -> BinarySensorDeviceClass:
     )
 
 
+def get_device_class_for_state(state: DoorPublicStates) -> BinarySensorDeviceClass:
+    """Define device class from device state."""
+    device_classes = {
+        DoorPublicStates.FORCED: BinarySensorDeviceClass.PROBLEM,
+        DoorPublicStates.HELD_OPEN_TOO_LONG: BinarySensorDeviceClass.PROBLEM,
+        DoorPublicStates.OPEN: BinarySensorDeviceClass.DOOR,
+        DoorPublicStates.READER_TAMPER: BinarySensorDeviceClass.TAMPER,
+    }
+
+    # Find the first matching device class or default to 'opening'
+    return device_classes.get(state, BinarySensorDeviceClass.OPENING)
+
+
 def is_entity_registry_enabled_default(name: str) -> bool:
     """Disables these sensors by default."""
     return not name.lower().endswith("- forced") and not name.lower().endswith(
@@ -91,7 +104,7 @@ async def async_setup_entry(
             coordinator=coordinator,
             entity_description=InceptionBinarySensorDescription(
                 key=inception_input.ID,
-                device_class=get_device_class(inception_input.Name),
+                device_class=get_device_class_for_name(inception_input.Name),
                 value_fn=lambda data: data.PublicState is not None
                 and bool(data.PublicState & InputPublicStates.ACTIVE),
                 entity_registry_enabled_default=is_entity_registry_enabled_default(
@@ -108,7 +121,7 @@ async def async_setup_entry(
             coordinator=coordinator,
             entity_description=InceptionBinarySensorDescription(
                 key=f"{door.ID}_{state.value}",
-                device_class=BinarySensorDeviceClass.PROBLEM,
+                device_class=get_device_class_for_state(state),
                 name=f"{state}",
                 has_entity_name=True,
                 value_fn=lambda data, state=state: data.PublicState is not None
@@ -116,7 +129,12 @@ async def async_setup_entry(
             ),
             data=door,
         )
-        for state in [DoorPublicStates.FORCED, DoorPublicStates.HELD_OPEN_TOO_LONG]
+        for state in [
+            DoorPublicStates.FORCED,
+            DoorPublicStates.HELD_OPEN_TOO_LONG,
+            DoorPublicStates.OPEN,
+            DoorPublicStates.READER_TAMPER,
+        ]
         for door in coordinator.data.doors.values()
     ]
 
