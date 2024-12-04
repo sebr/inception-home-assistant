@@ -1,10 +1,6 @@
 # InnerRange Inception
 
-[![GitHub Release][releases-shield]][releases]
-[![GitHub Activity][commits-shield]][commits]
-[![License][license-shield]](LICENSE)
-
-_Integration to integrate with [Inner Range Inception][https://www.innerrange.com/products/controllers/996300] security systems._
+_Integration to integrate with [Inner Range Inception](https://www.innerrange.com/products/controllers/996300) security systems._
 
 If this integration has been useful to you, please consider chipping in and buying me a coffee!
 
