@@ -36,6 +36,7 @@ class InceptionUpdateCoordinator(DataUpdateCoordinator[InceptionApiData]):
             hass=hass,
             logger=LOGGER,
             name=DOMAIN,
+            # TODO(sebr): remove polling
             update_interval=timedelta(seconds=5),
             always_update=False,
         )

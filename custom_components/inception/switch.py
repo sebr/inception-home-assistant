@@ -72,7 +72,7 @@ class InceptionSwitch(InceptionEntity, SwitchEntity):
     ) -> None:
         """Initialize the switch class."""
         super().__init__(
-            coordinator, description=entity_description, inception_object=data
+            coordinator, entity_description=entity_description, inception_object=data
         )
         self.data = data
         self.entity_description = entity_description

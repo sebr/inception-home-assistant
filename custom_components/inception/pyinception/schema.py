@@ -1,6 +1,7 @@
 from custom_components.inception.pyinception.states_schema import (
     AreaPublicStates,
     DoorPublicStates,
+    InceptionPublicStates,
     InputPublicStates,
     OutputPublicStates,
 )
@@ -8,6 +9,8 @@ from custom_components.inception.pyinception.states_schema import (
 
 class InceptionObject:
     """An inception object."""
+
+    PublicState: InceptionPublicStates | None
 
     def __init__(self, **kwargs) -> None:  # noqa: ANN003
         """Initialize the object."""

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
@@ -10,8 +11,9 @@ from homeassistant.components.lock import (
     LockEntityDescription,
     LockEntityFeature,
 )
+from homeassistant.helpers.device_registry import DeviceInfo
 
-from .const import DOMAIN
+from .const import DOMAIN, MANUFACTURER
 from .entity import InceptionEntity
 from .pyinception.states_schema import DoorPublicStates
 
@@ -56,6 +58,7 @@ class InceptionLock(InceptionEntity, LockEntity):
 
     entity_description: InceptionDoorEntityDescription
     data: Door
+    _attr_has_entity_name = True
 
     def __init__(
         self,
@@ -65,15 +68,26 @@ class InceptionLock(InceptionEntity, LockEntity):
     ) -> None:
         """Initialize the binary_sensor class."""
         super().__init__(
-            coordinator, description=entity_description, inception_object=data
+            coordinator, entity_description=entity_description, inception_object=data
         )
         self.data = data
         self.entity_description = entity_description
         self.unique_id = data.ID
         self.reportingId = data.ReportingID
+        self._device_id = data.ID
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, self._device_id)},
+            name=re.sub(r"[^a-zA-Z\s]*(Lock|Strike)", "", data.Name),
+            manufacturer=MANUFACTURER,
+        )
 
         # TODO(sebr): Check lock support
         self._attr_supported_features = LockEntityFeature.OPEN
+
+    @property
+    def name(self) -> str:
+        """Return the name of the entity."""
+        return "Lock"
 
     @property
     def is_locked(self) -> bool | None:

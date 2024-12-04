@@ -5,10 +5,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from homeassistant.core import callback
-from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, MANUFACTURER
 from .coordinator import InceptionUpdateCoordinator
 
 if TYPE_CHECKING:
@@ -21,18 +19,17 @@ class InceptionEntity(CoordinatorEntity[InceptionUpdateCoordinator]):
     """Entity class for Inception entities."""
 
     _attr_has_entity_name = True
-    _attr_name = None
 
     def __init__(
         self,
         coordinator: InceptionUpdateCoordinator,
-        description: EntityDescription,
+        entity_description: EntityDescription,
         *,
         inception_object: InceptionObject,
     ) -> None:
         """Initialize the Hydrawise entity."""
         super().__init__(coordinator=coordinator)
-        self.entity_description = description
+        self.entity_description = entity_description
         self._attr_attribution = f"Data provided by {coordinator.api._host}"  # noqa: SLF001
         self._attr_unique_id = inception_object.ID
         self._inception_object = inception_object

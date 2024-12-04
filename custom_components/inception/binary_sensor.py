@@ -10,10 +10,11 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
     BinarySensorEntityDescription,
 )
+from homeassistant.helpers.device_registry import DeviceInfo
 
 from .const import DOMAIN
 from .entity import InceptionEntity
-from .pyinception.states_schema import InputPublicStates
+from .pyinception.states_schema import DoorPublicStates, InputPublicStates
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -21,16 +22,18 @@ if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
     from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+    from custom_components.inception.pyinception.schema import Door, InceptionObject
+
     from .coordinator import InceptionUpdateCoordinator
     from .data import InceptionConfigEntry
-    from .pyinception.schema import Input
 
 
 @dataclass(frozen=True, kw_only=True)
-class InceptionBinarySensorEntityDescription(BinarySensorEntityDescription):
+class InceptionBinarySensorDescription(BinarySensorEntityDescription):
     """Describes Inception binary sensor entity."""
 
-    value_fn: Callable[[Input], bool]
+    name: str = ""
+    value_fn: Callable[[InceptionObject], bool]
 
 
 def get_device_class(name: str) -> BinarySensorDeviceClass:
@@ -86,7 +89,7 @@ async def async_setup_entry(
     entities: list[InceptionBinarySensor] = [
         InceptionBinarySensor(
             coordinator=coordinator,
-            entity_description=InceptionBinarySensorEntityDescription(
+            entity_description=InceptionBinarySensorDescription(
                 key=inception_input.ID,
                 device_class=get_device_class(inception_input.Name),
                 value_fn=lambda data: data.PublicState is not None
@@ -100,29 +103,85 @@ async def async_setup_entry(
         for inception_input in coordinator.data.inputs.values()
     ]
 
+    entities += [
+        InceptionDoorBinarySensor(
+            coordinator=coordinator,
+            entity_description=InceptionBinarySensorDescription(
+                key=f"{door.ID}_{state.value}",
+                device_class=BinarySensorDeviceClass.PROBLEM,
+                name=f"{state}",
+                has_entity_name=True,
+                value_fn=lambda data, state=state: data.PublicState is not None
+                and bool(data.PublicState & state),
+            ),
+            data=door,
+        )
+        for state in [DoorPublicStates.FORCED, DoorPublicStates.HELD_OPEN_TOO_LONG]
+        for door in coordinator.data.doors.values()
+    ]
+
     async_add_entities(entities)
 
 
 class InceptionBinarySensor(InceptionEntity, BinarySensorEntity):
     """inception binary_sensor class."""
 
-    entity_description: InceptionBinarySensorEntityDescription
-    data: Input
+    entity_description: InceptionBinarySensorDescription
+    data: InceptionObject
 
     def __init__(
         self,
         coordinator: InceptionUpdateCoordinator,
-        entity_description: InceptionBinarySensorEntityDescription,
-        data: Input,
+        entity_description: InceptionBinarySensorDescription,
+        data: InceptionObject,
     ) -> None:
         """Initialize the binary_sensor class."""
         super().__init__(
-            coordinator, description=entity_description, inception_object=data
+            coordinator, entity_description=entity_description, inception_object=data
         )
         self.data = data
         self.entity_description = entity_description
-        self.unique_id = data.ID
+        self.unique_id = entity_description.key
         self.reportingId = data.ReportingID
+
+    @property
+    def is_on(self) -> bool:
+        """Return the state of the binary sensor."""
+        return self.entity_description.value_fn(self.data)
+
+
+class InceptionDoorBinarySensor(
+    InceptionBinarySensor,
+):
+    """inception binary_sensor class."""
+
+    entity_description: InceptionBinarySensorDescription
+    data: Door
+
+    _attr_has_entity_name = True
+
+    def __init__(
+        self,
+        coordinator: InceptionUpdateCoordinator,
+        entity_description: InceptionBinarySensorDescription,
+        data: Door,
+    ) -> None:
+        """Initialize the binary_sensor class."""
+        super().__init__(coordinator, entity_description=entity_description, data=data)
+
+        self.data = data
+        self.entity_description = entity_description
+        self.reportingId = data.ReportingID
+        self._device_id = data.ID
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, self._device_id)},
+            name=data.Name,
+        )
+
+    @property
+    def name(self) -> str:
+        """Return the name of the entity."""
+        return self.entity_description.name
 
     @property
     def is_on(self) -> bool:

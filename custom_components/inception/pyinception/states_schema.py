@@ -1,10 +1,26 @@
-# ruff: noqa: E501
+# ruff: noqa: E501  # noqa: D100
 
-
+from abc import abstractmethod
 from enum import IntFlag
 
 
-class InputPublicStates(IntFlag):
+class InceptionPublicStates(IntFlag):
+    """Inception public states."""
+
+    @staticmethod
+    @abstractmethod
+    def get_state_description(_state_value: int) -> list[str]:
+        """Get the list of state descriptions for the given state value."""
+        return []
+
+    def __str__(self) -> str:
+        """Return the name or value of the state."""
+        if self.name is None:
+            return str(self.value)
+        return self.name.replace("_", " ").capitalize()
+
+
+class InputPublicStates(InceptionPublicStates):
     """Input public states."""
 
     ACTIVE = 0x001
@@ -36,13 +52,8 @@ class InputPublicStates(IntFlag):
             descriptions[state] for state in InputPublicStates if state_value & state
         ]
 
-    @staticmethod
-    def get_state(state_value: int) -> bool:
-        """Get the state of the input."""
-        return bool(state_value & InputPublicStates.ACTIVE)
 
-
-class DoorPublicStates(IntFlag):
+class DoorPublicStates(InceptionPublicStates):
     """Door public states."""
 
     UNLOCKED = 0x001
@@ -83,7 +94,7 @@ class DoorPublicStates(IntFlag):
         ]
 
 
-class OutputPublicStates(IntFlag):
+class OutputPublicStates(InceptionPublicStates):
     """Output public states."""
 
     ON = 0x001
@@ -102,7 +113,7 @@ class OutputPublicStates(IntFlag):
         ]
 
 
-class AreaPublicStates(IntFlag):
+class AreaPublicStates(InceptionPublicStates):
     """Area public states."""
 
     ARMED = 0x0001
