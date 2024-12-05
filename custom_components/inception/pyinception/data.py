@@ -1,3 +1,5 @@
+"""Contains data classes for the Inception API."""
+
 from dataclasses import dataclass, field
 
 from .schema import Area, Door, Input, Output

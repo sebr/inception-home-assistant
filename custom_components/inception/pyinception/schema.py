@@ -1,3 +1,5 @@
+"""Defines the schema for various Inception objects and responses."""
+
 from typing import Any
 
 from custom_components.inception.pyinception.states_schema import (
@@ -93,9 +95,9 @@ class MonitorStateResponse:
 
     def __init__(self, **kwargs) -> None:  # noqa: ANN003
         """Initialize the object."""
-        self.ID = kwargs.pop("ID", "")
-        self.ReportingID = kwargs.pop("ReportingID", "")
-        self.stateValue = kwargs.pop("stateValue", "")
+        self.id = kwargs.pop("ID", "")
+        self.reporting_id = kwargs.pop("ReportingID", "")
+        self.state_value = kwargs.pop("stateValue", "")
         self.public_state = kwargs.pop("PublicState", "")
         # Collect any extra fields
         self.extra_fields = kwargs
@@ -103,6 +105,6 @@ class MonitorStateResponse:
     def __repr__(self) -> str:
         """Return string representation."""
         return (
-            f"Input(ID={self.ID!r}, ReportingID={self.ReportingID!r}, "
-            f"stateValue={self.stateValue!r}, extra_fields={self.extra_fields!r})"
+            f"Input(ID={self.id!r}, ReportingID={self.reporting_id!r}, "
+            f"stateValue={self.state_value!r}, extra_fields={self.extra_fields!r})"
         )

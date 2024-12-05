@@ -135,6 +135,10 @@ class InceptionApiClient:
 
     async def monitor_entity_states(self) -> None:
         """Monitor updates from the API."""
+        if self.data is None:
+            _LOGGER.warning("state monitor: no data to update")
+            return
+
         request_types = [
             {
                 "entity_request_type": "InputStateRequest",
@@ -188,39 +192,38 @@ class InceptionApiClient:
         self._monitor_update_times[response_id] = update_time
 
         events = [MonitorStateResponse(**item) for item in state_data]
-        if self.data is not None:
-            request_type = next(
-                (
-                    req
-                    for req in request_types
-                    if req["entity_request_type"] == response_id
-                ),
-                None,
-            )
-            if request_type is None:
-                _LOGGER.error("Unknown response ID: %s", response_id)
-                return
 
-            for event in events:
+        request_type = next(
+            (req for req in request_types if req["entity_request_type"] == response_id),
+            None,
+        )
+        if request_type is None:
+            _LOGGER.error("Unknown response ID: %s", response_id)
+            return
+
+        _LOGGER.debug("MonitorEntityStates: %s events", len(events))
+
+        for event in events:
+            try:
                 state_description = request_type["public_state"].get_state_description(
                     event.public_state
                 )
                 entity_data = getattr(self.data, request_type["api_data"])
                 _LOGGER.debug(
                     "Event: %s, %s, %s",
-                    entity_data[event.ID].Name,
+                    entity_data[event.id].name,
                     event.public_state,
                     state_description,
                 )
 
-                entity_data[event.ID].PublicState = event.public_state
-                entity_data[event.ID].extra_fields.update(event.extra_fields)
+                entity_data[event.id].public_state = event.public_state
+                entity_data[event.id].extra_fields.update(event.extra_fields)
 
-                entity_data[event.ID].extra_fields["state_description"] = (
+                entity_data[event.id].extra_fields["state_description"] = (
                     state_description
                 )
-        else:
-            _LOGGER.debug("state monitor: no data to update")
+            except Exception:
+                _LOGGER.exception("Error processing event")
 
         self._schedule_data_callbacks()
 
