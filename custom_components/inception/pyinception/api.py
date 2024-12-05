@@ -6,7 +6,7 @@ import asyncio
 import contextlib
 import logging
 import socket
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar, TypeVar
 
 import aiohttp
 
@@ -81,23 +81,25 @@ class InceptionApiClient:
         self.rest_task: asyncio.Task | None = None
         self._last_update: str | int = "null"
 
-    async def get_controls(self, control_type: str) -> list[Any]:
+    T = TypeVar("T", Door, Input, Output, Area)
+
+    async def get_controls(self, Type: type[T]) -> list[T]:  # noqa: N803
         """Get entities from the API."""
         path_map = {
-            "door": Door,
-            "input": Input,
-            "output": Output,
-            "area": Area,
+            Door: "door",
+            Input: "input",
+            Output: "output",
+            Area: "area",
         }
-        if control_type not in path_map:
-            msg = f"Unsupported entity type: {control_type}"
+        if Type not in path_map:
+            msg = f"Unsupported entity type: {Type}"
             raise ValueError(msg)
 
         data = await self.request(
             method="get",
-            path=f"/control/{control_type}",
+            path=f"/control/{path_map[Type]}",
         )
-        return [path_map[control_type](**item) for item in data]
+        return [Type(**item) for item in data]
 
     async def authenticate(self) -> bool:
         """Authenticate with the API."""
@@ -117,15 +119,15 @@ class InceptionApiClient:
         if self.data is None:
             i_data = InceptionApiData()
             inputs, doors, areas, outputs = await asyncio.gather(
-                self.get_controls("input"),
-                self.get_controls("door"),
-                self.get_controls("area"),
-                self.get_controls("output"),
+                self.get_controls(Input),
+                self.get_controls(Door),
+                self.get_controls(Area),
+                self.get_controls(Output),
             )
-            i_data.inputs = {i.ID: i for i in inputs}
-            i_data.doors = {i.ID: i for i in doors}
-            i_data.areas = {i.ID: i for i in areas}
-            i_data.outputs = {i.ID: i for i in outputs}
+            i_data.inputs = {i.id: i for i in inputs}
+            i_data.doors = {i.id: i for i in doors}
+            i_data.areas = {i.id: i for i in areas}
+            i_data.outputs = {i.id: i for i in outputs}
 
             self.data = i_data
 

@@ -14,7 +14,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 
 from .const import DOMAIN
 from .entity import InceptionEntity
-from .pyinception.states_schema import DoorPublicState, InputPublicState
+from .pyinception.states_schema import DoorPublicState, InputPublicState, InputType
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -103,17 +103,18 @@ async def async_setup_entry(
         InceptionBinarySensor(
             coordinator=coordinator,
             entity_description=InceptionBinarySensorDescription(
-                key=inception_input.ID,
-                device_class=get_device_class_for_name(inception_input.Name),
+                key=inception_input.id,
+                device_class=get_device_class_for_name(inception_input.name),
                 value_fn=lambda data: data.public_state is not None
                 and bool(data.public_state & InputPublicState.ACTIVE),
                 entity_registry_enabled_default=is_entity_registry_enabled_default(
-                    inception_input.Name
+                    inception_input.name
                 ),
             ),
             data=inception_input,
         )
-        for inception_input in []  # coordinator.data.inputs.values()
+        for inception_input in coordinator.data.inputs.values()
+        if inception_input.input_type != InputType.LOGICAL
     ]
 
     entities += [

@@ -1,3 +1,5 @@
+from typing import Any
+
 from custom_components.inception.pyinception.states_schema import (
     AreaPublicState,
     DoorPublicState,
@@ -11,6 +13,10 @@ from custom_components.inception.pyinception.states_schema import (
 class InceptionObject:
     """An inception object."""
 
+    id: str
+    name: str
+    reporting_id: str
+    extra_fields: dict[str, Any]
     public_state: InceptionPublicState | None
 
     def __init__(self, **kwargs) -> None:  # noqa: ANN003
