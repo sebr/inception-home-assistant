@@ -14,7 +14,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 
 from .const import DOMAIN
 from .entity import InceptionEntity
-from .pyinception.states_schema import DoorPublicStates, InputPublicStates
+from .pyinception.states_schema import DoorPublicState, InputPublicState
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -71,13 +71,13 @@ def get_device_class_for_name(name: str) -> BinarySensorDeviceClass:
     )
 
 
-def get_device_class_for_state(state: DoorPublicStates) -> BinarySensorDeviceClass:
+def get_device_class_for_state(state: DoorPublicState) -> BinarySensorDeviceClass:
     """Define device class from device state."""
     device_classes = {
-        DoorPublicStates.FORCED: BinarySensorDeviceClass.PROBLEM,
-        DoorPublicStates.HELD_OPEN_TOO_LONG: BinarySensorDeviceClass.PROBLEM,
-        DoorPublicStates.OPEN: BinarySensorDeviceClass.DOOR,
-        DoorPublicStates.READER_TAMPER: BinarySensorDeviceClass.TAMPER,
+        DoorPublicState.FORCED: BinarySensorDeviceClass.PROBLEM,
+        DoorPublicState.HELD_OPEN_TOO_LONG: BinarySensorDeviceClass.PROBLEM,
+        DoorPublicState.OPEN: BinarySensorDeviceClass.DOOR,
+        DoorPublicState.READER_TAMPER: BinarySensorDeviceClass.TAMPER,
     }
 
     # Find the first matching device class or default to 'opening'
@@ -105,35 +105,35 @@ async def async_setup_entry(
             entity_description=InceptionBinarySensorDescription(
                 key=inception_input.ID,
                 device_class=get_device_class_for_name(inception_input.Name),
-                value_fn=lambda data: data.PublicState is not None
-                and bool(data.PublicState & InputPublicStates.ACTIVE),
+                value_fn=lambda data: data.public_state is not None
+                and bool(data.public_state & InputPublicState.ACTIVE),
                 entity_registry_enabled_default=is_entity_registry_enabled_default(
                     inception_input.Name
                 ),
             ),
             data=inception_input,
         )
-        for inception_input in coordinator.data.inputs.values()
+        for inception_input in []  # coordinator.data.inputs.values()
     ]
 
     entities += [
         InceptionDoorBinarySensor(
             coordinator=coordinator,
             entity_description=InceptionBinarySensorDescription(
-                key=f"{door.ID}_{state.value}",
+                key=f"{door.id}_{state.value}",
                 device_class=get_device_class_for_state(state),
                 name=f"{state}",
                 has_entity_name=True,
-                value_fn=lambda data, state=state: data.PublicState is not None
-                and bool(data.PublicState & state),
+                value_fn=lambda data, state=state: data.public_state is not None
+                and bool(data.public_state & state),
             ),
             data=door,
         )
         for state in [
-            DoorPublicStates.FORCED,
-            DoorPublicStates.HELD_OPEN_TOO_LONG,
-            DoorPublicStates.OPEN,
-            DoorPublicStates.READER_TAMPER,
+            DoorPublicState.FORCED,
+            DoorPublicState.HELD_OPEN_TOO_LONG,
+            DoorPublicState.OPEN,
+            DoorPublicState.READER_TAMPER,
         ]
         for door in coordinator.data.doors.values()
     ]
@@ -160,7 +160,7 @@ class InceptionBinarySensor(InceptionEntity, BinarySensorEntity):
         self.data = data
         self.entity_description = entity_description
         self.unique_id = entity_description.key
-        self.reportingId = data.ReportingID
+        self.reportingId = data.reporting_id
 
     @property
     def is_on(self) -> bool:
@@ -189,11 +189,11 @@ class InceptionDoorBinarySensor(
 
         self.data = data
         self.entity_description = entity_description
-        self.reportingId = data.ReportingID
-        self._device_id = data.ID
+        self.reportingId = data.reporting_id
+        self._device_id = data.id
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, self._device_id)},
-            name=data.Name,
+            name=data.name,
         )
 
     @property

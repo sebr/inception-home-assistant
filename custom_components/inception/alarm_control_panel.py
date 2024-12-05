@@ -14,7 +14,7 @@ from homeassistant.components.alarm_control_panel import (
 
 from .const import DOMAIN
 from .entity import InceptionEntity
-from .pyinception.states_schema import AreaPublicStates
+from .pyinception.states_schema import AreaPublicState
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -42,7 +42,7 @@ async def async_setup_entry(
         InceptionAlarm(
             coordinator=coordinator,
             entity_description=InceptionAlarmDescription(
-                key=area.ID,
+                key=area.id,
             ),
             data=area,
         )
@@ -78,28 +78,28 @@ class InceptionAlarm(InceptionEntity, AlarmControlPanelEntity):
         )
         self.data = data
         self.entity_description = entity_description
-        self.unique_id = data.ID
-        self.reportingId = data.ReportingID
+        self.unique_id = data.id
+        self.reportingId = data.reporting_id
 
     @property
     def alarm_state(self) -> AlarmControlPanelState | None:
         """Return the state of the alarm."""
-        if self.data.PublicState is None:
+        if self.data.public_state is None:
             return None
 
         state_mapping = {
-            AreaPublicStates.ALARM: AlarmControlPanelState.TRIGGERED,
-            AreaPublicStates.DISARMED: AlarmControlPanelState.DISARMED,
-            AreaPublicStates.STAY_ARM: AlarmControlPanelState.ARMED_HOME,
-            AreaPublicStates.AWAY_ARM: AlarmControlPanelState.ARMED_AWAY,
-            AreaPublicStates.SLEEP_ARM: AlarmControlPanelState.ARMED_NIGHT,
-            AreaPublicStates.ARM_WARNING: AlarmControlPanelState.ARMING,
-            AreaPublicStates.ENTRY_DELAY: AlarmControlPanelState.PENDING,
-            AreaPublicStates.EXIT_DELAY: AlarmControlPanelState.PENDING,
+            AreaPublicState.ALARM: AlarmControlPanelState.TRIGGERED,
+            AreaPublicState.DISARMED: AlarmControlPanelState.DISARMED,
+            AreaPublicState.STAY_ARM: AlarmControlPanelState.ARMED_HOME,
+            AreaPublicState.AWAY_ARM: AlarmControlPanelState.ARMED_AWAY,
+            AreaPublicState.SLEEP_ARM: AlarmControlPanelState.ARMED_NIGHT,
+            AreaPublicState.ARM_WARNING: AlarmControlPanelState.ARMING,
+            AreaPublicState.ENTRY_DELAY: AlarmControlPanelState.PENDING,
+            AreaPublicState.EXIT_DELAY: AlarmControlPanelState.PENDING,
         }
 
         for area_state, alarm_state in state_mapping.items():
-            if bool(self.data.PublicState & area_state):
+            if bool(self.data.public_state & area_state):
                 return alarm_state
 
         return None
@@ -108,7 +108,7 @@ class InceptionAlarm(InceptionEntity, AlarmControlPanelEntity):
         """Control the switch."""
         return await self.coordinator.api.request(
             method="post",
-            path=f"/control/area/{self.data.ID}/activity",
+            path=f"/control/area/{self.data.id}/activity",
             data={
                 "Type": "ControlArea",
                 "AreaControlType": control_type,

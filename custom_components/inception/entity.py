@@ -31,7 +31,7 @@ class InceptionEntity(CoordinatorEntity[InceptionUpdateCoordinator]):
         super().__init__(coordinator=coordinator)
         self.entity_description = entity_description
         self._attr_attribution = f"Data provided by {coordinator.api._host}"  # noqa: SLF001
-        self._attr_unique_id = inception_object.ID
+        self._attr_unique_id = inception_object.id
         self._inception_object = inception_object
         self._attr_extra_state_attributes = inception_object.extra_fields
         self._update_attrs()
@@ -39,7 +39,7 @@ class InceptionEntity(CoordinatorEntity[InceptionUpdateCoordinator]):
     @property
     def name(self) -> str:
         """Return the name of the entity."""
-        return self._inception_object.Name
+        return self._inception_object.name
 
     def _update_attrs(self) -> None:
         """Update state attributes."""

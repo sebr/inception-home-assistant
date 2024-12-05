@@ -13,7 +13,7 @@ from homeassistant.components.switch import (
 
 from .const import DOMAIN
 from .entity import InceptionEntity
-from .pyinception.states_schema import OutputPublicStates
+from .pyinception.states_schema import OutputPublicState
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -45,10 +45,10 @@ async def async_setup_entry(
         InceptionSwitch(
             coordinator=coordinator,
             entity_description=InceptionSwitchDescription(
-                key=output.ID,
+                key=output.id,
                 device_class=SwitchDeviceClass.SWITCH,
-                value_fn=lambda data: data.PublicState is not None
-                and bool(data.PublicState & OutputPublicStates.ON),
+                value_fn=lambda data: data.public_state is not None
+                and bool(data.public_state & OutputPublicState.ON),
             ),
             data=output,
         )
@@ -76,8 +76,8 @@ class InceptionSwitch(InceptionEntity, SwitchEntity):
         )
         self.data = data
         self.entity_description = entity_description
-        self.unique_id = data.ID
-        self.reportingId = data.ReportingID
+        self.unique_id = data.id
+        self.reportingId = data.reporting_id
 
     @property
     def is_on(self) -> bool:
@@ -107,7 +107,7 @@ class InceptionSwitch(InceptionEntity, SwitchEntity):
     async def _switch_control(self, data: Any | None = None) -> None:
         """Control the switch."""
         return await self.coordinator.api.request(
-            method="post", path=f"/control/output/{self.data.ID}/activity", data=data
+            method="post", path=f"/control/output/{self.data.id}/activity", data=data
         )
 
     async def async_turn_on(self) -> None:

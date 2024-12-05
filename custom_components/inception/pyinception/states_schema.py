@@ -1,10 +1,24 @@
 # ruff: noqa: E501  # noqa: D100
 
 from abc import abstractmethod
-from enum import IntFlag
+from enum import Enum, IntFlag
+
+"""https://skytunnel.com.au/Inception/API_SAMPLE/ApiModelDoc"""
 
 
-class InceptionPublicStates(IntFlag):
+class InputType(Enum):
+    """Inception input types."""
+
+    UNKNOWN = 0
+    DETECTOR = 1
+    SWITCH = 2
+    LOGICAL = 3
+    ANALOG = 4
+    RF_DEVICE = 5
+    WIRELESS_DOOR_HEALTH = 6
+
+
+class InceptionPublicState(IntFlag):
     """Inception public states."""
 
     @staticmethod
@@ -20,7 +34,7 @@ class InceptionPublicStates(IntFlag):
         return self.name.replace("_", " ").capitalize()
 
 
-class InputPublicStates(InceptionPublicStates):
+class InputPublicState(InceptionPublicState):
     """Input public states."""
 
     ACTIVE = 0x001
@@ -37,23 +51,23 @@ class InputPublicStates(InceptionPublicStates):
     def get_state_description(state_value: int) -> list[str]:
         """Get the list of state descriptions for the given state value."""
         descriptions = {
-            InputPublicStates.ACTIVE: "Input is active/unsealed",
-            InputPublicStates.TAMPER: "Input has been tampered with",
-            InputPublicStates.ISOLATED: "Input is temporarily or permanently isolated from the system (bypassed)",
-            InputPublicStates.MASK: "Input is being masked/blocked",
-            InputPublicStates.LOW_BATTERY: "Input is reporting low battery (RF detector)",
-            InputPublicStates.POLL_FAILED: "Failed to poll the input (RF detector)",
-            InputPublicStates.SEALED: "Input is inactive/sealed",
-            InputPublicStates.WIRELESS_DOOR_BATTERY_LOW: "Input is reporting low battery (Wireless Door)",
-            InputPublicStates.WIRELESS_DOOR_LOCK_OFFLINE: "Input is reporting lock offline (Wireless Door)",
+            InputPublicState.ACTIVE: "Input is active/unsealed",
+            InputPublicState.TAMPER: "Input has been tampered with",
+            InputPublicState.ISOLATED: "Input is temporarily or permanently isolated from the system (bypassed)",
+            InputPublicState.MASK: "Input is being masked/blocked",
+            InputPublicState.LOW_BATTERY: "Input is reporting low battery (RF detector)",
+            InputPublicState.POLL_FAILED: "Failed to poll the input (RF detector)",
+            InputPublicState.SEALED: "Input is inactive/sealed",
+            InputPublicState.WIRELESS_DOOR_BATTERY_LOW: "Input is reporting low battery (Wireless Door)",
+            InputPublicState.WIRELESS_DOOR_LOCK_OFFLINE: "Input is reporting lock offline (Wireless Door)",
         }
 
         return [
-            descriptions[state] for state in InputPublicStates if state_value & state
+            descriptions[state] for state in InputPublicState if state_value & state
         ]
 
 
-class DoorPublicStates(InceptionPublicStates):
+class DoorPublicState(InceptionPublicState):
     """Door public states."""
 
     UNLOCKED = 0x001
@@ -74,27 +88,25 @@ class DoorPublicStates(InceptionPublicStates):
     def get_state_description(state_value: int) -> list[str]:
         """Get the list of state descriptions for the given state value."""
         descriptions = {
-            DoorPublicStates.UNLOCKED: "Door is unlocked",
-            DoorPublicStates.OPEN: "Door is open",
-            DoorPublicStates.LOCKED_OUT: "Door is locked out",
-            DoorPublicStates.FORCED: "Door has been forced open",
-            DoorPublicStates.HELD_OPEN_WARNING: "Door has nearly been held open too long",
-            DoorPublicStates.HELD_OPEN_TOO_LONG: "Door has been held open too long",
-            DoorPublicStates.BREAKGLASS: "Door's breakglass detector has been triggered",
-            DoorPublicStates.READER_TAMPER: "A reader connected to the door has been tampered with",
-            DoorPublicStates.LOCKED: "Door is locked",
-            DoorPublicStates.CLOSED: "Door is closed",
-            DoorPublicStates.HELD_RESPONSE_MUTED: "Door's Held Open response has been muted by a user",
-            DoorPublicStates.BATTERY_LOW: "Door Wireless Lock has Low Battery",
-            DoorPublicStates.LOCK_OFFLINE: "Door Wireless Lock Offline",
+            DoorPublicState.UNLOCKED: "Door is unlocked",
+            DoorPublicState.OPEN: "Door is open",
+            DoorPublicState.LOCKED_OUT: "Door is locked out",
+            DoorPublicState.FORCED: "Door has been forced open",
+            DoorPublicState.HELD_OPEN_WARNING: "Door has nearly been held open too long",
+            DoorPublicState.HELD_OPEN_TOO_LONG: "Door has been held open too long",
+            DoorPublicState.BREAKGLASS: "Door's breakglass detector has been triggered",
+            DoorPublicState.READER_TAMPER: "A reader connected to the door has been tampered with",
+            DoorPublicState.LOCKED: "Door is locked",
+            DoorPublicState.CLOSED: "Door is closed",
+            DoorPublicState.HELD_RESPONSE_MUTED: "Door's Held Open response has been muted by a user",
+            DoorPublicState.BATTERY_LOW: "Door Wireless Lock has Low Battery",
+            DoorPublicState.LOCK_OFFLINE: "Door Wireless Lock Offline",
         }
 
-        return [
-            descriptions[state] for state in DoorPublicStates if state_value & state
-        ]
+        return [descriptions[state] for state in DoorPublicState if state_value & state]
 
 
-class OutputPublicStates(InceptionPublicStates):
+class OutputPublicState(InceptionPublicState):
     """Output public states."""
 
     ON = 0x001
@@ -104,17 +116,17 @@ class OutputPublicStates(InceptionPublicStates):
     def get_state_description(state_value: int) -> list[str]:
         """Get the list of state descriptions for the given state value."""
         descriptions = {
-            OutputPublicStates.ON: "Output is active",
-            OutputPublicStates.OFF: "Output is inactive",
+            OutputPublicState.ON: "Output is active",
+            OutputPublicState.OFF: "Output is inactive",
         }
 
         return [
-            descriptions[state] for state in OutputPublicStates if state_value & state
+            descriptions[state] for state in OutputPublicState if state_value & state
         ]
 
 
-class AreaPublicStates(InceptionPublicStates):
-    """Area public states."""
+class AreaPublicState(InceptionPublicState):
+    """Area public state."""
 
     ARMED = 0x0001
     ALARM = 0x0002
@@ -134,21 +146,19 @@ class AreaPublicStates(InceptionPublicStates):
     def get_state_description(state_value: int) -> list[str]:
         """Get the list of state descriptions for the given state value."""
         descriptions = {
-            AreaPublicStates.ARMED: "Area is armed",
-            AreaPublicStates.ALARM: "Area is in alarm",
-            AreaPublicStates.ENTRY_DELAY: "Area is in entry delay",
-            AreaPublicStates.EXIT_DELAY: "Area is in exit delay",
-            AreaPublicStates.ARM_WARNING: "Area is in arm warning",
-            AreaPublicStates.DEFER_DISARMED: "Area has been defer disarmed (temporarily disarmed)",
-            AreaPublicStates.DETECTING_ACTIVE_INPUTS: "One or more inputs in this area are currently unsealed",
-            AreaPublicStates.WALK_TEST_ACTIVE: "A walk test is currently active for this area",
-            AreaPublicStates.AWAY_ARM: "Area is armed in Full mode",
-            AreaPublicStates.STAY_ARM: "Area is armed in Perimeter mode",
-            AreaPublicStates.SLEEP_ARM: "Area is armed in Night mode",
-            AreaPublicStates.DISARMED: "Area is disarmed",
-            AreaPublicStates.ARM_READY: "Area is ready to arm (i.e. no active inputs)",
+            AreaPublicState.ARMED: "Area is armed",
+            AreaPublicState.ALARM: "Area is in alarm",
+            AreaPublicState.ENTRY_DELAY: "Area is in entry delay",
+            AreaPublicState.EXIT_DELAY: "Area is in exit delay",
+            AreaPublicState.ARM_WARNING: "Area is in arm warning",
+            AreaPublicState.DEFER_DISARMED: "Area has been defer disarmed (temporarily disarmed)",
+            AreaPublicState.DETECTING_ACTIVE_INPUTS: "One or more inputs in this area are currently unsealed",
+            AreaPublicState.WALK_TEST_ACTIVE: "A walk test is currently active for this area",
+            AreaPublicState.AWAY_ARM: "Area is armed in Full mode",
+            AreaPublicState.STAY_ARM: "Area is armed in Perimeter mode",
+            AreaPublicState.SLEEP_ARM: "Area is armed in Night mode",
+            AreaPublicState.DISARMED: "Area is disarmed",
+            AreaPublicState.ARM_READY: "Area is ready to arm (i.e. no active inputs)",
         }
 
-        return [
-            descriptions[state] for state in AreaPublicStates if state_value & state
-        ]
+        return [descriptions[state] for state in AreaPublicState if state_value & state]

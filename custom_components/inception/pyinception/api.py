@@ -11,10 +11,10 @@ from typing import TYPE_CHECKING, Any, ClassVar
 import aiohttp
 
 from custom_components.inception.pyinception.states_schema import (
-    AreaPublicStates,
-    DoorPublicStates,
-    InputPublicStates,
-    OutputPublicStates,
+    AreaPublicState,
+    DoorPublicState,
+    InputPublicState,
+    OutputPublicState,
 )
 
 from .data import InceptionApiData
@@ -137,25 +137,25 @@ class InceptionApiClient:
             {
                 "entity_request_type": "InputStateRequest",
                 "state_type": "InputState",
-                "public_state": InputPublicStates,
+                "public_state": InputPublicState,
                 "api_data": "inputs",
             },
             {
                 "entity_request_type": "DoorStateRequest",
                 "state_type": "DoorState",
-                "public_state": DoorPublicStates,
+                "public_state": DoorPublicState,
                 "api_data": "doors",
             },
             {
                 "entity_request_type": "OutputStateRequest",
                 "state_type": "OutputState",
-                "public_state": OutputPublicStates,
+                "public_state": OutputPublicState,
                 "api_data": "outputs",
             },
             {
                 "entity_request_type": "AreaStateRequest",
                 "state_type": "AreaState",
-                "public_state": AreaPublicStates,
+                "public_state": AreaPublicState,
                 "api_data": "areas",
             },
         ]
@@ -201,17 +201,17 @@ class InceptionApiClient:
 
             for event in events:
                 state_description = request_type["public_state"].get_state_description(
-                    event.PublicState
+                    event.public_state
                 )
                 entity_data = getattr(self.data, request_type["api_data"])
                 _LOGGER.debug(
                     "Event: %s, %s, %s",
                     entity_data[event.ID].Name,
-                    event.PublicState,
+                    event.public_state,
                     state_description,
                 )
 
-                entity_data[event.ID].PublicState = event.PublicState
+                entity_data[event.ID].PublicState = event.public_state
                 entity_data[event.ID].extra_fields.update(event.extra_fields)
 
                 entity_data[event.ID].extra_fields["state_description"] = (
@@ -249,9 +249,9 @@ class InceptionApiClient:
         if events:
             for event in events:
                 _LOGGER.debug(
-                    "Event: %s, %s, %s", event.ID, event.What, event.Description
+                    "Event: %s, %s, %s", event.id, event.what, event.description
                 )
-            self._last_update = events[-1].WhenTicks
+            self._last_update = events[-1].when_ticks
         else:
             _LOGGER.debug("No events from state monitor")
 

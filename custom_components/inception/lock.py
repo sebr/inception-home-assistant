@@ -15,7 +15,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 
 from .const import DOMAIN, MANUFACTURER
 from .entity import InceptionEntity
-from .pyinception.states_schema import DoorPublicStates
+from .pyinception.states_schema import DoorPublicState
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -43,7 +43,7 @@ async def async_setup_entry(
         InceptionLock(
             coordinator=coordinator,
             entity_description=InceptionDoorEntityDescription(
-                key=door.ID,
+                key=door.id,
             ),
             data=door,
         )
@@ -72,12 +72,12 @@ class InceptionLock(InceptionEntity, LockEntity):
         )
         self.data = data
         self.entity_description = entity_description
-        self.unique_id = data.ID
-        self.reportingId = data.ReportingID
-        self._device_id = data.ID
+        self.unique_id = data.id
+        self.reportingId = data.reporting_id
+        self._device_id = data.id
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, self._device_id)},
-            name=re.sub(r"[^a-zA-Z\s]*(Lock|Strike)", "", data.Name),
+            name=re.sub(r"[^a-zA-Z\s]*(Lock|Strike)", "", data.name),
             manufacturer=MANUFACTURER,
         )
 
@@ -91,14 +91,14 @@ class InceptionLock(InceptionEntity, LockEntity):
     @property
     def is_locked(self) -> bool | None:
         """Return true if device is locked."""
-        if self.data.PublicState is None:
+        if self.data.public_state is None:
             return None
-        return bool(self.data.PublicState & DoorPublicStates.LOCKED)
+        return bool(self.data.public_state & DoorPublicState.LOCKED)
 
     async def _door_control(self, data: Any | None = None) -> None:
         """Control the door."""
         return await self.coordinator.api.request(
-            method="post", path=f"/control/door/{self.data.ID}/activity", data=data
+            method="post", path=f"/control/door/{self.data.id}/activity", data=data
         )
 
     async def async_lock(self) -> None:
