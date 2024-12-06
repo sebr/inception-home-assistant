@@ -2,17 +2,17 @@
 
 from __future__ import annotations
 
-from datetime import timedelta
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
-from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.const import CONF_HOST, CONF_TOKEN
+from homeassistant.core import callback
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .api import (
-    InceptionApiClientAuthenticationError,
-    InceptionApiClientError,
-)
+from custom_components.inception.pyinception.api import InceptionApiClient
+
 from .const import DOMAIN, LOGGER
+from .pyinception.data import InceptionApiData
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -20,8 +20,7 @@ if TYPE_CHECKING:
     from .data import InceptionConfigEntry
 
 
-# https://developers.home-assistant.io/docs/integration_fetching_data#coordinated-single-api-poll-for-data-for-all-entities
-class InceptionUpdateCoordinator(DataUpdateCoordinator):
+class InceptionUpdateCoordinator(DataUpdateCoordinator[InceptionApiData]):
     """Class to manage fetching data from the API."""
 
     config_entry: InceptionConfigEntry
@@ -29,20 +28,44 @@ class InceptionUpdateCoordinator(DataUpdateCoordinator):
     def __init__(
         self,
         hass: HomeAssistant,
+        entry: InceptionConfigEntry,
     ) -> None:
         """Initialize."""
         super().__init__(
             hass=hass,
             logger=LOGGER,
             name=DOMAIN,
-            update_interval=timedelta(hours=1),
+            always_update=False,
+        )
+        self.config_entry = entry
+        self.api = InceptionApiClient(
+            token=entry.data[CONF_TOKEN],
+            host=entry.data[CONF_HOST],
+            session=async_get_clientsession(hass),
         )
 
-    async def _async_update_data(self) -> Any:
-        """Update data via library."""
+        self.monitor_connected: bool = False
+
+    async def _async_update_data(self) -> InceptionApiData:
+        """Fetch data from the API."""
         try:
-            return await self.config_entry.runtime_data.client.async_get_data()
-        except InceptionApiClientAuthenticationError as exception:
-            raise ConfigEntryAuthFailed(exception) from exception
-        except InceptionApiClientError as exception:
-            raise UpdateFailed(exception) from exception
+            data = await self.api.get_data()
+        except Exception as err:
+            LOGGER.debug("Failed to fetch data: %s", err)
+            LOGGER.exception("Error fetching data from Inception")
+            raise UpdateFailed(err) from err
+
+        if not self.monitor_connected:
+            LOGGER.debug(
+                "Connecting to Inception Monitor",
+            )
+            await self.api.connect()
+            self.api.register_data_callback(self.callback)
+            self.monitor_connected = True
+
+        return data
+
+    @callback
+    def callback(self, data: InceptionApiData) -> None:
+        """Process long-poll callbacks and write them to the DataUpdateCoordinator."""
+        self.async_set_updated_data(data)

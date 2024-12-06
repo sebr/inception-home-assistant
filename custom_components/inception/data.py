@@ -9,15 +9,15 @@ if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigEntry
     from homeassistant.loader import Integration
 
-    from .api import InceptionApiClient
     from .coordinator import InceptionUpdateCoordinator
+    from .pyinception.api import InceptionApiClient
 
 
-type InceptionConfigEntry = ConfigEntry[InceptionData]
+type InceptionConfigEntry = ConfigEntry[InceptionEntryData]
 
 
 @dataclass
-class InceptionData:
+class InceptionEntryData:
     """Data for the Inception integration."""
 
     client: InceptionApiClient
