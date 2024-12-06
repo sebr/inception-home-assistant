@@ -15,6 +15,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 
 from .const import DOMAIN, MANUFACTURER
 from .entity import InceptionEntity
+from .pyinception.schema import DoorControlType
 from .pyinception.states_schema import DoorPublicState
 
 if TYPE_CHECKING:
@@ -23,7 +24,7 @@ if TYPE_CHECKING:
 
     from .coordinator import InceptionUpdateCoordinator
     from .data import InceptionConfigEntry
-    from .pyinception.schema import Door, DoorControlType
+    from .pyinception.schema import Door
 
 
 @dataclass(frozen=True, kw_only=True)
