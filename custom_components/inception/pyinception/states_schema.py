@@ -19,6 +19,8 @@ class InputType(Enum):
 
 
 class DoorControlType(Enum):
+    """Inception door control types."""
+
     LOCK = 0
     UNLOCK = 1
     OPEN = 2

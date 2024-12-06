@@ -327,14 +327,17 @@ class InceptionApiClient:
             _verify_response_or_raise(response)
             return await response.json(content_type=None)
         except TimeoutError as exception:
+            _LOGGER.exception("TimeoutError")
             raise TimeoutError from exception
         except (aiohttp.ClientError, socket.gaierror) as exception:
             msg = f"Error fetching information - {exception}"
+            _LOGGER.exception(msg)
             raise InceptionApiClientCommunicationError(
                 msg,
             ) from exception
         except Exception as exception:  # pylint: disable=broad-except
             msg = f"Something really wrong happened! - {exception}"
+            _LOGGER.exception(msg)
             raise InceptionApiClientError(
                 msg,
             ) from exception
