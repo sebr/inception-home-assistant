@@ -32,7 +32,7 @@ If you do not wish to use HACS, then please download the latest version from the
 
 1. Navigate to Home Assistant Settings > Devices & Services
 2. Click `+ Add Integration`
-3. Search for `Orbit B-hyve`
+3. Search for `Inception`
 4. Complete the guided configuration
 
 ## Configuration is done in the UI

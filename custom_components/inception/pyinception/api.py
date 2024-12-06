@@ -179,12 +179,18 @@ class InceptionApiClient:
             }
             for request_type in request_types
         ]
-        response = await self.request(
-            method="post",
-            data=payload,
-            path="/monitor-updates",
-            api_timeout=aiohttp.ClientTimeout(total=60),
-        )
+
+        try:
+            response = await self.request(
+                method="post",
+                data=payload,
+                path="/monitor-updates",
+                api_timeout=aiohttp.ClientTimeout(total=60),
+            )
+        except TimeoutError:
+            # No response from the API, try again later
+            return
+
         response_id = response["ID"]
         update_time = response["Result"]["updateTime"]
         state_data = response["Result"]["stateData"]
@@ -240,12 +246,16 @@ class InceptionApiClient:
             }
         ]
 
-        response = await self.request(
-            method="post",
-            data=payload,
-            path="/monitor-updates",
-            api_timeout=aiohttp.ClientTimeout(total=60),
-        )
+        try:
+            response = await self.request(
+                method="post",
+                data=payload,
+                path="/monitor-updates",
+                api_timeout=aiohttp.ClientTimeout(total=60),
+            )
+        except TimeoutError:
+            # No response from the API, try again later
+            return
 
         events = [LiveReviewEventsResult(**item) for item in response["Result"]]
 
@@ -316,7 +326,8 @@ class InceptionApiClient:
             )
             _verify_response_or_raise(response)
             return await response.json(content_type=None)
-
+        except TimeoutError as exception:
+            raise TimeoutError from exception
         except (aiohttp.ClientError, socket.gaierror) as exception:
             msg = f"Error fetching information - {exception}"
             raise InceptionApiClientCommunicationError(
