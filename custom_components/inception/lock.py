@@ -15,7 +15,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 
 from .const import DOMAIN, MANUFACTURER
 from .entity import InceptionEntity
-from .pyinception.states_schema import DoorPublicState
+from .pyinception.states_schema import DoorControlType, DoorPublicState
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -106,7 +106,7 @@ class InceptionLock(InceptionEntity, LockEntity):
         return await self._door_control(
             data={
                 "Type": "ControlDoor",
-                "DoorControlType": "Lock",
+                "DoorControlType": DoorControlType.LOCK,
             },
         )
 
@@ -115,7 +115,7 @@ class InceptionLock(InceptionEntity, LockEntity):
         return await self._door_control(
             data={
                 "Type": "ControlDoor",
-                "DoorControlType": "Unlock",
+                "DoorControlType": DoorControlType.OPEN,  # Open is grant access
             },
         )
 
@@ -124,6 +124,6 @@ class InceptionLock(InceptionEntity, LockEntity):
         return await self._door_control(
             data={
                 "Type": "ControlDoor",
-                "DoorControlType": "Open",
+                "DoorControlType": DoorControlType.UNLOCK,  # Unlock is a permanent open
             },
         )
