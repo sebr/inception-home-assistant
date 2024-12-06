@@ -1,6 +1,5 @@
 {
     "name": "InnerRange Inception",
     "homeassistant": "2024.12.0",
-    "integration_type": "hub",
     "render_readme": true
 }
