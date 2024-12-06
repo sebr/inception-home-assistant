@@ -201,8 +201,6 @@ class InceptionApiClient:
             _LOGGER.error("Unknown response ID: %s", response_id)
             return
 
-        _LOGGER.debug("MonitorEntityStates: %s events", len(events))
-
         for event in events:
             try:
                 state_description = request_type["public_state"].get_state_description(
