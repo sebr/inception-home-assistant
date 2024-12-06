@@ -18,6 +18,15 @@ class InputType(Enum):
     WIRELESS_DOOR_HEALTH = 6
 
 
+class DoorControlType(Enum):
+    LOCK = 0
+    UNLOCK = 1
+    OPEN = 2
+    TIMED_UNLOCK = 3
+    LOCKOUT = 4
+    REINSTATE = 5
+
+
 class InceptionPublicState(IntFlag):
     """Inception public states."""
 

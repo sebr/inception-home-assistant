@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
     from .coordinator import InceptionUpdateCoordinator
     from .data import InceptionConfigEntry
-    from .pyinception.schema import Door
+    from .pyinception.schema import Door, DoorControlType
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -106,7 +106,7 @@ class InceptionLock(InceptionEntity, LockEntity):
         return await self._door_control(
             data={
                 "Type": "ControlDoor",
-                "DoorControlType": "Lock",
+                "DoorControlType": DoorControlType.LOCK,
             },
         )
 
@@ -115,7 +115,7 @@ class InceptionLock(InceptionEntity, LockEntity):
         return await self._door_control(
             data={
                 "Type": "ControlDoor",
-                "DoorControlType": "Unlock",
+                "DoorControlType": DoorControlType.OPEN,  # Open is grant access
             },
         )
 
@@ -124,6 +124,6 @@ class InceptionLock(InceptionEntity, LockEntity):
         return await self._door_control(
             data={
                 "Type": "ControlDoor",
-                "DoorControlType": "Open",
+                "DoorControlType": DoorControlType.UNLOCK,  # Unlock is a permanent open
             },
         )
