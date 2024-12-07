@@ -77,7 +77,7 @@ class InceptionLock(InceptionEntity, LockEntity):
         self._device_id = data.id
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, self._device_id)},
-            name=re.sub(r"[^a-zA-Z\s]*(Lock|Strike)", "", data.name),
+            name=re.sub(r"[^a-zA-Z\s]*(Lock|Strike)", "", data.name).strip(),
             manufacturer=MANUFACTURER,
         )
 
@@ -94,6 +94,13 @@ class InceptionLock(InceptionEntity, LockEntity):
         if self.data.public_state is None:
             return None
         return bool(self.data.public_state & DoorPublicState.LOCKED)
+
+    @property
+    def is_open(self) -> bool | None:
+        """Return true if device is locked."""
+        if self.data.public_state is None:
+            return None
+        return bool(self.data.public_state & DoorPublicState.OPEN)
 
     async def _door_control(self, data: Any | None = None) -> None:
         """Control the door."""
