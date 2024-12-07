@@ -302,7 +302,7 @@ class InceptionApiClient:
                 path="/monitor-updates",
                 api_timeout=aiohttp.ClientTimeout(
                     total=70
-                ),  # Inception long-poll timeout is 60 seconds, so this should be enough
+                ),  # Inception long-poll timeout is 60 seconds, this should be enough
             )
         except TimeoutError:
             # No response from the API, try again later
