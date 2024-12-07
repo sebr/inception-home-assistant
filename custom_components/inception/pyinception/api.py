@@ -74,7 +74,6 @@ class InceptionApiClient:
         self._token = token
         self._host = host.rstrip("/")
         self._session = session
-        self._is_connected = False
         self.data: InceptionApiData | None = None
         self.data_update_cbs: list = []
         self.loop: asyncio.AbstractEventLoop = asyncio.get_running_loop()
@@ -135,6 +134,7 @@ class InceptionApiClient:
 
     async def monitor_entity_states(self) -> None:
         """Monitor updates from the API."""
+        _LOGGER.info("Starting long-poll monitor")
         if self.data is None:
             _LOGGER.warning("state monitor: no data to update")
             return
@@ -285,11 +285,18 @@ class InceptionApiClient:
     async def _rest_task(self) -> None:
         """Poll data periodically via Rest."""
         while True:
-            await self.monitor_entity_states()
+            _LOGGER.debug("_rest_task: init")
+            try:
+                await self.monitor_entity_states()
+            except Exception:
+                _LOGGER.exception("_rest_task: Error monitoring entity states")
+            _LOGGER.debug("_rest_task: updating")
             self._schedule_data_callbacks()
+            _LOGGER.debug("_rest_task: done")
 
     async def close(self) -> None:
         """Close the session."""
+        _LOGGER.debug("Closing session")
         if self.rest_task:
             if not self.rest_task.cancelled():
                 self.rest_task.cancel()
