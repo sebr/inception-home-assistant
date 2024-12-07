@@ -180,14 +180,9 @@ class InceptionApiClient:
             for request_type in request_types
         ]
 
-        try:
-            response = await self.request(
-                method="post",
-                data=payload,
-                path="/monitor-updates",
-                api_timeout=aiohttp.ClientTimeout(total=60),
-            )
-        except TimeoutError:
+        response = await self._monitor_events_request(payload)
+
+        if not response:
             # No response from the API, try again later
             return
 
@@ -246,14 +241,9 @@ class InceptionApiClient:
             }
         ]
 
-        try:
-            response = await self.request(
-                method="post",
-                data=payload,
-                path="/monitor-updates",
-                api_timeout=aiohttp.ClientTimeout(total=60),
-            )
-        except TimeoutError:
+        response = await self._monitor_events_request(payload)
+
+        if not response:
             # No response from the API, try again later
             return
 
@@ -302,6 +292,27 @@ class InceptionApiClient:
                 self.rest_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await asyncio.gather(self.rest_task)
+
+    async def _monitor_events_request(self, payload: Any) -> Any | None:
+        """Monitor updates from the API."""
+        try:
+            response = await self.request(
+                method="post",
+                data=payload,
+                path="/monitor-updates",
+                api_timeout=aiohttp.ClientTimeout(
+                    total=70
+                ),  # Inception long-poll timeout is 60 seconds, this should be enough
+            )
+        except TimeoutError:
+            # No response from the API, try again later
+            return None
+
+        if not response or "Result" not in response or "ID" not in response:
+            # No response from the API, try again later
+            return None
+
+        return response
 
     async def request(
         self,
