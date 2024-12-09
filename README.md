@@ -23,10 +23,11 @@ Recommended installation is via the [Home Assistant Community Store (HACS)](http
 
 If you do not wish to use HACS, then please download the latest version from the [releases page](https://github.com/sebr/inception-home-assistant/releases) and proceed to Step 2.
 
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=sebr&repository=inception-home-assistant&category=integration)
+
 1. Navigate to the HACS add-on
 2. Search for the `Inception` integration and install it
 3. Restart Home Assistant
-
 
 ### 2. Configure via Home Assistant
 
@@ -35,11 +36,17 @@ If you do not wish to use HACS, then please download the latest version from the
 3. Search for `Inception`
 4. Complete the guided configuration
 
-## Configuration is done in the UI
+### Create a user in Inception
+I strongly recommend creating a new user in Inception for Home Assistant to use.
 
-1. Navigate to your Inception controller
-2. Create a user and assign it the appropriate permissions
-3. Create a token for the user
+Create a new user
+<img width="1420" alt="Screenshot 2024-12-09 at 7 18 42 pm" src="https://github.com/user-attachments/assets/0b3b33e6-d65e-43af-8d59-ba07f4d3d551">
+
+Grant the user permission to access required entities
+<img width="1420" alt="Screenshot 2024-12-09 at 7 18 11 pm" src="https://github.com/user-attachments/assets/ced17288-39ed-400b-8f67-04f5ecdf5426">
+
+Grant the user `REST Web API User` web page profile and create a `User API Token`
+<img width="1420" alt="Screenshot 2024-12-09 at 7 19 04 pm" src="https://github.com/user-attachments/assets/254eeda4-3451-445e-a466-eac2fd9297a7">
 
 ## Contributions are welcome!
 
