@@ -90,6 +90,7 @@ class InceptionAlarm(InceptionEntity, AlarmControlPanelEntity):
             return None
 
         state_mapping = {
+            AreaPublicState.ARMED: AlarmControlPanelState.ARMED_AWAY,
             AreaPublicState.ALARM: AlarmControlPanelState.TRIGGERED,
             AreaPublicState.DISARMED: AlarmControlPanelState.DISARMED,
             AreaPublicState.STAY_ARM: AlarmControlPanelState.ARMED_HOME,
