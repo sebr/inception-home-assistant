@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
-from homeassistant.const import CONF_HOST, CONF_TOKEN
+from homeassistant.const import CONF_HOST, CONF_TOKEN, EVENT_HOMEASSISTANT_STOP
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -45,6 +45,27 @@ class InceptionUpdateCoordinator(DataUpdateCoordinator[InceptionApiData]):
         )
 
         self.monitor_connected: bool = False
+
+    async def _async_setup(self) -> None:
+        self._shutdown_remove_listener = self.hass.bus.async_listen_once(
+            EVENT_HOMEASSISTANT_STOP, self._async_shutdown
+        )
+
+        return await super()._async_setup()
+
+    async def _async_shutdown(self, _event: Any) -> None:
+        """Call from Homeassistant shutdown event."""
+        # unset remove listener otherwise calling it would raise an exception
+        self._shutdown_remove_listener = None
+        await self.async_unload()
+
+    async def async_unload(self) -> None:
+        """Stop the update monitor."""
+        if self._shutdown_remove_listener:
+            self._shutdown_remove_listener()
+
+        await self.api.close()
+        self.monitor_connected = False
 
     async def _async_update_data(self) -> InceptionApiData:
         """Fetch data from the API."""
