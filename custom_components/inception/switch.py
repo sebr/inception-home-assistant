@@ -77,7 +77,7 @@ class InceptionSwitch(InceptionEntity, SwitchEntity):
         self.data = data
         self.entity_description = entity_description
         self.unique_id = data.id
-        self.reportingId = data.reporting_id
+        self.reporting_id = data.reporting_id
 
     @property
     def is_on(self) -> bool:

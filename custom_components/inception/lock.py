@@ -73,7 +73,7 @@ class InceptionLock(InceptionEntity, LockEntity):
         self.data = data
         self.entity_description = entity_description
         self.unique_id = data.id
-        self.reportingId = data.reporting_id
+        self.reporting_id = data.reporting_id
         self._device_id = data.id
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, self._device_id)},

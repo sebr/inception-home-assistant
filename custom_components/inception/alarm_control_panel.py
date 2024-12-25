@@ -81,7 +81,7 @@ class InceptionAlarm(InceptionEntity, AlarmControlPanelEntity):
         self.data = data
         self.entity_description = entity_description
         self.unique_id = data.id
-        self.reportingId = data.reporting_id
+        self.reporting_id = data.reporting_id
 
     @property
     def alarm_state(self) -> AlarmControlPanelState | None:
