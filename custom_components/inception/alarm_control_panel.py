@@ -89,19 +89,24 @@ class InceptionAlarm(InceptionEntity, AlarmControlPanelEntity):
         if self.data.public_state is None:
             return None
 
-        state_mapping = {
-            AreaPublicState.ARMED: AlarmControlPanelState.ARMED_AWAY,
+        state_mappings = {
+            # First Triggered
             AreaPublicState.ALARM: AlarmControlPanelState.TRIGGERED,
-            AreaPublicState.DISARMED: AlarmControlPanelState.DISARMED,
+            # Second Pending
+            AreaPublicState.ENTRY_DELAY: AlarmControlPanelState.PENDING,
+            AreaPublicState.EXIT_DELAY: AlarmControlPanelState.PENDING,
+            # Third Arming
+            AreaPublicState.ARM_WARNING: AlarmControlPanelState.ARMING,
+            # Fourth Armed
+            AreaPublicState.ARMED: AlarmControlPanelState.ARMED_AWAY,
             AreaPublicState.STAY_ARM: AlarmControlPanelState.ARMED_HOME,
             AreaPublicState.AWAY_ARM: AlarmControlPanelState.ARMED_AWAY,
             AreaPublicState.SLEEP_ARM: AlarmControlPanelState.ARMED_NIGHT,
-            AreaPublicState.ARM_WARNING: AlarmControlPanelState.ARMING,
-            AreaPublicState.ENTRY_DELAY: AlarmControlPanelState.PENDING,
-            AreaPublicState.EXIT_DELAY: AlarmControlPanelState.PENDING,
+            # Fifth Disarmed
+            AreaPublicState.DISARMED: AlarmControlPanelState.DISARMED,
         }
 
-        for area_state, alarm_state in state_mapping.items():
+        for area_state, alarm_state in state_mappings.items():
             if bool(self.data.public_state & area_state):
                 return alarm_state
 
