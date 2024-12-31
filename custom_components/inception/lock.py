@@ -58,6 +58,7 @@ class InceptionLock(InceptionEntity, LockEntity):
 
     entity_description: InceptionDoorEntityDescription
     data: Door
+
     _attr_has_entity_name = True
 
     def __init__(

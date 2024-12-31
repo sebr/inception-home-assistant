@@ -359,3 +359,17 @@ class InceptionApiClient:
             raise InceptionApiClientError(
                 msg,
             ) from exception
+
+    async def _control_item(self, item: str, data: Any | None = None) -> None:
+        """Control the switch."""
+        return await self.request(
+            method="post", path=f"/control/{item}/activity", data=data
+        )
+
+    async def control_output(self, output_id: str, data: Any | None = None) -> None:
+        """Send a control payload to an output."""
+        return await self._control_item(item=f"output/{output_id}", data=data)
+
+    async def control_input(self, input_id: str, data: Any | None = None) -> None:
+        """Send a control payload to an input."""
+        return await self._control_item(item=f"input/{input_id}", data=data)
