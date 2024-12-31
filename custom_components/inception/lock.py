@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING, Any
 from homeassistant.components.lock import (
     LockEntity,
     LockEntityDescription,
-    LockEntityFeature,
 )
 from homeassistant.helpers.device_registry import DeviceInfo
 
