@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING, Any
 from homeassistant.components.lock import (
     LockEntity,
     LockEntityDescription,
-    LockEntityFeature,
 )
 from homeassistant.helpers.device_registry import DeviceInfo
 
@@ -81,8 +80,6 @@ class InceptionLock(InceptionEntity, LockEntity):
             manufacturer=MANUFACTURER,
         )
 
-        self._attr_supported_features = LockEntityFeature.OPEN
-
     @property
     def name(self) -> str:
         """Return the name of the entity."""
@@ -94,13 +91,6 @@ class InceptionLock(InceptionEntity, LockEntity):
         if self.data.public_state is None:
             return None
         return bool(self.data.public_state & DoorPublicState.LOCKED)
-
-    @property
-    def is_open(self) -> bool | None:
-        """Return true if device is locked."""
-        if self.data.public_state is None:
-            return None
-        return bool(self.data.public_state & DoorPublicState.OPEN)
 
     async def _door_control(self, data: Any | None = None) -> None:
         """Control the door."""
