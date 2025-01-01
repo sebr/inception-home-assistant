@@ -90,19 +90,22 @@ class InceptionAlarm(InceptionEntity, AlarmControlPanelEntity):
             return None
 
         state_mappings = {
-            # First Triggered
+            # Order here matters:
+            # 1. Triggered
             AreaPublicState.ALARM: AlarmControlPanelState.TRIGGERED,
-            # Second Pending
+            # 2. Pending
             AreaPublicState.ENTRY_DELAY: AlarmControlPanelState.PENDING,
             AreaPublicState.EXIT_DELAY: AlarmControlPanelState.PENDING,
-            # Third Arming
+            # 3. Arming
             AreaPublicState.ARM_WARNING: AlarmControlPanelState.ARMING,
-            # Fourth Armed
-            AreaPublicState.ARMED: AlarmControlPanelState.ARMED_AWAY,
+            # 4. Armed (Perimiter)
             AreaPublicState.STAY_ARM: AlarmControlPanelState.ARMED_HOME,
-            AreaPublicState.AWAY_ARM: AlarmControlPanelState.ARMED_AWAY,
+            # 5. Armed (Sleep)
             AreaPublicState.SLEEP_ARM: AlarmControlPanelState.ARMED_NIGHT,
-            # Fifth Disarmed
+            # 6. Armed (Full)
+            AreaPublicState.AWAY_ARM: AlarmControlPanelState.ARMED_AWAY,
+            AreaPublicState.ARMED: AlarmControlPanelState.ARMED_AWAY,
+            # 7. Disarmed
             AreaPublicState.DISARMED: AlarmControlPanelState.DISARMED,
         }
 
