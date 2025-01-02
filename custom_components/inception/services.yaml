@@ -1,0 +1,11 @@
+timed_unlock:
+  target:
+      entity:
+        domain: lock
+  fields:
+    time_secs:
+      required: true
+      selector:
+        number:
+          min: 0
+
