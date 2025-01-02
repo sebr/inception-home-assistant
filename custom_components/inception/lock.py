@@ -14,7 +14,10 @@ from homeassistant.helpers.device_registry import DeviceInfo
 
 from .const import DOMAIN, MANUFACTURER
 from .entity import InceptionEntity
-from .pyinception.states_schema import DoorControlType, DoorPublicState
+from .pyinception.schemas.door import (
+    DoorControlType,
+    DoorPublicState,
+)
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant

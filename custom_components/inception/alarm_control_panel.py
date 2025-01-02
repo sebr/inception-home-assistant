@@ -16,7 +16,7 @@ from homeassistant.components.alarm_control_panel.const import (
 
 from .const import DOMAIN
 from .entity import InceptionEntity
-from .pyinception.states_schema import AreaPublicState
+from .pyinception.schemas.area import AreaPublicState
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
