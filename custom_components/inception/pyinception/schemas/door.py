@@ -3,7 +3,7 @@
 """Inception Door schemas."""
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import IntEnum
 
 from .entities import (
     InceptionPublicState,
@@ -13,7 +13,7 @@ from .entities import (
 )
 
 
-class DoorControlType(Enum):
+class DoorControlType(IntEnum):
     """Inception door control types."""
 
     LOCK = 0
