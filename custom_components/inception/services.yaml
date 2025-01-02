@@ -8,4 +8,6 @@ timed_unlock:
       selector:
         number:
           min: 0
+          max: 7200
+          unit_of_measurement: seconds
 
