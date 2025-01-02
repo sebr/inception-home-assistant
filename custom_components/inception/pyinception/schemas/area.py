@@ -76,12 +76,12 @@ class ArmInfo:
 class AreaSummaryEntry(InceptionSummaryEntry[AreaPublicState]):
     """Represents a summary entry for an area."""
 
-    arm_info: ArmInfo | None = None
+    arm_info: ArmInfo
 
     def __init__(self, **kwargs) -> None:
         """Initialize the object."""
         self.entity_info = ReportableShortEntity(**kwargs.pop("EntityInfo"))
-        self.arm_info = ArmInfo(**kwargs.pop("ArmInfo", 0))
+        self.arm_info = ArmInfo(**kwargs.pop("ArmInfo"))
         super().__init__(**kwargs)
 
 
