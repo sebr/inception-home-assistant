@@ -6,10 +6,12 @@ import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
+import voluptuous as vol
 from homeassistant.components.lock import (
     LockEntity,
     LockEntityDescription,
 )
+from homeassistant.helpers import entity_platform
 from homeassistant.helpers.device_registry import DeviceInfo
 
 from .const import DOMAIN, MANUFACTURER
@@ -26,6 +28,8 @@ if TYPE_CHECKING:
     from .coordinator import InceptionUpdateCoordinator
     from .data import InceptionConfigEntry
     from .pyinception.schemas.door import DoorSummaryEntry
+
+SERVICE_TIMED_UNLOCK = "timed_unlock"
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -53,6 +57,18 @@ async def async_setup_entry(
     ]
 
     async_add_entities(entities)
+
+    platform = entity_platform.async_get_current_platform()
+
+    platform.async_register_entity_service(
+        SERVICE_TIMED_UNLOCK,
+        {
+            vol.Required("time_secs"): vol.All(
+                vol.Coerce(int), vol.Range(min=0, max=86399)
+            ),
+        },
+        "timed_unlock",
+    )
 
 
 class InceptionLock(InceptionEntity, LockEntity):
@@ -120,15 +136,16 @@ class InceptionLock(InceptionEntity, LockEntity):
         return await self._door_control(
             data={
                 "Type": "ControlDoor",
-                "DoorControlType": DoorControlType.OPEN,  # Open is grant access
+                "DoorControlType": DoorControlType.UNLOCK,  # Unlock is a permanent open
             },
         )
 
-    async def async_open(self) -> None:
+    async def timed_unlock(self, time_secs: int) -> None:
         """Unlock the device."""
         return await self._door_control(
             data={
                 "Type": "ControlDoor",
-                "DoorControlType": DoorControlType.UNLOCK,  # Unlock is a permanent open
+                "DoorControlType": DoorControlType.TIMED_UNLOCK,
+                "TimeSecs": time_secs,
             },
         )
