@@ -1,15 +1,18 @@
 """Contains data classes for the Inception API."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
-from .schema import Area, Door, Input, Output
+from .schemas.area import AreaSummary
+from .schemas.door import DoorSummary
+from .schemas.input import InputSummary
+from .schemas.output import OutputSummary
 
 
 @dataclass
 class InceptionApiData:
     """Container for data fetched from the Inception API."""
 
-    inputs: dict[str, Input] = field(default_factory=dict)
-    doors: dict[str, Door] = field(default_factory=dict)
-    areas: dict[str, Area] = field(default_factory=dict)
-    outputs: dict[str, Output] = field(default_factory=dict)
+    inputs: InputSummary
+    doors: DoorSummary
+    areas: AreaSummary
+    outputs: OutputSummary

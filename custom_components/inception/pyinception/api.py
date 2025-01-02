@@ -10,13 +10,6 @@ from typing import TYPE_CHECKING, Any, ClassVar, TypeVar
 
 import aiohttp
 
-from custom_components.inception.pyinception.states_schema import (
-    AreaPublicState,
-    DoorPublicState,
-    InputPublicState,
-    OutputPublicState,
-)
-
 from .data import InceptionApiData
 from .schema import (
     Area,
@@ -25,6 +18,16 @@ from .schema import (
     LiveReviewEventsResult,
     MonitorStateResponse,
     Output,
+)
+from .schemas.area import AreaSummary
+from .schemas.door import DoorSummary
+from .schemas.input import InputSummary
+from .schemas.output import OutputSummary
+from .states_schema import (
+    AreaPublicState,
+    DoorPublicState,
+    InputPublicState,
+    OutputPublicState,
 )
 
 if TYPE_CHECKING:
@@ -100,6 +103,26 @@ class InceptionApiClient:
         )
         return [Type(**item) for item in data]
 
+    S = TypeVar("S", DoorSummary, InputSummary, OutputSummary, AreaSummary)
+
+    async def get_control_summaries(self, Type: type[S]) -> S:  # noqa: N803
+        """Get control item summaries."""
+        path_map = {
+            DoorSummary: "door",
+            InputSummary: "input",
+            OutputSummary: "output",
+            AreaSummary: "area",
+        }
+        if Type not in path_map:
+            msg = f"Unsupported entity type: {Type}"
+            raise ValueError(msg)
+
+        data = await self.request(
+            method="get",
+            path=f"/control/{path_map[Type]}/summary",
+        )
+        return Type(**data)
+
     async def authenticate(self) -> bool:
         """Authenticate with the API."""
         await self.request(
@@ -116,19 +139,19 @@ class InceptionApiClient:
     async def get_data(self) -> InceptionApiData:
         """Get the status of the API."""
         if self.data is None:
-            i_data = InceptionApiData()
-            inputs, doors, areas, outputs = await asyncio.gather(
-                self.get_controls(Input),
-                self.get_controls(Door),
-                self.get_controls(Area),
-                self.get_controls(Output),
+            doors, outputs, inputs, areas = await asyncio.gather(
+                self.get_control_summaries(DoorSummary),
+                self.get_control_summaries(OutputSummary),
+                self.get_control_summaries(InputSummary),
+                self.get_control_summaries(AreaSummary),
             )
-            i_data.inputs = {i.id: i for i in inputs}
-            i_data.doors = {i.id: i for i in doors}
-            i_data.areas = {i.id: i for i in areas}
-            i_data.outputs = {i.id: i for i in outputs}
 
-            self.data = i_data
+            self.data = InceptionApiData(
+                inputs=inputs,
+                doors=doors,
+                areas=areas,
+                outputs=outputs,
+            )
 
         return self.data
 
@@ -275,14 +298,11 @@ class InceptionApiClient:
     async def _rest_task(self) -> None:
         """Poll data periodically via Rest."""
         while True:
-            _LOGGER.debug("_rest_task: init")
             try:
                 await self.monitor_entity_states()
             except Exception:
                 _LOGGER.exception("_rest_task: Error monitoring entity states")
-            _LOGGER.debug("_rest_task: updating")
             self._schedule_data_callbacks()
-            _LOGGER.debug("_rest_task: done")
 
     async def close(self) -> None:
         """Close the session."""

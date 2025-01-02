@@ -24,7 +24,15 @@ if TYPE_CHECKING:
 
     from .coordinator import InceptionUpdateCoordinator
     from .data import InceptionConfigEntry
-    from .pyinception.schema import InceptionObject, Input, Output
+    from .pyinception.schemas.entities import (
+        InceptionSummaryEntry,
+    )
+    from .pyinception.schemas.input import (
+        InputSummaryEntry,
+    )
+    from .pyinception.schemas.output import (
+        OutputSummaryEntry,
+    )
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -32,7 +40,7 @@ class InceptionSwitchDescription(SwitchEntityDescription):
     """Describes Inception switch entity."""
 
     name: str = ""
-    value_fn: Callable[[InceptionObject], bool]
+    value_fn: Callable[[InceptionSummaryEntry], bool]
 
 
 async def async_setup_entry(
@@ -47,21 +55,21 @@ async def async_setup_entry(
         InceptionOutputSwitch(
             coordinator=coordinator,
             entity_description=InceptionSwitchDescription(
-                key=output.id,
+                key=output.entity_info.id,
                 device_class=SwitchDeviceClass.SWITCH,
                 value_fn=lambda data: data.public_state is not None
                 and bool(data.public_state & OutputPublicState.ON),
             ),
             data=output,
         )
-        for output in coordinator.data.outputs.values()
+        for output in coordinator.data.outputs.get_items()
     ]
 
     entities += [
         InceptionInputSwitch(
             coordinator=coordinator,
             entity_description=InceptionSwitchDescription(
-                key=f"{i_input.id}_isolated",
+                key=f"{i_input.entity_info.id}_isolated",
                 device_class=SwitchDeviceClass.SWITCH,
                 name="Isolated",
                 has_entity_name=True,
@@ -70,8 +78,8 @@ async def async_setup_entry(
             ),
             data=i_input,
         )
-        for i_input in coordinator.data.inputs.values()
-        if i_input.input_type != InputType.LOGICAL
+        for i_input in coordinator.data.inputs.get_items()
+        if i_input.entity_info.input_type != InputType.LOGICAL
     ]
 
     async_add_entities(entities)
@@ -81,13 +89,13 @@ class InceptionSwitch(InceptionEntity, SwitchEntity):
     """inception switch class."""
 
     entity_description: InceptionSwitchDescription
-    data: InceptionObject
+    data: InceptionSummaryEntry
 
     def __init__(
         self,
         coordinator: InceptionUpdateCoordinator,
         entity_description: InceptionSwitchDescription,
-        data: InceptionObject,
+        data: InceptionSummaryEntry,
     ) -> None:
         """Initialize the switch class."""
         super().__init__(
@@ -95,7 +103,7 @@ class InceptionSwitch(InceptionEntity, SwitchEntity):
         )
         self.data = data
         self.entity_description = entity_description
-        self.reporting_id = data.reporting_id
+        self.reporting_id = data.entity_info.reporting_id
 
     @property
     def is_on(self) -> bool:
@@ -107,7 +115,7 @@ class InceptionInputSwitch(InceptionSwitch, SwitchEntity):
     """inception switch class for Inputs."""
 
     entity_description: InceptionSwitchDescription
-    data: Input
+    data: InputSummaryEntry
 
     _attr_has_entity_name = True
 
@@ -115,14 +123,14 @@ class InceptionInputSwitch(InceptionSwitch, SwitchEntity):
         self,
         coordinator: InceptionUpdateCoordinator,
         entity_description: InceptionSwitchDescription,
-        data: Input,
+        data: InputSummaryEntry,
     ) -> None:
         """Initialize the switch class."""
         super().__init__(coordinator, entity_description=entity_description, data=data)
-        LOGGER.debug("Creating input switch %s", data.name)
+        LOGGER.debug("Creating input switch %s", data.entity_info.name)
         self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, data.id)},
-            name=data.name,
+            identifiers={(DOMAIN, data.entity_info.id)},
+            name=data.entity_info.name,
         )
 
     @property
@@ -133,7 +141,7 @@ class InceptionInputSwitch(InceptionSwitch, SwitchEntity):
     async def async_turn_on(self) -> None:
         """Isolate the Input."""
         return await self.coordinator.api.control_input(
-            input_id=self.data.id,
+            input_id=self.data.entity_info.id,
             data={
                 "Type": "ControlInput",
                 "InputControlType": "Isolate",
@@ -143,7 +151,7 @@ class InceptionInputSwitch(InceptionSwitch, SwitchEntity):
     async def async_turn_off(self) -> None:
         """Deisolate the Input."""
         return await self.coordinator.api.control_input(
-            input_id=self.data.id,
+            input_id=self.data.entity_info.id,
             data={
                 "Type": "ControlInput",
                 "InputControlType": "Deisolate",
@@ -155,13 +163,13 @@ class InceptionOutputSwitch(InceptionSwitch, SwitchEntity):
     """inception switch class."""
 
     entity_description: InceptionSwitchDescription
-    data: Output
+    data: OutputSummaryEntry
 
     def __init__(
         self,
         coordinator: InceptionUpdateCoordinator,
         entity_description: InceptionSwitchDescription,
-        data: Output,
+        data: OutputSummaryEntry,
     ) -> None:
         """Initialize the switch class."""
         super().__init__(coordinator, entity_description=entity_description, data=data)

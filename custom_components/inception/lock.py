@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
     from .coordinator import InceptionUpdateCoordinator
     from .data import InceptionConfigEntry
-    from .pyinception.schema import Door
+    from .pyinception.schemas.door import DoorSummaryEntry
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -46,7 +46,7 @@ async def async_setup_entry(
             ),
             data=door,
         )
-        for door in coordinator.data.doors.values()
+        for door in coordinator.data.doors.get_items()
     ]
 
     async_add_entities(entities)
@@ -56,7 +56,7 @@ class InceptionLock(InceptionEntity, LockEntity):
     """inception binary_sensor class."""
 
     entity_description: InceptionDoorEntityDescription
-    data: Door
+    data: DoorSummaryEntry
 
     _attr_has_entity_name = True
 
@@ -64,7 +64,7 @@ class InceptionLock(InceptionEntity, LockEntity):
         self,
         coordinator: InceptionUpdateCoordinator,
         entity_description: InceptionDoorEntityDescription,
-        data: Door,
+        data: DoorSummaryEntry,
     ) -> None:
         """Initialize the binary_sensor class."""
         super().__init__(
@@ -72,12 +72,14 @@ class InceptionLock(InceptionEntity, LockEntity):
         )
         self.data = data
         self.entity_description = entity_description
-        self.unique_id = data.id
-        self.reporting_id = data.reporting_id
-        self._device_id = data.id
+        self.unique_id = data.entity_info.id
+        self.reporting_id = data.entity_info.reporting_id
+        self._device_id = data.entity_info.id
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, self._device_id)},
-            name=re.sub(r"[^a-zA-Z\s]*(Lock|Strike)", "", data.name).strip(),
+            name=re.sub(
+                r"[^a-zA-Z\s]*(Lock|Strike)", "", data.entity_info.name
+            ).strip(),
             manufacturer=MANUFACTURER,
         )
 

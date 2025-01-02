@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 
     from .coordinator import InceptionUpdateCoordinator
     from .data import InceptionConfigEntry
-    from .pyinception.schema import Area
+    from .pyinception.schemas.area import AreaSummaryEntry
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -48,7 +48,7 @@ async def async_setup_entry(
             ),
             data=area,
         )
-        for area in coordinator.data.areas.values()
+        for area in coordinator.data.areas.get_items()
     ]
 
     async_add_entities(entities)
@@ -58,7 +58,7 @@ class InceptionAlarm(InceptionEntity, AlarmControlPanelEntity):
     """inception alarm class."""
 
     entity_description: InceptionAlarmDescription
-    data: Area
+    data: AreaSummaryEntry
 
     _attr_code_arm_required: bool = False
     _attr_supported_features = (
@@ -72,7 +72,7 @@ class InceptionAlarm(InceptionEntity, AlarmControlPanelEntity):
         self,
         coordinator: InceptionUpdateCoordinator,
         entity_description: InceptionAlarmDescription,
-        data: Area,
+        data: AreaSummaryEntry,
     ) -> None:
         """Initialize the alarm class."""
         super().__init__(
@@ -80,8 +80,8 @@ class InceptionAlarm(InceptionEntity, AlarmControlPanelEntity):
         )
         self.data = data
         self.entity_description = entity_description
-        self.unique_id = data.id
-        self.reporting_id = data.reporting_id
+        self.unique_id = data.entity_info.id
+        self.reporting_id = data.entity_info.reporting_id
 
     @property
     def alarm_state(self) -> AlarmControlPanelState | None:
