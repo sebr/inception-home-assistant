@@ -10,25 +10,22 @@ from typing import TYPE_CHECKING, Any, ClassVar, TypeVar
 
 import aiohttp
 
-from custom_components.inception.pyinception.states_schema import (
-    AreaPublicState,
-    DoorPublicState,
-    InputPublicState,
-    OutputPublicState,
-)
-
 from .data import InceptionApiData
 from .schema import (
-    Area,
-    Door,
-    Input,
     LiveReviewEventsResult,
     MonitorStateResponse,
-    Output,
 )
+from .schemas.area import AreaPublicState, AreaSummary
+from .schemas.door import DoorPublicState, DoorSummary
+from .schemas.input import InputPublicState, InputSummary
+from .schemas.output import OutputPublicState, OutputSummary
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
+    from .schemas.entities import (
+        InceptionSummary,
+    )
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -80,15 +77,15 @@ class InceptionApiClient:
         self.rest_task: asyncio.Task | None = None
         self._last_update: str | int = "null"
 
-    T = TypeVar("T", Door, Input, Output, Area)
+    T = TypeVar("T", DoorSummary, InputSummary, OutputSummary, AreaSummary)
 
-    async def get_controls(self, Type: type[T]) -> list[T]:  # noqa: N803
-        """Get entities from the API."""
+    async def get_controls(self, Type: type[T]) -> T:  # noqa: N803
+        """Get control item summaries."""
         path_map = {
-            Door: "door",
-            Input: "input",
-            Output: "output",
-            Area: "area",
+            DoorSummary: "door",
+            InputSummary: "input",
+            OutputSummary: "output",
+            AreaSummary: "area",
         }
         if Type not in path_map:
             msg = f"Unsupported entity type: {Type}"
@@ -96,9 +93,9 @@ class InceptionApiClient:
 
         data = await self.request(
             method="get",
-            path=f"/control/{path_map[Type]}",
+            path=f"/control/{path_map[Type]}/summary",
         )
-        return [Type(**item) for item in data]
+        return Type(**data)
 
     async def authenticate(self) -> bool:
         """Authenticate with the API."""
@@ -116,19 +113,19 @@ class InceptionApiClient:
     async def get_data(self) -> InceptionApiData:
         """Get the status of the API."""
         if self.data is None:
-            i_data = InceptionApiData()
-            inputs, doors, areas, outputs = await asyncio.gather(
-                self.get_controls(Input),
-                self.get_controls(Door),
-                self.get_controls(Area),
-                self.get_controls(Output),
+            doors, outputs, inputs, areas = await asyncio.gather(
+                self.get_controls(DoorSummary),
+                self.get_controls(OutputSummary),
+                self.get_controls(InputSummary),
+                self.get_controls(AreaSummary),
             )
-            i_data.inputs = {i.id: i for i in inputs}
-            i_data.doors = {i.id: i for i in doors}
-            i_data.areas = {i.id: i for i in areas}
-            i_data.outputs = {i.id: i for i in outputs}
 
-            self.data = i_data
+            self.data = InceptionApiData(
+                inputs=inputs,
+                doors=doors,
+                areas=areas,
+                outputs=outputs,
+            )
 
         return self.data
 
@@ -207,18 +204,23 @@ class InceptionApiClient:
                 state_description = request_type["public_state"].get_state_description(
                     event.public_state
                 )
-                entity_data = getattr(self.data, request_type["api_data"])
+                entity_data: InceptionSummary = getattr(
+                    self.data, request_type["api_data"]
+                )
+                if entity_data is None:
+                    _LOGGER.error("No entity data for %s", request_type["api_data"])
+                    continue
+
                 _LOGGER.debug(
                     "Event: %s, %s, %s",
-                    entity_data[event.id].name,
+                    entity_data.items[event.id].entity_info.name,
                     event.public_state,
                     state_description,
                 )
 
-                entity_data[event.id].public_state = event.public_state
-                entity_data[event.id].extra_fields.update(event.extra_fields)
-
-                entity_data[event.id].extra_fields["state_description"] = (
+                entity_data.items[event.id].public_state = event.public_state
+                entity_data.items[event.id].extra_fields.update(event.extra_fields)
+                entity_data.items[event.id].extra_fields["state_description"] = (
                     state_description
                 )
             except Exception:
@@ -275,14 +277,11 @@ class InceptionApiClient:
     async def _rest_task(self) -> None:
         """Poll data periodically via Rest."""
         while True:
-            _LOGGER.debug("_rest_task: init")
             try:
                 await self.monitor_entity_states()
             except Exception:
                 _LOGGER.exception("_rest_task: Error monitoring entity states")
-            _LOGGER.debug("_rest_task: updating")
             self._schedule_data_callbacks()
-            _LOGGER.debug("_rest_task: done")
 
     async def close(self) -> None:
         """Close the session."""

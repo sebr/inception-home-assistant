@@ -12,7 +12,7 @@ from .coordinator import InceptionUpdateCoordinator
 if TYPE_CHECKING:
     from homeassistant.helpers.entity import EntityDescription
 
-    from .pyinception.schema import InceptionObject
+    from .pyinception.schemas.entities import InceptionSummaryEntry
 
 
 class InceptionEntity(CoordinatorEntity[InceptionUpdateCoordinator]):
@@ -25,13 +25,13 @@ class InceptionEntity(CoordinatorEntity[InceptionUpdateCoordinator]):
         coordinator: InceptionUpdateCoordinator,
         entity_description: EntityDescription,
         *,
-        inception_object: InceptionObject,
+        inception_object: InceptionSummaryEntry,
     ) -> None:
         """Initialize the Hydrawise entity."""
         super().__init__(coordinator=coordinator)
         self.entity_description = entity_description
         self._attr_attribution = f"Data provided by {coordinator.api._host}"  # noqa: SLF001
-        self._attr_unique_id = inception_object.id
+        self._attr_unique_id = inception_object.entity_info.id
         self._inception_object = inception_object
         self._attr_extra_state_attributes = inception_object.extra_fields
         self._update_attrs()
@@ -39,7 +39,7 @@ class InceptionEntity(CoordinatorEntity[InceptionUpdateCoordinator]):
     @property
     def name(self) -> str:
         """Return the name of the entity."""
-        return self._inception_object.name
+        return self._inception_object.entity_info.name
 
     def _update_attrs(self) -> None:
         """Update state attributes."""
