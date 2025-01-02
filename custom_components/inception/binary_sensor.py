@@ -127,7 +127,7 @@ async def async_setup_entry(
         InceptionDoorBinarySensor(
             coordinator=coordinator,
             entity_description=InceptionBinarySensorDescription(
-                key=f"{door.id}_{state.value}",
+                key=f"{door.entity_info.id}_{state.value}",
                 device_class=get_device_class_for_state(state),
                 name=f"{state}",
                 has_entity_name=True,
@@ -237,10 +237,8 @@ class InceptionDoorBinarySensor(
         super().__init__(coordinator, entity_description=entity_description, data=data)
 
         self.data = data
-        self.entity_description = entity_description
-        self.reporting_id = data.reporting_id
-        self._device_id = data.id
+        self._device_id = data.entity_info.id
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, self._device_id)},
-            name=data.name,
+            name=data.entity_info.name,
         )

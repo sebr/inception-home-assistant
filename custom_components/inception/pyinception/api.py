@@ -12,12 +12,8 @@ import aiohttp
 
 from .data import InceptionApiData
 from .schema import (
-    Area,
-    Door,
-    Input,
     LiveReviewEventsResult,
     MonitorStateResponse,
-    Output,
 )
 from .schemas.area import AreaSummary
 from .schemas.door import DoorSummary
@@ -32,6 +28,10 @@ from .states_schema import (
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
+    from .schemas.entities import (
+        InceptionSummary,
+    )
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -83,29 +83,9 @@ class InceptionApiClient:
         self.rest_task: asyncio.Task | None = None
         self._last_update: str | int = "null"
 
-    T = TypeVar("T", Door, Input, Output, Area)
+    T = TypeVar("T", DoorSummary, InputSummary, OutputSummary, AreaSummary)
 
-    async def get_controls(self, Type: type[T]) -> list[T]:  # noqa: N803
-        """Get entities from the API."""
-        path_map = {
-            Door: "door",
-            Input: "input",
-            Output: "output",
-            Area: "area",
-        }
-        if Type not in path_map:
-            msg = f"Unsupported entity type: {Type}"
-            raise ValueError(msg)
-
-        data = await self.request(
-            method="get",
-            path=f"/control/{path_map[Type]}",
-        )
-        return [Type(**item) for item in data]
-
-    S = TypeVar("S", DoorSummary, InputSummary, OutputSummary, AreaSummary)
-
-    async def get_control_summaries(self, Type: type[S]) -> S:  # noqa: N803
+    async def get_controls(self, Type: type[T]) -> T:  # noqa: N803
         """Get control item summaries."""
         path_map = {
             DoorSummary: "door",
@@ -140,10 +120,10 @@ class InceptionApiClient:
         """Get the status of the API."""
         if self.data is None:
             doors, outputs, inputs, areas = await asyncio.gather(
-                self.get_control_summaries(DoorSummary),
-                self.get_control_summaries(OutputSummary),
-                self.get_control_summaries(InputSummary),
-                self.get_control_summaries(AreaSummary),
+                self.get_controls(DoorSummary),
+                self.get_controls(OutputSummary),
+                self.get_controls(InputSummary),
+                self.get_controls(AreaSummary),
             )
 
             self.data = InceptionApiData(
@@ -230,18 +210,23 @@ class InceptionApiClient:
                 state_description = request_type["public_state"].get_state_description(
                     event.public_state
                 )
-                entity_data = getattr(self.data, request_type["api_data"])
+                entity_data: InceptionSummary = getattr(
+                    self.data, request_type["api_data"]
+                )
+                if entity_data is None:
+                    _LOGGER.error("No entity data for %s", request_type["api_data"])
+                    continue
+
                 _LOGGER.debug(
                     "Event: %s, %s, %s",
-                    entity_data[event.id].name,
+                    entity_data.items[event.id].entity_info.name,
                     event.public_state,
                     state_description,
                 )
 
-                entity_data[event.id].public_state = event.public_state
-                entity_data[event.id].extra_fields.update(event.extra_fields)
-
-                entity_data[event.id].extra_fields["state_description"] = (
+                entity_data.items[event.id].public_state = event.public_state
+                entity_data.items[event.id].extra_fields.update(event.extra_fields)
+                entity_data.items[event.id].extra_fields["state_description"] = (
                     state_description
                 )
             except Exception:

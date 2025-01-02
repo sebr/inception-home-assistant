@@ -42,7 +42,7 @@ async def async_setup_entry(
         InceptionLock(
             coordinator=coordinator,
             entity_description=InceptionDoorEntityDescription(
-                key=door.id,
+                key=door.entity_info.id,
             ),
             data=door,
         )
@@ -98,7 +98,9 @@ class InceptionLock(InceptionEntity, LockEntity):
     async def _door_control(self, data: Any | None = None) -> None:
         """Control the door."""
         return await self.coordinator.api.request(
-            method="post", path=f"/control/door/{self.data.id}/activity", data=data
+            method="post",
+            path=f"/control/door/{self.data.entity_info.id}/activity",
+            data=data,
         )
 
     async def async_lock(self) -> None:

@@ -80,8 +80,8 @@ class InceptionUpdateCoordinator(DataUpdateCoordinator[InceptionApiData]):
             LOGGER.debug(
                 "Connecting to Inception Monitor",
             )
-            # await self.api.connect()
-            # self.api.register_data_callback(self.callback)
+            await self.api.connect()
+            self.api.register_data_callback(self.callback)
             self.monitor_connected = True
 
         return data

@@ -44,7 +44,7 @@ async def async_setup_entry(
         InceptionAlarm(
             coordinator=coordinator,
             entity_description=InceptionAlarmDescription(
-                key=area.id,
+                key=area.entity_info.id,
             ),
             data=area,
         )
@@ -80,8 +80,6 @@ class InceptionAlarm(InceptionEntity, AlarmControlPanelEntity):
         )
         self.data = data
         self.entity_description = entity_description
-        self.unique_id = data.entity_info.id
-        self.reporting_id = data.entity_info.reporting_id
 
     @property
     def alarm_state(self) -> AlarmControlPanelState | None:
@@ -119,7 +117,7 @@ class InceptionAlarm(InceptionEntity, AlarmControlPanelEntity):
         """Control the switch."""
         return await self.coordinator.api.request(
             method="post",
-            path=f"/control/area/{self.data.id}/activity",
+            path=f"/control/area/{self.data.entity_info.id}/activity",
             data={
                 "Type": "ControlArea",
                 "AreaControlType": control_type,

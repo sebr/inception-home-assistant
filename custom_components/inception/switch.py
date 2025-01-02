@@ -197,7 +197,7 @@ class InceptionOutputSwitch(InceptionSwitch, SwitchEntity):
     async def async_turn_on(self) -> None:
         """Turn on the Output."""
         return await self.coordinator.api.control_output(
-            output_id=self.data.id,
+            output_id=self.data.entity_info.id,
             data={
                 "Type": "ControlOutput",
                 "OutputControlType": "On",
@@ -207,7 +207,7 @@ class InceptionOutputSwitch(InceptionSwitch, SwitchEntity):
     async def async_turn_off(self) -> None:
         """Turn off the Output."""
         return await self.coordinator.api.control_output(
-            output_id=self.data.id,
+            output_id=self.data.entity_info.id,
             data={
                 "Type": "ControlOutput",
                 "OutputControlType": "Off",
