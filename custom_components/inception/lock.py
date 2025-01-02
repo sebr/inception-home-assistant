@@ -11,8 +11,7 @@ from homeassistant.components.lock import (
     LockEntity,
     LockEntityDescription,
 )
-from homeassistant.helpers import config_validation as cv
-from homeassistant.helpers import entity_platform, service
+from homeassistant.helpers import entity_platform
 from homeassistant.helpers.device_registry import DeviceInfo
 
 from .const import DOMAIN, MANUFACTURER
