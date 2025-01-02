@@ -14,7 +14,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 
 from .const import DOMAIN, LOGGER
 from .entity import InceptionEntity
-from .pyinception.states_schema import InputPublicState, OutputPublicState
+from .pyinception.states_schema import InputPublicState, InputType, OutputPublicState
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -71,6 +71,7 @@ async def async_setup_entry(
             data=i_input,
         )
         for i_input in coordinator.data.inputs.values()
+        if i_input.input_type != InputType.LOGICAL
     ]
 
     async_add_entities(entities)

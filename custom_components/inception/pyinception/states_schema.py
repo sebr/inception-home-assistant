@@ -1,12 +1,12 @@
 # ruff: noqa: E501  # noqa: D100
 
 from abc import abstractmethod
-from enum import Enum, IntFlag
+from enum import IntEnum, IntFlag
 
 """https://skytunnel.com.au/Inception/API_SAMPLE/ApiModelDoc"""
 
 
-class InputType(Enum):
+class InputType(IntEnum):
     """Inception input types."""
 
     UNKNOWN = 0
@@ -18,7 +18,7 @@ class InputType(Enum):
     WIRELESS_DOOR_HEALTH = 6
 
 
-class DoorControlType(Enum):
+class DoorControlType(IntEnum):
     """Inception door control types."""
 
     LOCK = 0

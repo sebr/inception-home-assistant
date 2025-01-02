@@ -45,8 +45,8 @@ class Input(InceptionObject):
 
     def __init__(self, **kwargs) -> None:  # noqa: ANN003
         """Initialize the object."""
-        self.input_type = kwargs.pop("InputType", InputType.UNKNOWN)
         super().__init__(**kwargs)
+        self.input_type = kwargs.pop("InputType", InputType.UNKNOWN)
 
 
 class Output(InceptionObject):
