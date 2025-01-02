@@ -81,6 +81,16 @@ class InceptionAlarm(InceptionEntity, AlarmControlPanelEntity):
         self.data = data
         self.entity_description = entity_description
 
+        self._attr_supported_features = (
+            AlarmControlPanelEntityFeature.ARM_AWAY
+            | AlarmControlPanelEntityFeature.TRIGGER
+        )
+        if data.arm_info.multi_mode_arm_enabled:
+            self._attr_supported_features |= (
+                AlarmControlPanelEntityFeature.ARM_HOME
+                | AlarmControlPanelEntityFeature.ARM_NIGHT
+            )
+
     @property
     def alarm_state(self) -> AlarmControlPanelState | None:
         """Return the state of the alarm."""
