@@ -11,14 +11,14 @@ from typing import TYPE_CHECKING, Any, ClassVar, TypeVar
 import aiohttp
 
 from .data import InceptionApiData
-from .schema import (
-    LiveReviewEventsResult,
-    MonitorStateResponse,
-)
 from .schemas.area import AreaPublicState, AreaSummary
 from .schemas.door import DoorPublicState, DoorSummary
 from .schemas.input import InputPublicState, InputSummary
 from .schemas.output import OutputPublicState, OutputSummary
+from .schemas.update_monitor import (
+    MonitorEntityStatesRequest,
+    UpdateMonitorResponse,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -75,7 +75,7 @@ class InceptionApiClient:
         self.data_update_cbs: list = []
         self.loop: asyncio.AbstractEventLoop = asyncio.get_running_loop()
         self.rest_task: asyncio.Task | None = None
-        self._last_update: str | int = "null"
+        self._last_update: int | None = None
 
     T = TypeVar("T", DoorSummary, InputSummary, OutputSummary, AreaSummary)
 
@@ -136,45 +136,25 @@ class InceptionApiClient:
             _LOGGER.warning("state monitor: no data to update")
             return
 
-        request_types = [
-            {
-                "entity_request_type": "InputStateRequest",
-                "state_type": "InputState",
-                "public_state": InputPublicState,
-                "api_data": "inputs",
-            },
-            {
-                "entity_request_type": "DoorStateRequest",
-                "state_type": "DoorState",
-                "public_state": DoorPublicState,
-                "api_data": "doors",
-            },
-            {
-                "entity_request_type": "OutputStateRequest",
-                "state_type": "OutputState",
-                "public_state": OutputPublicState,
-                "api_data": "outputs",
-            },
-            {
-                "entity_request_type": "AreaStateRequest",
-                "state_type": "AreaState",
-                "public_state": AreaPublicState,
-                "api_data": "areas",
-            },
-        ]
+        request_types = {
+            request_id: MonitorEntityStatesRequest(
+                request_id=request_id,
+                state_type=state_type,
+                public_state_type=public_state_type,
+                time_since_last_update=self._monitor_update_times.get(request_id, 0),
+                api_data=api_data,
+            )
+            for request_id, state_type, public_state_type, api_data in [
+                ("InputStateRequest", "InputState", InputPublicState, "inputs"),
+                ("DoorStateRequest", "DoorState", DoorPublicState, "doors"),
+                ("OutputStateRequest", "OutputState", OutputPublicState, "outputs"),
+                ("AreaStateRequest", "AreaState", AreaPublicState, "areas"),
+            ]
+        }
 
         payload = [
-            {
-                "ID": request_type["entity_request_type"],
-                "RequestType": "MonitorEntityStates",
-                "InputData": {
-                    "stateType": request_type["state_type"],
-                    "timeSinceUpdate": self._monitor_update_times.get(
-                        request_type["entity_request_type"], "0"
-                    ),
-                },
-            }
-            for request_type in request_types
+            request_type.get_request_payload()
+            for request_id, request_type in request_types.items()
         ]
 
         response = await self._monitor_events_request(payload)
@@ -184,81 +164,38 @@ class InceptionApiClient:
             return
 
         response_id = response["ID"]
-        update_time = response["Result"]["updateTime"]
-        state_data = response["Result"]["stateData"]
 
-        self._monitor_update_times[response_id] = update_time
-
-        events = [MonitorStateResponse(**item) for item in state_data]
-
-        request_type = next(
-            (req for req in request_types if req["entity_request_type"] == response_id),
-            None,
-        )
-        if request_type is None:
+        update_request = request_types.get(response_id)
+        if update_request is None:
             _LOGGER.error("Unknown response ID: %s", response_id)
             return
 
-        for event in events:
-            try:
-                state_description = request_type["public_state"].get_state_description(
-                    event.public_state
-                )
-                entity_data: InceptionSummary = getattr(
-                    self.data, request_type["api_data"]
-                )
-                if entity_data is None:
-                    _LOGGER.error("No entity data for %s", request_type["api_data"])
-                    continue
+        result_response = UpdateMonitorResponse[update_request.public_state_type](
+            **response["Result"]
+        )
 
+        self._monitor_update_times[response_id] = result_response.update_time
+
+        entity_data: InceptionSummary = getattr(self.data, update_request.api_data)
+        if entity_data is None:
+            _LOGGER.error("No entity data for %s", update_request.api_data)
+            return
+
+        for event in result_response.state_data:
+            try:
                 _LOGGER.debug(
                     "Event: %s, %s, %s",
                     entity_data.items[event.id].entity_info.name,
                     event.public_state,
-                    state_description,
+                    event.extra_fields,
                 )
 
                 entity_data.items[event.id].public_state = event.public_state
                 entity_data.items[event.id].extra_fields.update(event.extra_fields)
-                entity_data.items[event.id].extra_fields["state_description"] = (
-                    state_description
-                )
             except Exception:
                 _LOGGER.exception("Error processing event")
 
         self._schedule_data_callbacks()
-
-    async def _monitor_live_review_events(
-        self,
-    ) -> None:
-        """Monitor updates from the API."""
-        payload = [
-            {
-                "ID": "LiveReviewEvents",
-                "RequestType": "LiveReviewEvents",
-                "InputData": {
-                    "referenceId": "null",
-                    "referenceTime": self._last_update,
-                },
-            }
-        ]
-
-        response = await self._monitor_events_request(payload)
-
-        if not response:
-            # No response from the API, try again later
-            return
-
-        events = [LiveReviewEventsResult(**item) for item in response["Result"]]
-
-        if events:
-            for event in events:
-                _LOGGER.debug(
-                    "Event: %s, %s, %s", event.id, event.what, event.description
-                )
-            self._last_update = events[-1].when_ticks
-        else:
-            _LOGGER.debug("No events from state monitor")
 
     def _schedule_data_callback(self, cb: Callable) -> None:
         """Schedule a data callback."""
