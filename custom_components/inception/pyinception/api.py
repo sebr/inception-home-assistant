@@ -16,7 +16,6 @@ from .schemas.door import DoorPublicState, DoorSummary
 from .schemas.input import InputPublicState, InputSummary
 from .schemas.output import OutputPublicState, OutputSummary
 from .schemas.update_monitor import (
-    LiveReviewEventsResult,
     MonitorEntityStatesRequest,
     UpdateMonitorResponse,
 )
@@ -76,7 +75,7 @@ class InceptionApiClient:
         self.data_update_cbs: list = []
         self.loop: asyncio.AbstractEventLoop = asyncio.get_running_loop()
         self.rest_task: asyncio.Task | None = None
-        self._last_update: str | int = "null"
+        self._last_update: int | None = None
 
     T = TypeVar("T", DoorSummary, InputSummary, OutputSummary, AreaSummary)
 
@@ -197,38 +196,6 @@ class InceptionApiClient:
                 _LOGGER.exception("Error processing event")
 
         self._schedule_data_callbacks()
-
-    async def _monitor_live_review_events(
-        self,
-    ) -> None:
-        """Monitor updates from the API."""
-        payload = [
-            {
-                "ID": "LiveReviewEvents",
-                "RequestType": "LiveReviewEvents",
-                "InputData": {
-                    "referenceId": "null",
-                    "referenceTime": self._last_update,
-                },
-            }
-        ]
-
-        response = await self._monitor_events_request(payload)
-
-        if not response:
-            # No response from the API, try again later
-            return
-
-        events = [LiveReviewEventsResult(**item) for item in response["Result"]]
-
-        if events:
-            for event in events:
-                _LOGGER.debug(
-                    "Event: %s, %s, %s", event.id, event.what, event.description
-                )
-            self._last_update = events[-1].when_ticks
-        else:
-            _LOGGER.debug("No events from state monitor")
 
     def _schedule_data_callback(self, cb: Callable) -> None:
         """Schedule a data callback."""

@@ -7,31 +7,6 @@ from typing import TypeVar
 
 from .entities import InceptionPublicState
 
-
-@dataclass
-class LiveReviewEventsResult:
-    """Live Review Events Result from update monitor."""
-
-    def __init__(self, **kwargs) -> None:
-        """Initialize the object."""
-        self.id = kwargs.pop("ID", "")
-        self.description = kwargs.pop("Description", "")
-        self.message_category = kwargs.pop("MessageCategory", "")
-        self.what = kwargs.pop("What", "")
-        self.who = kwargs.pop("Who", "")
-        self.where = kwargs.pop("Where", "")
-        self.when_ticks = kwargs.pop("WhenTicks", "")
-        # Collect any extra fields
-        self.extra_fields = kwargs
-
-    def __repr__(self) -> str:
-        """Return string representation."""
-        return (
-            f"Input(ID={self.id!r}, Name={self.description!r}, "
-            f"What={self.what!r}, Who={self.who!r}, extra_fields={self.extra_fields!r})"
-        )
-
-
 StateType = TypeVar("StateType", bound=InceptionPublicState)
 
 
