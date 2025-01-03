@@ -18,6 +18,10 @@ class InceptionPublicState(IntFlag):
         """Get the list of state descriptions for the given state value."""
         return []
 
+    def state_description(self) -> list[str]:
+        """Get the list of state descriptions for the given state value."""
+        return self.get_state_description(self.value)
+
     def __str__(self) -> str:
         """Return the name or value of the state."""
         if self.name is None:
@@ -62,12 +66,15 @@ class InceptionSummaryEntry[StateType]:
         self.public_state = state
 
 
-class InceptionSummary[T]:
+SummaryType = TypeVar("SummaryType", bound=InceptionSummaryEntry)
+
+
+class InceptionSummary[SummaryType]:
     """Inception Entity Summary schema."""
 
-    items: dict[str, T]
+    items: dict[str, SummaryType]
 
-    def get_items(self) -> list[T]:
+    def get_items(self) -> list[SummaryType]:
         """Return the items."""
         return [] if self.items is None else list(self.items.values())
 
