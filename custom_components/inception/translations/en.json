@@ -17,13 +17,13 @@
         }
     },
     "services": {
-        "timed_unlock": {
-            "name": "Timed unlock",
-            "description": "Unlocks a door for a specified number of seconds.",
+        "unlock": {
+            "name": "Unlock",
+            "description": "Unlocks a door. If a time is provided, a timed unlock is used.",
             "fields": {
                 "time_secs": {
                     "name": "Seconds",
-                    "description": "Number of seconds to unlock the door."
+                    "description": "Number of seconds to grant access."
                 }
             }
         }

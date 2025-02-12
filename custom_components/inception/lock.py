@@ -29,7 +29,7 @@ if TYPE_CHECKING:
     from .data import InceptionConfigEntry
     from .pyinception.schemas.door import DoorSummaryEntry
 
-SERVICE_TIMED_UNLOCK = "timed_unlock"
+SERVICE_UNLOCK = "unlock"
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -49,7 +49,7 @@ async def async_setup_entry(
         InceptionLock(
             coordinator=coordinator,
             entity_description=InceptionDoorEntityDescription(
-                key=door.entity_info.id,
+                key=door.entity_info.id, name="Lock"
             ),
             data=door,
         )
@@ -61,13 +61,13 @@ async def async_setup_entry(
     platform = entity_platform.async_get_current_platform()
 
     platform.async_register_entity_service(
-        SERVICE_TIMED_UNLOCK,
+        SERVICE_UNLOCK,
         {
-            vol.Required("time_secs"): vol.All(
+            vol.Optional("time_secs"): vol.All(
                 vol.Coerce(int), vol.Range(min=0, max=86399)
             ),
         },
-        "timed_unlock",
+        "unlock_service",
     )
 
 
@@ -140,8 +140,16 @@ class InceptionLock(InceptionEntity, LockEntity):
             },
         )
 
-    async def timed_unlock(self, time_secs: int) -> None:
-        """Unlock the device."""
+    async def unlock_service(self, time_secs: int | None) -> None:
+        """Unlock the device. If a time is provided, the device will issue a timed unlock."""  # noqa: E501
+        if time_secs is None:
+            return await self._door_control(
+                data={
+                    "Type": "ControlDoor",
+                    "DoorControlType": DoorControlType.UNLOCK,
+                },
+            )
+
         return await self._door_control(
             data={
                 "Type": "ControlDoor",

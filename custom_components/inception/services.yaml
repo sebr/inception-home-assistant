@@ -1,13 +1,12 @@
-timed_unlock:
+unlock:
   target:
       entity:
         domain: lock
   fields:
     time_secs:
-      required: true
+      required: false
       selector:
         number:
           min: 0
           max: 7200
           unit_of_measurement: seconds
-
