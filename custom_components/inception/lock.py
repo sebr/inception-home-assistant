@@ -86,6 +86,8 @@ class InceptionLock(InceptionEntity, LockEntity):
 
     _attr_has_entity_name = True
     _device_id: str
+
+    _has_loaded_unlock_strategy_entity_id: bool = False
     _unlock_strategy_entity_id: str | None = None
 
     def __init__(
@@ -111,8 +113,9 @@ class InceptionLock(InceptionEntity, LockEntity):
             manufacturer=MANUFACTURER,
         )
 
-    async def _get_unlock_entity(self) -> str | None:
-        if self._unlock_strategy_entity_id is None:
+    async def _get_unlock_select_entity(self) -> str | None:
+        if self._has_loaded_unlock_strategy_entity_id is False:
+            self._has_loaded_unlock_strategy_entity_id = True
             device_registry = dr.async_get(self.hass)
             device = device_registry.async_get_device(
                 {(DOMAIN, self._device_id)}
@@ -174,7 +177,7 @@ class InceptionLock(InceptionEntity, LockEntity):
 
     async def async_unlock(self) -> None:
         """Unlock the device."""
-        unlock_strategy_entity_id = await self._get_unlock_entity()
+        unlock_strategy_entity_id = await self._get_unlock_select_entity()
         if unlock_strategy_entity_id is not None:
             unlock_strategy = self.hass.states.get(unlock_strategy_entity_id)
             if unlock_strategy is not None and unlock_strategy.state == GRANT_ACCESS:
