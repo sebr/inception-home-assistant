@@ -28,10 +28,11 @@ if TYPE_CHECKING:
     )
 
 # Define possible unlock strategies and their descriptions
-UNLOCK_STRATEGIES = {
-    "permanent": "Unlock permanently",
-    "timed": "Unlock for a fixed duration",
-}
+GRANT_ACCESS = "grant_access"
+UNLOCK = "unlock"
+
+
+_DEFAULT_UNLOCK_STRATEGY = UNLOCK
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -47,11 +48,12 @@ async def async_setup_entry(
     entities = [
         InceptionUnlockStrategySelect(
             coordinator=coordinator,
-            entity_description=InceptionBinarySensorDescription(
+            entity_description=InceptionSelectDescription(
                 key=f"{door.entity_info.id}_unlock_mechanism",
-                name="Unlock Mechanism",
-                options=list(UNLOCK_STRATEGIES.values()),
+                name="Unlock Strategy",
+                options=[UNLOCK, GRANT_ACCESS],
                 entity_category=EntityCategory.CONFIG,
+                translation_key="unlock_strategy",
             ),
             data=door,
         )
@@ -62,7 +64,7 @@ async def async_setup_entry(
 
 
 @dataclass(frozen=True, kw_only=True)
-class InceptionBinarySensorDescription(SelectEntityDescription):
+class InceptionSelectDescription(SelectEntityDescription):
     """Describes Inception select entity."""
 
     options: list[str] = field(default_factory=list)
@@ -85,6 +87,7 @@ class InceptionSelect(InceptionEntity, SelectEntity):
         )
         self.data = data
         self.unique_id = entity_description.key
+        self._device_id = data.entity_info.id
 
 
 class InceptionUnlockStrategySelect(
@@ -94,12 +97,12 @@ class InceptionUnlockStrategySelect(
     """inception select for Doors."""
 
     _attr_has_entity_name = True
-    entity_description: InceptionBinarySensorDescription
+    entity_description: InceptionSelectDescription
 
     def __init__(
         self,
         coordinator: InceptionUpdateCoordinator,
-        entity_description: InceptionBinarySensorDescription,
+        entity_description: InceptionSelectDescription,
         data: DoorSummaryEntry,
     ) -> None:
         """Initialize the binary_sensor class."""
@@ -124,21 +127,21 @@ class InceptionUnlockStrategySelect(
         if last_state:
             try:
                 self._attr_current_option = last_state.state
-                if self._attr_current_option not in self._attr_options:
+                if self._attr_current_option not in self.entity_description.options:
                     _LOGGER.warning(
                         "Restored unlock strategy '%s' is invalid. Using default.",
                         self._attr_current_option,
                     )
-                    self._attr_current_option = self.entity_description.options[0]
+                    self._attr_current_option = _DEFAULT_UNLOCK_STRATEGY
             except ValueError:
                 _LOGGER.warning(
                     "Could not restore unlock strategy. Falling back to default."
                 )
-                self._attr_current_option = self.entity_description.options[0]
+                self._attr_current_option = _DEFAULT_UNLOCK_STRATEGY
         else:
-            self._attr_current_option = self.entity_description.options[
-                0
-            ]  # Set initial value if no history
+            self._attr_current_option = (
+                _DEFAULT_UNLOCK_STRATEGY  # Set initial value if no history
+            )
 
     async def async_select_option(self, option: str) -> None:
         """Handle selection of an unlock strategy."""
@@ -146,20 +149,10 @@ class InceptionUnlockStrategySelect(
             msg = f"Invalid unlock strategy: {option}"
             raise ValueError(msg)
 
+        _LOGGER.debug("Setting unlock strategy to: %s", option)
+
         self._attr_current_option = option
         self.async_write_ha_state()
 
         # Now you can use the selected strategy in your lock platform:
         _LOGGER.info("Unlock strategy set to: %s", self._attr_current_option)
-
-        # To get the KEY, which is important for your logic:
-        selected_key = list(UNLOCK_STRATEGIES.keys())[
-            list(UNLOCK_STRATEGIES.values()).index(option)
-        ]
-        _LOGGER.info("Unlock strategy key: %s", selected_key)
-
-        # Example usage:
-        # if selected_key == "permanent":
-        #     self.lock.unlock_permanently()
-        # elif selected_key == "timed":
-        #     self.lock.unlock_for_seconds(30)
