@@ -34,7 +34,7 @@
                 "name": "Unlock Strategy",
                 "state": {
                     "unlock": "Unlock",
-                    "grant_access": "Grant Access"
+                    "timed_unlock": "Timed Unlock"
                 }
             }
         }

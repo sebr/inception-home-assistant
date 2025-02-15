@@ -18,13 +18,15 @@ from homeassistant.helpers import entity_platform
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceInfo
 
+from custom_components.inception.number import DEFAULT_TIMED_UNLOCK_DURATION
+
 from .const import DOMAIN, MANUFACTURER
 from .entity import InceptionEntity
 from .pyinception.schemas.door import (
     DoorControlType,
     DoorPublicState,
 )
-from .select import DEFAULT_UNLOCK_STRATEGY, GRANT_ACCESS
+from .select import DEFAULT_UNLOCK_STRATEGY, TIMED_UNLOCK
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -90,7 +92,7 @@ class InceptionLock(InceptionEntity, LockEntity):
 
     _unlock_strategy_initialized: bool = False
     _unlock_strategy_select_entity_id: str | None = None
-    _unlock_strategy_number_entity_id: str | None = None
+    _timed_unlock_duration_entity_id: str | None = None
 
     def __init__(
         self,
@@ -115,7 +117,7 @@ class InceptionLock(InceptionEntity, LockEntity):
             manufacturer=MANUFACTURER,
         )
 
-    async def _get_unlock_select_entity(self) -> str | None:
+    async def _fetch_config_entities(self) -> None:
         if self._unlock_strategy_initialized is False:
             self._unlock_strategy_initialized = True
             device_registry = dr.async_get(self.hass)
@@ -125,12 +127,22 @@ class InceptionLock(InceptionEntity, LockEntity):
 
             if device:
                 entity_registry = er.async_get(self.hass)
+                device_entities = er.async_entries_for_device(
+                    entity_registry, device.id
+                )
 
                 select_entity_ids = [
                     entry
-                    for entry in er.async_entries_for_device(entity_registry, device.id)
+                    for entry in device_entities
                     if entry.domain == "select"
-                    and entry.translation_key == "input_type"
+                    and entry.translation_key == "unlock_strategy"
+                ]
+
+                number_entity_ids = [
+                    entry
+                    for entry in device_entities
+                    if entry.domain == "number"
+                    and entry.translation_key == "timed_unlock_duration"
                 ]
 
                 if len(select_entity_ids) == 1:
@@ -143,17 +155,30 @@ class InceptionLock(InceptionEntity, LockEntity):
                         entry.entity_id,
                         entry.translation_key,
                     )
-                elif len(select_entity_ids) > 1:
+                else:
                     _LOGGER.warning(
-                        "More than one select entity found for device %s. Will use '%s' to unlock door.",
+                        "Unlock: found %i selects for device %s. Will use '%s' to unlock door.",
+                        len(select_entity_ids),
                         device.id,
                         DEFAULT_UNLOCK_STRATEGY,
                     )
+
+                if len(number_entity_ids) == 1:
+                    entry = number_entity_ids[0]
+                    self._timed_unlock_duration_entity_id = entry.entity_id
+
+                    _LOGGER.debug(
+                        "Number entity found: %s %s %s",
+                        entry.domain,
+                        entry.entity_id,
+                        entry.translation_key,
+                    )
                 else:
                     _LOGGER.warning(
-                        "Select entity not found for device %s. Will use '%s' to unlock door.",
+                        "Unlock: found %i numbers for device %s. Will use '%i' for timed unlock.",
+                        len(number_entity_ids),
                         device.id,
-                        DEFAULT_UNLOCK_STRATEGY,
+                        DEFAULT_TIMED_UNLOCK_DURATION,
                     )
             else:
                 _LOGGER.error(
@@ -161,8 +186,6 @@ class InceptionLock(InceptionEntity, LockEntity):
                     self.name,
                     DEFAULT_UNLOCK_STRATEGY,
                 )
-
-        return self._unlock_strategy_select_entity_id
 
     @property
     def name(self) -> str:
@@ -195,11 +218,28 @@ class InceptionLock(InceptionEntity, LockEntity):
 
     async def async_unlock(self) -> None:
         """Unlock the device."""
-        unlock_strategy_entity_id = await self._get_unlock_select_entity()
-        if unlock_strategy_entity_id is not None:
-            unlock_strategy = self.hass.states.get(unlock_strategy_entity_id)
-            if unlock_strategy is not None and unlock_strategy.state == GRANT_ACCESS:
-                return await self.unlock_service(time_secs=5)
+        await self._fetch_config_entities()
+        if (
+            self._unlock_strategy_select_entity_id
+            and (
+                unlock_strategy := self.hass.states.get(
+                    self._unlock_strategy_select_entity_id
+                )
+            )
+            and unlock_strategy.state == TIMED_UNLOCK
+        ):
+            timed_unlock_duration_entity = (
+                self.hass.states.get(self._timed_unlock_duration_entity_id)
+                if self._timed_unlock_duration_entity_id
+                else None
+            )
+            duration = (
+                int(float(timed_unlock_duration_entity.state))
+                if timed_unlock_duration_entity
+                else DEFAULT_TIMED_UNLOCK_DURATION
+            )
+            _LOGGER.debug("Unlocking door for %s seconds", duration)
+            return await self.unlock_service(time_secs=duration)
 
         return await self.unlock_service()
 

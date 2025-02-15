@@ -27,11 +27,8 @@ if TYPE_CHECKING:
         InceptionSummaryEntry,
     )
 
-# Define possible unlock strategies and their descriptions
-GRANT_ACCESS = "grant_access"
+TIMED_UNLOCK = "timed_unlock"
 UNLOCK = "unlock"
-
-
 DEFAULT_UNLOCK_STRATEGY = UNLOCK
 
 _LOGGER = logging.getLogger(__name__)
@@ -51,7 +48,7 @@ async def async_setup_entry(
             entity_description=InceptionSelectDescription(
                 key=f"{door.entity_info.id}_unlock_mechanism",
                 name="Unlock Strategy",
-                options=[UNLOCK, GRANT_ACCESS],
+                options=[UNLOCK, TIMED_UNLOCK],
                 entity_category=EntityCategory.CONFIG,
                 translation_key="unlock_strategy",
             ),
@@ -94,9 +91,10 @@ class InceptionUnlockStrategySelect(
     InceptionSelect,
     RestoreEntity,
 ):
-    """inception select for Doors."""
+    """inception unlock strategy select for Doors."""
 
     _attr_has_entity_name = True
+    _attr_should_poll = False
     entity_description: InceptionSelectDescription
 
     def __init__(
