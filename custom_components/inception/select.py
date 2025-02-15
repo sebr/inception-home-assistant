@@ -32,7 +32,7 @@ GRANT_ACCESS = "grant_access"
 UNLOCK = "unlock"
 
 
-_DEFAULT_UNLOCK_STRATEGY = UNLOCK
+DEFAULT_UNLOCK_STRATEGY = UNLOCK
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -114,6 +114,9 @@ class InceptionUnlockStrategySelect(
         )
         self._attr_current_option = None
         self.entity_description = entity_description
+        self._attr_extra_state_attributes = {
+            "type": "unlock_strategy",
+        }
 
     @property
     def name(self) -> str:
@@ -132,15 +135,15 @@ class InceptionUnlockStrategySelect(
                         "Restored unlock strategy '%s' is invalid. Using default.",
                         self._attr_current_option,
                     )
-                    self._attr_current_option = _DEFAULT_UNLOCK_STRATEGY
+                    self._attr_current_option = DEFAULT_UNLOCK_STRATEGY
             except ValueError:
                 _LOGGER.warning(
                     "Could not restore unlock strategy. Falling back to default."
                 )
-                self._attr_current_option = _DEFAULT_UNLOCK_STRATEGY
+                self._attr_current_option = DEFAULT_UNLOCK_STRATEGY
         else:
             self._attr_current_option = (
-                _DEFAULT_UNLOCK_STRATEGY  # Set initial value if no history
+                DEFAULT_UNLOCK_STRATEGY  # Set initial value if no history
             )
 
     async def async_select_option(self, option: str) -> None:
@@ -155,4 +158,4 @@ class InceptionUnlockStrategySelect(
         self.async_write_ha_state()
 
         # Now you can use the selected strategy in your lock platform:
-        _LOGGER.info("Unlock strategy set to: %s", self._attr_current_option)
+        _LOGGER.debug("Unlock strategy set to: %s", self._attr_current_option)

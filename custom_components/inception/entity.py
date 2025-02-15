@@ -37,7 +37,7 @@ class InceptionEntity(CoordinatorEntity[InceptionUpdateCoordinator]):
         self._attr_extra_state_attributes = inception_object.extra_fields
         self._update_attrs()
 
-        LOGGER.info(
+        LOGGER.debug(
             "Creating %s: %s - %s",
             self.__class__.__name__,
             inception_object.entity_info.name,
