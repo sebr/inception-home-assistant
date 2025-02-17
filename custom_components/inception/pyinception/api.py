@@ -268,8 +268,7 @@ class InceptionApiClient:
             }
 
             # If path begins with a slash, remove it
-            if path.startswith("/"):
-                path = path[1:]
+            path = path.removeprefix("/")
 
             response = await self._session.request(
                 method=method,
