@@ -1,4 +1,4 @@
-"""Binary sensor platform for inception."""
+"""Select platform for inception."""  # noqa: A005
 
 from __future__ import annotations
 
