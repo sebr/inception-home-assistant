@@ -6,14 +6,44 @@ If this integration has been useful to you, please consider chipping in and buyi
 
 [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/sebr)
 
-**This integration will set up the following platforms.**
+**This integration will set up the following platforms:**
 
 Platform | Description
 -- | --
 `lock` | A lock for each configured Door.
+`number` | A number input which is used to define the duration of a timed unlock operation for each Door.
+`select` | A select which is used to choose the unlock operation of each door (i.e. Unlock or Timed Unlock).
 `alarm_control_panel` | For each Area that can be armed or disarmed.
-`binary_sensor` | For each Input and for metadata of each Door.
+`binary_sensor` | For each Input and for Door attributes such as Open or Isolated states.
 `switch` | A switch for each Siren or Strobe.
+
+## Supported Inception Entities
+
+### Doors
+
+For each door that the authenticated user has permission to access, the following entities are created:
+* A `lock` entity to lock and unlock the door. By default, the `lock.unlock` action will permanently unlock the door.
+* A `select` entity to choose the unlock operation of the door. The options are `Unlock` or `Timed Unlock`.
+* A `number` entity to set the duration of a timed unlock operation. The duration is in seconds and the default value is **5 seconds**.
+* `binary_sensor` entities which indicate: Open, Forced, Held Open to Long, Reader Tamper
+
+### Areas
+
+For each area that the authenticated user has permission to access, the following entities are created:
+* An `alarm_control_panel` entity to arm and disarm the area. If multi-mode area arming is enabled, Night and Perimiter modes are also available.
+
+### Inputs
+
+For each input that the authenticated user has permission to access, the following entities are created:
+* A `binary_sensor` entity to indicate the state of the input. Calculated inputs such as forced and held open are disabled by default. The device class is inferred from the input's name.
+* A `switch` entity to control if the input has been Isolated
+
+NB: only inputs which are non-logical are exposed.
+
+### Outputs
+
+For each output that the authenticated user has permission to access, the following entities are created:
+* A `switch` entity to control the output. Typically a siren or strobe.
 
 ## Installation
 
