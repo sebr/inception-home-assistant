@@ -12,7 +12,7 @@ from homeassistant.components.switch import (
 )
 from homeassistant.helpers.device_registry import DeviceInfo
 
-from .const import DOMAIN, LOGGER
+from .const import DOMAIN
 from .entity import InceptionEntity
 from .pyinception.schemas.input import (
     InputPublicState,
@@ -131,7 +131,6 @@ class InceptionInputSwitch(InceptionSwitch, SwitchEntity):
     ) -> None:
         """Initialize the switch class."""
         super().__init__(coordinator, entity_description=entity_description, data=data)
-        LOGGER.debug("Creating input switch %s", data.entity_info.name)
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, data.entity_info.id)},
             name=data.entity_info.name,

@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from homeassistant.core import callback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from .const import LOGGER
 from .coordinator import InceptionUpdateCoordinator
 
 if TYPE_CHECKING:
@@ -35,6 +36,13 @@ class InceptionEntity(CoordinatorEntity[InceptionUpdateCoordinator]):
         self._inception_object = inception_object
         self._attr_extra_state_attributes = inception_object.extra_fields
         self._update_attrs()
+
+        LOGGER.debug(
+            "Creating %s: %s - %s",
+            self.__class__.__name__,
+            inception_object.entity_info.name,
+            entity_description.name,
+        )
 
     @property
     def name(self) -> str:
