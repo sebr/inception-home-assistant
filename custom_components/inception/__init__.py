@@ -11,8 +11,7 @@ from typing import TYPE_CHECKING
 
 from homeassistant.const import Platform
 
-from custom_components.inception.const import DOMAIN
-
+from .const import DOMAIN
 from .coordinator import InceptionUpdateCoordinator
 
 if TYPE_CHECKING:
@@ -24,6 +23,8 @@ PLATFORMS: list[Platform] = [
     Platform.ALARM_CONTROL_PANEL,
     Platform.BINARY_SENSOR,
     Platform.LOCK,
+    Platform.NUMBER,
+    Platform.SELECT,
     Platform.SWITCH,
 ]
 

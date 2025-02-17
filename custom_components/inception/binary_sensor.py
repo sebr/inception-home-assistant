@@ -12,7 +12,7 @@ from homeassistant.components.binary_sensor import (
 )
 from homeassistant.helpers.device_registry import DeviceInfo
 
-from .const import DOMAIN, LOGGER, MANUFACTURER
+from .const import DOMAIN, MANUFACTURER
 from .entity import InceptionEntity
 from .pyinception.schemas.door import DoorPublicState
 from .pyinception.schemas.input import (
@@ -189,10 +189,7 @@ class InceptionInputBinarySensor(
 ):
     """inception binary_sensor for Inputs."""
 
-    entity_description: InceptionBinarySensorDescription
     data: InputSummaryEntry
-
-    _attr_has_entity_name = True
 
     def __init__(
         self,
@@ -213,23 +210,13 @@ class InceptionInputBinarySensor(
             manufacturer=MANUFACTURER,
         )
 
-        LOGGER.debug(
-            "Input Binary Sensor: %s %s %s",
-            data.entity_info.name,
-            data.entity_info.input_type,
-            data.public_state,
-        )
-
 
 class InceptionDoorBinarySensor(
     InceptionBinarySensor,
 ):
     """inception binary_sensor for Doors."""
 
-    entity_description: InceptionBinarySensorDescription
     data: DoorSummaryEntry
-
-    _attr_has_entity_name = True
 
     def __init__(
         self,
@@ -245,4 +232,5 @@ class InceptionDoorBinarySensor(
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, self._device_id)},
             name=data.entity_info.name,
+            manufacturer=MANUFACTURER,
         )

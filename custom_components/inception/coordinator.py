@@ -9,9 +9,8 @@ from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from custom_components.inception.pyinception.api import InceptionApiClient
-
 from .const import DOMAIN, LOGGER
+from .pyinception.api import InceptionApiClient
 from .pyinception.data import InceptionApiData
 
 if TYPE_CHECKING:

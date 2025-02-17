@@ -45,6 +45,7 @@ async def async_setup_entry(
             coordinator=coordinator,
             entity_description=InceptionAlarmDescription(
                 key=area.entity_info.id,
+                name=area.entity_info.name,
             ),
             data=area,
         )
