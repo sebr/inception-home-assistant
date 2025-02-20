@@ -22,6 +22,7 @@ Platform | Description
 ### Doors
 
 For each door that the authenticated user has permission to access, the following entities are created:
+
 * A `lock` entity to lock and unlock the door. By default, the `lock.unlock` action will permanently unlock the door.
 * A `select` entity to choose the unlock operation of the door. The options are `Unlock` or `Timed Unlock`.
 * A `number` entity to set the duration of a timed unlock operation. The duration is in seconds and the default value is **5 seconds**.
@@ -30,11 +31,13 @@ For each door that the authenticated user has permission to access, the followin
 ### Areas
 
 For each area that the authenticated user has permission to access, the following entities are created:
+
 * An `alarm_control_panel` entity to arm and disarm the area. If multi-mode area arming is enabled, Night and Perimiter modes are also available.
 
 ### Inputs
 
 For each input that the authenticated user has permission to access, the following entities are created:
+
 * A `binary_sensor` entity to indicate the state of the input. Calculated inputs such as forced and held open are disabled by default. The device class is inferred from the input's name.
 * A `switch` entity to control if the input has been Isolated
 
@@ -43,6 +46,7 @@ NB: only inputs which are non-logical are exposed.
 ### Outputs
 
 For each output that the authenticated user has permission to access, the following entities are created:
+
 * A `switch` entity to control the output. Typically a siren or strobe.
 
 ## Installation
@@ -67,6 +71,7 @@ If you do not wish to use HACS, then please download the latest version from the
 4. Complete the guided configuration
 
 ### Create a user in Inception
+
 I strongly recommend creating a new user in Inception for Home Assistant to use.
 
 Create a new user
@@ -78,7 +83,7 @@ Grant the user permission to access required entities
 Grant the user `REST Web API User` web page profile and create a `User API Token`
 <img width="1420" alt="Screenshot 2024-12-09 at 7 19 04 pm" src="https://github.com/user-attachments/assets/254eeda4-3451-445e-a466-eac2fd9297a7">
 
-## Contributions are welcome!
+## Contributions are welcome
 
 If you want to contribute to this please read the [Contribution guidelines](CONTRIBUTING.md)
 
