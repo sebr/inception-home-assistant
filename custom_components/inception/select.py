@@ -1,4 +1,4 @@
-"""Select platform for inception."""  # noqa: A005
+"""Select platform for inception."""
 
 from __future__ import annotations
 
