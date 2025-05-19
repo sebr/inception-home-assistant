@@ -77,6 +77,7 @@ async def async_setup_entry(
                 device_class=SwitchDeviceClass.SWITCH,
                 name="Isolated",
                 has_entity_name=True,
+                entity_registry_visible_default=False,
                 value_fn=lambda data: data.public_state is not None
                 and bool(data.public_state & InputPublicState.ISOLATED),
             ),
