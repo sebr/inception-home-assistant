@@ -84,7 +84,6 @@ async def async_setup_entry(
             data=i_input,
         )
         for i_input in coordinator.data.inputs.get_items()
-        if i_input.entity_info.input_type != InputType.LOGICAL
     ]
 
     async_add_entities(entities)

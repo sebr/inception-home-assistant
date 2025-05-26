@@ -124,7 +124,6 @@ async def async_setup_entry(
             data=inception_input,
         )
         for inception_input in coordinator.data.inputs.get_items()
-        if inception_input.entity_info.input_type != InputType.LOGICAL
     ]
 
     entities += [
