@@ -41,8 +41,6 @@ For each input that the authenticated user has permission to access, the followi
 * A `binary_sensor` entity to indicate the state of the input. Calculated inputs such as forced and held open are disabled by default. The device class is inferred from the input's name.
 * A `switch` entity to control if the input has been Isolated
 
-NB: only inputs which are non-logical are exposed.
-
 ### Outputs
 
 For each output that the authenticated user has permission to access, the following entities are created:
