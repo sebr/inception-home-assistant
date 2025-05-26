@@ -14,10 +14,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 
 from .const import DOMAIN
 from .entity import InceptionEntity
-from .pyinception.schemas.input import (
-    InputPublicState,
-    InputType,
-)
+from .pyinception.schemas.input import InputPublicState
 from .pyinception.schemas.output import OutputPublicState
 
 if TYPE_CHECKING:
