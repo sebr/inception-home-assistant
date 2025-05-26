@@ -183,6 +183,13 @@ class InceptionApiClient:
 
         for event in result_response.state_data:
             try:
+                if event.id not in entity_data.items:
+                    _LOGGER.warning(
+                        "Item %s not found in entity data, perhaps it was added recently? Please reload the integration.",  # noqa: E501
+                        event.id,
+                    )
+                    continue
+
                 _LOGGER.debug(
                     "Event: %s, %s, %s",
                     entity_data.items[event.id].entity_info.name,
