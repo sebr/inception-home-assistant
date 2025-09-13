@@ -7,6 +7,7 @@ import contextlib
 import logging
 import socket
 from typing import TYPE_CHECKING, Any, ClassVar, TypeVar
+from urllib.parse import urlencode
 
 import aiohttp
 
@@ -15,10 +16,6 @@ from .schemas.area import AreaPublicState, AreaSummary
 from .schemas.door import DoorPublicState, DoorSummary
 from .schemas.input import InputPublicState, InputSummary
 from .schemas.output import OutputPublicState, OutputSummary
-from .schemas.review_events import (
-    ReviewEventRequest,
-    ReviewEventsResponse,
-)
 from .schemas.update_monitor import (
     MonitorEntityStatesRequest,
     UpdateMonitorResponse,
@@ -65,6 +62,7 @@ class InceptionApiClient:
 
     _monitor_update_times: ClassVar[dict[str, int]] = {}
     _review_events_update_time: ClassVar[int] = 0
+    _review_events_reference_id: ClassVar[str | None] = None
 
     def __init__(
         self,
@@ -211,47 +209,81 @@ class InceptionApiClient:
 
     async def monitor_review_events(self) -> None:
         """Monitor review events from the API."""
-        _LOGGER.debug("Starting review events long-poll monitor")
-
-        # Create the review events request
-        review_request = ReviewEventRequest(
-            request_id="ReviewEventsRequest",
-            time_since_last_update=self._review_events_update_time,
-        )
-
-        payload = [review_request.get_request_payload()]
+        _LOGGER.debug("Starting review events monitor")
 
         try:
-            response = await self._review_events_request(payload)
+            # Build query parameters for the review endpoint
+            params = {
+                "dir": "desc",
+                "limit": 50,
+            }
+
+            # If we have a reference time and ID, use them to get newer events
+            if self._review_events_update_time > 0 and self._review_events_reference_id:
+                params.update(
+                    {
+                        "referenceId": self._review_events_reference_id,
+                        "referenceTime": self._review_events_update_time,
+                        "dir": "asc",
+                    }
+                )
+
+            query_params = urlencode(params)
+            response = await self._review_events_request(query_params)
 
             if not response:
                 # No response from the API, try again later
                 return
 
-            # Check if this is a review events response
-            response_id = response.get("ID")
-            if response_id != "ReviewEventsRequest":
-                _LOGGER.warning("Unexpected review events response ID: %s", response_id)
-                return
+            # The response is now a direct array of review events
+            if isinstance(response, list):
+                events_data = response
+            else:
+                # Handle case where response might be wrapped
+                events_data = response.get("Data", response)
 
-            # Parse the review events response
-            result_data = response.get("Result", {})
-            events_response = ReviewEventsResponse(**result_data)
+            # Process the review events
+            if events_data:
+                # _LOGGER.debug("Review events response: %s", events_data)
 
-            # Update the last update time
-            InceptionApiClient._review_events_update_time = events_response.update_time
+                # Check if we have a list of events or need to extract them
+                events = events_data if isinstance(events_data, list) else [events_data]
 
-            # Log each review event
-            for event in events_response.events:
-                _LOGGER.debug(
-                    "Review Event: %s - %s at %s (User: %s, Area: %s, Door: %s)",
-                    event.event_type,
-                    event.description,
-                    event.timestamp,
-                    event.user_id or "N/A",
-                    event.area_id or "N/A",
-                    event.door_id or "N/A",
-                )
+                # Find the latest event time to use as reference for next request
+                latest_time = 0
+                for event_data in events:
+                    # Handle both dict and string responses
+                    if isinstance(event_data, dict):
+                        # Log each review event
+                        _LOGGER.debug(
+                            "Review Event: %s - %s at %s (Who: %s, What: %s, Where: %s)",
+                            event_data.get("Description", "Unknown"),
+                            event_data.get("MessageCategory", "No description"),
+                            event_data.get("When", "Unknown"),
+                            event_data.get("Who", "N/A"),
+                            event_data.get("What", "N/A"),
+                            event_data.get("Where", "N/A"),
+                        )
+                        _LOGGER.debug("Review Event: %s", event_data)
+
+                        # Update reference time and ID
+                        event_ref_time = event_data.get("WhenTicks", 0)
+                        event_id = event_data.get("ID")
+
+                        if event_ref_time > latest_time:
+                            latest_time = event_ref_time
+                            # Store the reference ID for the latest event
+                            if event_id:
+                                InceptionApiClient._review_events_reference_id = (
+                                    event_id
+                                )
+                    else:
+                        # Handle string response
+                        _LOGGER.debug("Review Event (string): %s", event_data)
+
+                # Update the reference time for next request
+                if latest_time > self._review_events_update_time:
+                    InceptionApiClient._review_events_update_time = latest_time
 
         except Exception:
             _LOGGER.exception("Error monitoring review events")
@@ -274,14 +306,46 @@ class InceptionApiClient:
         """Poll data periodically via Rest."""
         while True:
             try:
+                # Run entity state monitoring (long-poll) and review events (periodic poll)
                 await asyncio.gather(
                     self.monitor_entity_states(),
-                    self.monitor_review_events(),
+                    self._review_events_task(),
                     return_exceptions=True,
                 )
             except Exception:
                 _LOGGER.exception("_rest_task: Error in monitoring tasks")
             self._schedule_data_callbacks()
+
+    async def _review_events_task(self) -> None:
+        """Periodically poll review events."""
+        while True:
+            try:
+                await self.monitor_review_events()
+            except InceptionApiClientAuthenticationError:
+                _LOGGER.error(
+                    "Authentication error in review events - stopping retries"
+                )
+                return
+            except InceptionApiClientCommunicationError as e:
+                # Check if it's a 4xx client error (irrecoverable)
+                if (
+                    "404" in str(e)
+                    or "400" in str(e)
+                    or "403" in str(e)
+                    or "401" in str(e)
+                ):
+                    _LOGGER.exception(
+                        "Client error in review events - stopping retries: %s", e
+                    )
+                    return
+                # For other communication errors, wait and retry
+                _LOGGER.warning(
+                    "Communication error in review events - retrying: %s", e
+                )
+                await asyncio.sleep(60)
+            except Exception:
+                _LOGGER.exception("Unexpected error in review events task")
+                await asyncio.sleep(60)
 
     async def close(self) -> None:
         """Close the session."""
@@ -313,22 +377,21 @@ class InceptionApiClient:
 
         return response
 
-    async def _review_events_request(self, payload: Any) -> Any | None:
-        """Monitor review events from the API."""
+    async def _review_events_request(self, query_params: str) -> Any | None:
+        """Get review events from the API."""
         try:
             response = await self.request(
-                method="post",
-                data=payload,
-                path="/review",
+                method="get",
+                path=f"/review?{query_params}",
                 api_timeout=aiohttp.ClientTimeout(
-                    total=70
-                ),  # Inception long-poll timeout is 60 seconds, this should be enough
+                    total=10
+                ),  # Standard timeout for GET request
             )
         except TimeoutError:
             # No response from the API, try again later
             return None
 
-        if not response or "Result" not in response or "ID" not in response:
+        if not response:
             # No response from the API, try again later
             return None
 

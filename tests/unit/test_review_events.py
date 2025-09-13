@@ -1,6 +1,5 @@
 """Test review events schemas and functionality."""
 
-
 from custom_components.inception.pyinception.schemas.review_events import (
     ReviewEventRequest,
     ReviewEventResponse,

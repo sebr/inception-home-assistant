@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
-from unittest.mock import Mock
+import asyncio
+from unittest.mock import Mock, patch
 
+import aiohttp
 import pytest
 
 from custom_components.inception.pyinception.api import (
+    InceptionApiClient,
     InceptionApiClientAuthenticationError,
+    InceptionApiClientCommunicationError,
     _verify_response_or_raise,
 )
 
@@ -95,3 +99,149 @@ class TestInceptionApiClient:
 
         assert str(auth_error) == "test"
         assert str(comm_error) == "test"
+
+
+class TestReviewEventsPermissions:
+    """Test review events permission handling."""
+
+    @pytest.fixture
+    def mock_session(self) -> Mock:
+        """Create a mock session."""
+        return Mock(spec=aiohttp.ClientSession)
+
+    @pytest.mark.asyncio
+    async def test_review_events_404_logs_warning_and_stops_retries(
+        self, mock_session: Mock, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Test that 404 on review endpoint logs warning and stops retries."""
+        # Create API client within the test
+        api_client = InceptionApiClient(
+            token="test_token",
+            host="http://test.com",
+            session=mock_session,
+        )
+
+        # Mock the monitor_review_events method to raise a 404 error
+        with patch.object(api_client, "monitor_review_events") as mock_monitor:
+            # Simulate a 404 response by raising a communication error with 404
+            mock_monitor.side_effect = InceptionApiClientCommunicationError(
+                "Error fetching information - 404, message='Not Found', url='http://test.com/api/v1/review'"
+            )
+
+            # Start the review events task - it should exit after the first error
+            await api_client._review_events_task()
+
+            # Verify that the error was logged and task stopped
+            log_messages = [record.message for record in caplog.records]
+            assert any(
+                "Client error in review events - stopping retries" in msg
+                for msg in log_messages
+            ), f"Expected error log not found in: {log_messages}"
+            assert any("404" in msg for msg in log_messages), (
+                f"404 not found in logs: {log_messages}"
+            )
+
+    @pytest.mark.asyncio
+    async def test_review_events_403_logs_warning_and_stops_retries(
+        self, mock_session: Mock, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Test that 403 on review endpoint logs warning and stops retries."""
+        # Create API client within the test
+        api_client = InceptionApiClient(
+            token="test_token",
+            host="http://test.com",
+            session=mock_session,
+        )
+
+        # Mock the monitor_review_events method to raise a 403 error
+        with patch.object(api_client, "monitor_review_events") as mock_monitor:
+            # Simulate a 403 response
+            mock_monitor.side_effect = InceptionApiClientCommunicationError(
+                "Error fetching information - 403, message='Forbidden', url='http://test.com/api/v1/review'"
+            )
+
+            # Start the review events task - it should exit after the first error
+            await api_client._review_events_task()
+
+            # Verify that the error was logged and task stopped
+            log_messages = [record.message for record in caplog.records]
+            assert any(
+                "Client error in review events - stopping retries" in msg
+                for msg in log_messages
+            ), f"Expected error log not found in: {log_messages}"
+            assert any("403" in msg for msg in log_messages), (
+                f"403 not found in logs: {log_messages}"
+            )
+
+    @pytest.mark.asyncio
+    async def test_review_events_auth_error_stops_retries(
+        self, mock_session: Mock, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Test that authentication errors stop retries."""
+        # Create API client within the test
+        api_client = InceptionApiClient(
+            token="test_token",
+            host="http://test.com",
+            session=mock_session,
+        )
+
+        # Mock the monitor_review_events method to raise an authentication error
+        with patch.object(api_client, "monitor_review_events") as mock_monitor:
+            mock_monitor.side_effect = InceptionApiClientAuthenticationError(
+                "Invalid credentials"
+            )
+
+            # Start the review events task - it should exit after the first error
+            await api_client._review_events_task()
+
+            # Verify that the authentication error was logged
+            log_messages = [record.message for record in caplog.records]
+            assert any(
+                "Authentication error in review events - stopping retries" in msg
+                for msg in log_messages
+            ), f"Expected auth error log not found in: {log_messages}"
+
+    @pytest.mark.asyncio
+    async def test_review_events_network_error_retries(
+        self, mock_session: Mock, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Test that network errors are retried."""
+        # Create API client within the test
+        api_client = InceptionApiClient(
+            token="test_token",
+            host="http://test.com",
+            session=mock_session,
+        )
+
+        # Mock the monitor_review_events method to raise a network error (5xx)
+        call_count = 0
+
+        def side_effect():
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                # First call raises error
+                raise InceptionApiClientCommunicationError(
+                    "Error fetching information - 500, message='Internal Server Error'"
+                )
+            # Second call would succeed, but we'll cancel before then
+
+        with patch.object(api_client, "monitor_review_events", side_effect=side_effect):
+            # Start the review events task, let it run once to see retry behavior
+            task = asyncio.create_task(api_client._review_events_task())
+
+            # Let it run briefly to process the first error and start waiting
+            await asyncio.sleep(0.1)
+            task.cancel()
+
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+
+            # Verify that the communication error was logged as a warning (retry)
+            log_messages = [record.message for record in caplog.records]
+            assert any(
+                "Communication error in review events - retrying" in msg
+                for msg in log_messages
+            ), f"Expected retry warning not found in: {log_messages}"
