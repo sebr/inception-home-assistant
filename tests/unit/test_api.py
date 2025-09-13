@@ -59,6 +59,22 @@ class TestInceptionApiClient:
         assert hasattr(InceptionApiClient, "authenticate")
         assert hasattr(InceptionApiClient, "connect")
 
+    def test_review_events_methods_exist(self) -> None:
+        """Test that review events methods exist on API client."""
+        from custom_components.inception.pyinception.api import InceptionApiClient
+
+        # Test that review events methods exist
+        assert hasattr(InceptionApiClient, "monitor_review_events")
+        assert hasattr(InceptionApiClient, "_review_events_request")
+
+    def test_review_events_class_variable_exists(self) -> None:
+        """Test that review events class variable exists."""
+        from custom_components.inception.pyinception.api import InceptionApiClient
+
+        # Test that the class variable exists
+        assert hasattr(InceptionApiClient, "_review_events_update_time")
+        assert InceptionApiClient._review_events_update_time == 0
+
     def test_exception_hierarchy(self) -> None:
         """Test exception class hierarchy."""
         from custom_components.inception.pyinception.api import (

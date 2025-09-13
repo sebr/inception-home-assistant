@@ -15,6 +15,10 @@ from .schemas.area import AreaPublicState, AreaSummary
 from .schemas.door import DoorPublicState, DoorSummary
 from .schemas.input import InputPublicState, InputSummary
 from .schemas.output import OutputPublicState, OutputSummary
+from .schemas.review_events import (
+    ReviewEventRequest,
+    ReviewEventsResponse,
+)
 from .schemas.update_monitor import (
     MonitorEntityStatesRequest,
     UpdateMonitorResponse,
@@ -60,6 +64,7 @@ class InceptionApiClient:
     """Inception API Client."""
 
     _monitor_update_times: ClassVar[dict[str, int]] = {}
+    _review_events_update_time: ClassVar[int] = 0
 
     def __init__(
         self,
@@ -204,6 +209,53 @@ class InceptionApiClient:
 
         self._schedule_data_callbacks()
 
+    async def monitor_review_events(self) -> None:
+        """Monitor review events from the API."""
+        _LOGGER.debug("Starting review events long-poll monitor")
+
+        # Create the review events request
+        review_request = ReviewEventRequest(
+            request_id="ReviewEventsRequest",
+            time_since_last_update=self._review_events_update_time,
+        )
+
+        payload = [review_request.get_request_payload()]
+
+        try:
+            response = await self._review_events_request(payload)
+
+            if not response:
+                # No response from the API, try again later
+                return
+
+            # Check if this is a review events response
+            response_id = response.get("ID")
+            if response_id != "ReviewEventsRequest":
+                _LOGGER.warning("Unexpected review events response ID: %s", response_id)
+                return
+
+            # Parse the review events response
+            result_data = response.get("Result", {})
+            events_response = ReviewEventsResponse(**result_data)
+
+            # Update the last update time
+            InceptionApiClient._review_events_update_time = events_response.update_time
+
+            # Log each review event
+            for event in events_response.events:
+                _LOGGER.debug(
+                    "Review Event: %s - %s at %s (User: %s, Area: %s, Door: %s)",
+                    event.event_type,
+                    event.description,
+                    event.timestamp,
+                    event.user_id or "N/A",
+                    event.area_id or "N/A",
+                    event.door_id or "N/A",
+                )
+
+        except Exception:
+            _LOGGER.exception("Error monitoring review events")
+
     def _schedule_data_callback(self, cb: Callable) -> None:
         """Schedule a data callback."""
         self.loop.call_soon_threadsafe(cb, self.data)
@@ -222,9 +274,13 @@ class InceptionApiClient:
         """Poll data periodically via Rest."""
         while True:
             try:
-                await self.monitor_entity_states()
+                await asyncio.gather(
+                    self.monitor_entity_states(),
+                    self.monitor_review_events(),
+                    return_exceptions=True,
+                )
             except Exception:
-                _LOGGER.exception("_rest_task: Error monitoring entity states")
+                _LOGGER.exception("_rest_task: Error in monitoring tasks")
             self._schedule_data_callbacks()
 
     async def close(self) -> None:
@@ -243,6 +299,27 @@ class InceptionApiClient:
                 method="post",
                 data=payload,
                 path="/monitor-updates",
+                api_timeout=aiohttp.ClientTimeout(
+                    total=70
+                ),  # Inception long-poll timeout is 60 seconds, this should be enough
+            )
+        except TimeoutError:
+            # No response from the API, try again later
+            return None
+
+        if not response or "Result" not in response or "ID" not in response:
+            # No response from the API, try again later
+            return None
+
+        return response
+
+    async def _review_events_request(self, payload: Any) -> Any | None:
+        """Monitor review events from the API."""
+        try:
+            response = await self.request(
+                method="post",
+                data=payload,
+                path="/review",
                 api_timeout=aiohttp.ClientTimeout(
                     total=70
                 ),  # Inception long-poll timeout is 60 seconds, this should be enough
