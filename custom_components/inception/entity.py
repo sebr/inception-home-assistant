@@ -31,7 +31,7 @@ class InceptionEntity(CoordinatorEntity[InceptionUpdateCoordinator]):
         """Initialize the Hydrawise entity."""
         super().__init__(coordinator=coordinator)
         self.entity_description = entity_description
-        self._attr_attribution = f"Data provided by {coordinator.api._host}"  # noqa: SLF001
+        self._attr_attribution = f"Data provided by {coordinator.api._host}"
         self._attr_unique_id = inception_object.entity_info.id
         self._inception_object = inception_object
         self._attr_extra_state_attributes = inception_object.extra_fields
