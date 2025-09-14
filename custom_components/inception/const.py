@@ -9,4 +9,4 @@ ATTRIBUTION = "Data provided by InnerRange Inception"
 MANUFACTURER = "InnerRange"
 
 # Events
-EVENT_REVIEW_EVENT = f"{DOMAIN}_review  _event"
+EVENT_REVIEW_EVENT = f"{DOMAIN}_review_event"

@@ -246,41 +246,51 @@ class InceptionApiClient:
 
             # Process the review events
             if events_data:
-                # Check if we have a list of events or need to extract them
-                events = events_data if isinstance(events_data, list) else [events_data]
+                self._process_review_events_data(events_data)
 
-                # Find the latest event time to use as reference for next request
-                latest_time = 0
-                for event_data in events:
-                    # Handle both dict and string responses
-                    if not isinstance(event_data, dict):
-                        _LOGGER.warning("Unexpected review Event: %s", event_data)
-                        continue
-
-                    _LOGGER.debug("Review Event: %s", event_data)
-
-                    # Trigger review event callbacks
-                    for cb in self.review_event_cbs:
-                        self._schedule_review_event_callback(cb, event_data)
-
-                    # Update reference time and ID
-                    event_ref_time = event_data.get("WhenTicks", 0)
-                    event_id = event_data.get("ID")
-
-                    if not event_id:
-                        continue
-
-                    if event_ref_time > latest_time:
-                        latest_time = event_ref_time
-                        # Store the reference ID for the latest event
-                        InceptionApiClient._review_events_reference_id = event_id
-
-                # Update the reference time for next request
-                if latest_time > self._review_events_update_time:
-                    InceptionApiClient._review_events_update_time = latest_time
-
+        except (
+            InceptionApiClientAuthenticationError,
+            InceptionApiClientCommunicationError,
+        ):
+            # Let these errors propagate to _review_events_task for proper handling
+            raise
         except Exception:
             _LOGGER.exception("Error monitoring review events")
+
+    def _process_review_events_data(self, events_data: Any) -> None:
+        """Process review events data and trigger callbacks."""
+        # Check if we have a list of events or need to extract them
+        events = events_data if isinstance(events_data, list) else [events_data]
+
+        # Find the latest event time to use as reference for next request
+        latest_time = 0
+        for event_data in events:
+            # Handle both dict and string responses
+            if not isinstance(event_data, dict):
+                _LOGGER.warning("Unexpected review Event: %s", event_data)
+                continue
+
+            _LOGGER.debug("Review Event: %s", event_data)
+
+            # Trigger review event callbacks
+            for cb in self.review_event_cbs:
+                self._schedule_review_event_callback(cb, event_data)
+
+            # Update reference time and ID
+            event_ref_time = event_data.get("WhenTicks", 0)
+            event_id = event_data.get("ID")
+
+            if not event_id:
+                continue
+
+            if event_ref_time > latest_time:
+                latest_time = event_ref_time
+                # Store the reference ID for the latest event
+                InceptionApiClient._review_events_reference_id = event_id
+
+        # Update the reference time for next request
+        if latest_time > self._review_events_update_time:
+            InceptionApiClient._review_events_update_time = latest_time
 
     def _schedule_data_callback(self, cb: Callable) -> None:
         """Schedule a data callback."""
@@ -340,6 +350,7 @@ class InceptionApiClient:
                     _LOGGER.exception(
                         "Client error in review events - stopping retries"
                     )
+                    _LOGGER.debug("Error details: %s", e)
                     return
                 # For other communication errors, wait and retry
                 _LOGGER.warning(
