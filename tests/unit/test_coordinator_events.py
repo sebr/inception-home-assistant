@@ -51,13 +51,12 @@ def test_review_event_callback_emits_ha_event() -> None:
         "ID": "event123",
         "MessageType": "DoorAccess",
         "Description": "Card access granted",
-        "MessageCategory": "Access",
+        "MessageCategory": 2011,
         "When": "2023-12-01T10:30:00Z",
         "Who": "John Doe",
         "What": "Door 1",
         "Where": "Main Entrance",
         "WhenTicks": 1701432600,
-        "MessageID": 5001,
     }
 
     # Call the review event callback directly
@@ -68,13 +67,13 @@ def test_review_event_callback_emits_ha_event() -> None:
         "event_id": "event123",
         "event_type": "DoorAccess",
         "description": "Card access granted",
-        "message_category": "Access",
+        "message_category": 2011,
+        "message_description": "Door Access Granted from Access Button",
         "when": "2023-12-01T10:30:00Z",
         "who": "John Doe",
         "what": "Door 1",
         "where": "Main Entrance",
         "when_ticks": 1701432600,
-        "message_id": 5001,
     }
 
     mock_hass.bus.async_fire.assert_called_once_with(
@@ -177,6 +176,8 @@ def test_review_event_callback_handles_missing_fields() -> None:
     expected_event_data = {
         "event_id": "event456",
         "description": "Motion detected",
+        "message_category": 0,
+        "message_description": "Unknown",
     }
 
     mock_hass.bus.async_fire.assert_called_once_with(

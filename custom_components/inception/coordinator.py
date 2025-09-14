@@ -12,6 +12,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from .const import DOMAIN, EVENT_REVIEW_EVENT, LOGGER
 from .pyinception.api import InceptionApiClient
 from .pyinception.data import InceptionApiData
+from .pyinception.message_categories import get_message_description
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -94,18 +95,22 @@ class InceptionUpdateCoordinator(DataUpdateCoordinator[InceptionApiData]):
     @callback
     def review_event_callback(self, event_data: dict[str, Any]) -> None:
         """Process review event callbacks and emit Home Assistant events."""
+        # Get message description from MessageID
+        message_category = event_data.get("MessageCategory", 0)
+        message_description = get_message_description(message_category)
+
         # Create a clean event data structure for Home Assistant
         event_payload = {
             "event_id": event_data.get("ID"),
             "event_type": event_data.get("MessageType"),
             "description": event_data.get("Description"),
-            "message_category": event_data.get("MessageCategory"),
+            "message_category": message_category,
+            "message_description": message_description,
             "when": event_data.get("When"),
             "who": event_data.get("Who"),
             "what": event_data.get("What"),
             "where": event_data.get("Where"),
             "when_ticks": event_data.get("WhenTicks"),
-            "message_id": event_data.get("MessageID"),
         }
 
         # Remove None values to keep the event clean
