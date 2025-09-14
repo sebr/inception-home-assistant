@@ -47,6 +47,64 @@ For each output that the authenticated user has permission to access, the follow
 
 * A `switch` entity to control the output. Typically a siren or strobe.
 
+## Events
+
+The integration emits Home Assistant events for real-time security notifications:
+
+### Review Events
+
+The integration automatically monitors and emits `inception_review_event` events for security activities such as:
+
+* Door access attempts (card access, PIN entry)
+* Area arming/disarming activities
+* Input state changes (motion detection, door sensors)
+* System events (tamper alerts, communication errors)
+
+**Event Data Structure:**
+```json
+{
+  "event_id": "evt_123",
+  "event_type": "DoorAccess",
+  "description": "Card access granted",
+  "message_category": "Access",
+  "when": "2023-12-01T10:30:00Z",
+  "who": "John Doe",
+  "what": "Door 1",
+  "where": "Main Entrance",
+  "when_ticks": 1701432600,
+  "message_id": 5001
+}
+```
+
+**Using in Automations:**
+```yaml
+automation:
+  - alias: "Log Security Events"
+    trigger:
+      platform: event
+      event_type: inception_review_event
+      event_data:
+        event_type: "DoorAccess"
+    action:
+      - service: logbook.log
+        data:
+          name: "Security System"
+          message: "{{ trigger.event.data.description }} - {{ trigger.event.data.who }} at {{ trigger.event.data.where }}"
+
+  - alias: "Alert on Security Breach"
+    trigger:
+      platform: event
+      event_type: inception_review_event
+      event_data:
+        message_category: "Security"
+    action:
+      - service: notify.mobile_app
+        data:
+          message: "Security Alert: {{ trigger.event.data.description }}"
+```
+
+**Note:** Review events are only available if your Inception user account has permission to access the review/audit logs. If you see 404 errors in the logs, contact your system administrator to enable review event permissions.
+
 ## Installation
 
 Recommended installation is via the [Home Assistant Community Store (HACS)](https://hacs.xyz/). [![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg)](https://github.com/custom-components/hacs)

@@ -76,6 +76,7 @@ class InceptionApiClient:
         self._session = session
         self.data: InceptionApiData | None = None
         self.data_update_cbs: list = []
+        self.review_event_cbs: list = []
         self.loop: asyncio.AbstractEventLoop = asyncio.get_running_loop()
         self.rest_task: asyncio.Task | None = None
         self._last_update: int | None = None
@@ -233,6 +234,7 @@ class InceptionApiClient:
 
             if not response:
                 # No response from the API, try again later
+                _LOGGER.debug("no response")
                 return
 
             # The response is now a direct array of review events
@@ -244,8 +246,6 @@ class InceptionApiClient:
 
             # Process the review events
             if events_data:
-                # _LOGGER.debug("Review events response: %s", events_data)
-
                 # Check if we have a list of events or need to extract them
                 events = events_data if isinstance(events_data, list) else [events_data]
 
@@ -253,33 +253,27 @@ class InceptionApiClient:
                 latest_time = 0
                 for event_data in events:
                     # Handle both dict and string responses
-                    if isinstance(event_data, dict):
-                        # Log each review event
-                        _LOGGER.debug(
-                            "Review Event: %s - %s at %s (Who: %s, What: %s, Where: %s)",
-                            event_data.get("Description", "Unknown"),
-                            event_data.get("MessageCategory", "No description"),
-                            event_data.get("When", "Unknown"),
-                            event_data.get("Who", "N/A"),
-                            event_data.get("What", "N/A"),
-                            event_data.get("Where", "N/A"),
-                        )
-                        _LOGGER.debug("Review Event: %s", event_data)
+                    if not isinstance(event_data, dict):
+                        _LOGGER.warning("Unexpected review Event: %s", event_data)
+                        continue
 
-                        # Update reference time and ID
-                        event_ref_time = event_data.get("WhenTicks", 0)
-                        event_id = event_data.get("ID")
+                    _LOGGER.debug("Review Event: %s", event_data)
 
-                        if event_ref_time > latest_time:
-                            latest_time = event_ref_time
-                            # Store the reference ID for the latest event
-                            if event_id:
-                                InceptionApiClient._review_events_reference_id = (
-                                    event_id
-                                )
-                    else:
-                        # Handle string response
-                        _LOGGER.debug("Review Event (string): %s", event_data)
+                    # Trigger review event callbacks
+                    for cb in self.review_event_cbs:
+                        self._schedule_review_event_callback(cb, event_data)
+
+                    # Update reference time and ID
+                    event_ref_time = event_data.get("WhenTicks", 0)
+                    event_id = event_data.get("ID")
+
+                    if not event_id:
+                        continue
+
+                    if event_ref_time > latest_time:
+                        latest_time = event_ref_time
+                        # Store the reference ID for the latest event
+                        InceptionApiClient._review_events_reference_id = event_id
 
                 # Update the reference time for next request
                 if latest_time > self._review_events_update_time:
@@ -292,6 +286,10 @@ class InceptionApiClient:
         """Schedule a data callback."""
         self.loop.call_soon_threadsafe(cb, self.data)
 
+    def _schedule_review_event_callback(self, cb: Callable, event: dict) -> None:
+        """Schedule a review event callback."""
+        self.loop.call_soon_threadsafe(cb, event)
+
     def _schedule_data_callbacks(self) -> None:
         """Schedule a data callbacks."""
         for cb in self.data_update_cbs:
@@ -302,11 +300,16 @@ class InceptionApiClient:
         if callback not in self.data_update_cbs:
             self.data_update_cbs.append(callback)
 
+    def register_review_event_callback(self, callback: Callable) -> None:
+        """Register a review event callback."""
+        if callback not in self.review_event_cbs:
+            self.review_event_cbs.append(callback)
+
     async def _rest_task(self) -> None:
         """Poll data periodically via Rest."""
         while True:
             try:
-                # Run entity state monitoring (long-poll) and review events (periodic poll)
+                # Run entity state monitoring and review events
                 await asyncio.gather(
                     self.monitor_entity_states(),
                     self._review_events_task(),
@@ -322,7 +325,7 @@ class InceptionApiClient:
             try:
                 await self.monitor_review_events()
             except InceptionApiClientAuthenticationError:
-                _LOGGER.error(
+                _LOGGER.exception(
                     "Authentication error in review events - stopping retries"
                 )
                 return
@@ -335,7 +338,7 @@ class InceptionApiClient:
                     or "401" in str(e)
                 ):
                     _LOGGER.exception(
-                        "Client error in review events - stopping retries: %s", e
+                        "Client error in review events - stopping retries"
                     )
                     return
                 # For other communication errors, wait and retry

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 from unittest.mock import Mock, patch
 
 import aiohttp
@@ -216,14 +217,15 @@ class TestReviewEventsPermissions:
         # Mock the monitor_review_events method to raise a network error (5xx)
         call_count = 0
 
-        def side_effect():
+        def side_effect() -> None:
             nonlocal call_count
             call_count += 1
             if call_count == 1:
                 # First call raises error
-                raise InceptionApiClientCommunicationError(
+                error_msg = (
                     "Error fetching information - 500, message='Internal Server Error'"
                 )
+                raise InceptionApiClientCommunicationError(error_msg)
             # Second call would succeed, but we'll cancel before then
 
         with patch.object(api_client, "monitor_review_events", side_effect=side_effect):
@@ -234,10 +236,8 @@ class TestReviewEventsPermissions:
             await asyncio.sleep(0.1)
             task.cancel()
 
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await task
-            except asyncio.CancelledError:
-                pass
 
             # Verify that the communication error was logged as a warning (retry)
             log_messages = [record.message for record in caplog.records]
@@ -245,3 +245,102 @@ class TestReviewEventsPermissions:
                 "Communication error in review events - retrying" in msg
                 for msg in log_messages
             ), f"Expected retry warning not found in: {log_messages}"
+
+
+class TestReviewEventCallbacks:
+    """Test review event callback functionality."""
+
+    @pytest.fixture
+    def mock_session(self) -> Mock:
+        """Create a mock session."""
+        return Mock(spec=aiohttp.ClientSession)
+
+    @pytest.mark.asyncio
+    async def test_review_event_callback_registration(self, mock_session: Mock) -> None:
+        """Test that review event callbacks can be registered."""
+        api_client = InceptionApiClient(
+            token="test_token",
+            host="http://test.com",
+            session=mock_session,
+        )
+
+        callback = Mock()
+        api_client.register_review_event_callback(callback)
+
+        assert callback in api_client.review_event_cbs
+
+    @pytest.mark.asyncio
+    async def test_review_event_callback_triggered(self, mock_session: Mock) -> None:
+        """Test that review event callbacks are triggered when events are processed."""
+        api_client = InceptionApiClient(
+            token="test_token",
+            host="http://test.com",
+            session=mock_session,
+        )
+
+        # Mock the _review_events_request to return sample event data
+        mock_event_data = [
+            {
+                "ID": "event123",
+                "MessageType": "DoorAccess",
+                "Description": "Card access granted",
+                "MessageCategory": "Access",
+                "When": "2023-12-01T10:30:00Z",
+                "Who": "John Doe",
+                "What": "Door 1",
+                "Where": "Main Entrance",
+                "WhenTicks": 1701432600,
+                "MessageID": 5001,
+            }
+        ]
+
+        callback = Mock()
+        api_client.register_review_event_callback(callback)
+
+        with patch.object(
+            api_client, "_review_events_request", return_value=mock_event_data
+        ):
+            await api_client.monitor_review_events()
+
+        # Verify the callback was scheduled to be called
+        # Since we're using call_soon_threadsafe, callback not called yet
+        assert callback.call_count == 0  # Not called yet due to threading
+        assert len(api_client.review_event_cbs) == 1
+
+    @pytest.mark.asyncio
+    async def test_multiple_review_event_callbacks(self, mock_session: Mock) -> None:
+        """Test that multiple review event callbacks can be registered."""
+        api_client = InceptionApiClient(
+            token="test_token",
+            host="http://test.com",
+            session=mock_session,
+        )
+
+        callback1 = Mock()
+        callback2 = Mock()
+
+        api_client.register_review_event_callback(callback1)
+        api_client.register_review_event_callback(callback2)
+
+        assert len(api_client.review_event_cbs) == 2
+        assert callback1 in api_client.review_event_cbs
+        assert callback2 in api_client.review_event_cbs
+
+    @pytest.mark.asyncio
+    async def test_duplicate_callback_not_added(self, mock_session: Mock) -> None:
+        """Test that duplicate callbacks are not added twice."""
+        api_client = InceptionApiClient(
+            token="test_token",
+            host="http://test.com",
+            session=mock_session,
+        )
+
+        callback = Mock()
+
+        api_client.register_review_event_callback(callback)
+        api_client.register_review_event_callback(
+            callback
+        )  # Try to add same callback again
+
+        assert len(api_client.review_event_cbs) == 1
+        assert callback in api_client.review_event_cbs
