@@ -122,6 +122,10 @@ class TestReviewEventsPermissions:
             session=mock_session,
         )
 
+        # Enable review events for testing
+        api_client._review_events_enabled = True
+        api_client._review_events_categories = ["System"]
+
         # Mock the monitor_review_events method to raise a 404 error
         with patch.object(api_client, "monitor_review_events") as mock_monitor:
             # Simulate a 404 response by raising a communication error with 404
@@ -153,6 +157,10 @@ class TestReviewEventsPermissions:
             host="http://test.com",
             session=mock_session,
         )
+
+        # Enable review events for testing
+        api_client._review_events_enabled = True
+        api_client._review_events_categories = ["System"]
 
         # Mock the monitor_review_events method to raise a 403 error
         with patch.object(api_client, "monitor_review_events") as mock_monitor:
@@ -186,6 +194,10 @@ class TestReviewEventsPermissions:
             session=mock_session,
         )
 
+        # Enable review events for testing
+        api_client._review_events_enabled = True
+        api_client._review_events_categories = ["System"]
+
         # Mock the monitor_review_events method to raise an authentication error
         with patch.object(api_client, "monitor_review_events") as mock_monitor:
             mock_monitor.side_effect = InceptionApiClientAuthenticationError(
@@ -214,12 +226,18 @@ class TestReviewEventsPermissions:
             session=mock_session,
         )
 
+        # Enable review events for testing
+        api_client._review_events_enabled = True
+        api_client._review_events_categories = ["System"]
+
         # Mock the monitor_review_events method to raise a network error (5xx)
         call_count = 0
 
-        def side_effect() -> None:
+        def side_effect(categories: list[str] | None = None) -> None:
             nonlocal call_count
             call_count += 1
+            # Verify categories are passed correctly
+            assert categories == ["System"]
             if call_count == 1:
                 # First call raises error
                 error_msg = (

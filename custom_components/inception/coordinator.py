@@ -128,3 +128,29 @@ class InceptionUpdateCoordinator(DataUpdateCoordinator[InceptionApiData]):
             event_payload.get("event_type", "Unknown"),
             event_payload.get("description", "No description"),
         )
+
+    async def start_review_listener(self, categories: list[str]) -> None:
+        """Start the review event listener with specific categories."""
+        if self.monitor_connected:
+            # Stop existing listener first
+            await self.stop_review_listener()
+
+        try:
+            LOGGER.debug(
+                "Starting review event listener for categories: %s", categories
+            )
+            await self.api.start_review_listener(categories)
+            LOGGER.info("Review event listener started for categories: %s", categories)
+        except Exception as err:
+            LOGGER.error("Failed to start review event listener: %s", err)
+            raise
+
+    async def stop_review_listener(self) -> None:
+        """Stop the review event listener."""
+        try:
+            LOGGER.debug("Stopping review event listener")
+            await self.api.stop_review_listener()
+            LOGGER.info("Review event listener stopped")
+        except Exception as err:
+            LOGGER.error("Failed to stop review event listener: %s", err)
+            raise

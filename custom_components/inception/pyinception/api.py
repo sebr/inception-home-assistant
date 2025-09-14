@@ -80,6 +80,8 @@ class InceptionApiClient:
         self.loop: asyncio.AbstractEventLoop = asyncio.get_running_loop()
         self.rest_task: asyncio.Task | None = None
         self._last_update: int | None = None
+        self._review_events_enabled: bool = False
+        self._review_events_categories: list[str] = []
 
     T = TypeVar("T", DoorSummary, InputSummary, OutputSummary, AreaSummary)
 
@@ -208,7 +210,7 @@ class InceptionApiClient:
 
         self._schedule_data_callbacks()
 
-    async def monitor_review_events(self) -> None:
+    async def monitor_review_events(self, categories: list[str] | None = None) -> None:
         """Monitor review events from the API."""
         _LOGGER.debug("Starting review events monitor")
 
@@ -218,6 +220,10 @@ class InceptionApiClient:
                 "dir": "desc",
                 "limit": 50,
             }
+
+            # Add category filtering if specified
+            if categories:
+                params["categories"] = ",".join(categories)
 
             # If we have a reference time and ID, use them to get newer events
             if self._review_events_update_time > 0 and self._review_events_reference_id:
@@ -333,7 +339,13 @@ class InceptionApiClient:
         """Periodically poll review events."""
         while True:
             try:
-                await self.monitor_review_events()
+                # Only monitor if review events are enabled
+                if self._review_events_enabled:
+                    await self.monitor_review_events(self._review_events_categories)
+                else:
+                    # Sleep for a bit if disabled to avoid busy waiting
+                    await asyncio.sleep(30)
+                    continue
             except InceptionApiClientAuthenticationError:
                 _LOGGER.exception(
                     "Authentication error in review events - stopping retries"
@@ -469,3 +481,15 @@ class InceptionApiClient:
     async def control_input(self, input_id: str, data: Any | None = None) -> None:
         """Send a control payload to an input."""
         return await self._control_item(item=f"input/{input_id}", data=data)
+
+    async def start_review_listener(self, categories: list[str]) -> None:
+        """Start the review event listener with specific categories."""
+        self._review_events_enabled = True
+        self._review_events_categories = categories[:]
+        _LOGGER.debug("Review events listener enabled for categories: %s", categories)
+
+    async def stop_review_listener(self) -> None:
+        """Stop the review event listener."""
+        self._review_events_enabled = False
+        self._review_events_categories = []
+        _LOGGER.debug("Review events listener disabled")
