@@ -85,6 +85,8 @@ class InceptionApiClient:
         self._review_events_enabled: bool = False
         self._review_events_categories: list[str] = []
         self._last_review_log_time: float = 0
+        self._review_events_retry_count: int = 0
+        self._review_events_max_retry_delay: int = 300  # 5 minutes max
 
     T = TypeVar("T", DoorSummary, InputSummary, OutputSummary, AreaSummary)
 
@@ -350,6 +352,8 @@ class InceptionApiClient:
                         self._last_review_log_time = current_time
 
                     await self.monitor_review_events(self._review_events_categories)
+                    # Reset retry count on successful monitoring
+                    self._reset_retry_count()
                     # Add a brief delay between monitoring cycles to prevent spam
                     await asyncio.sleep(60)
                 except InceptionApiClientAuthenticationError:
@@ -365,18 +369,47 @@ class InceptionApiClient:
                     ):
                         # 4xx errors stop the task
                         raise
-                    # For 5xx errors (network issues), log and continue
-                    _LOGGER.warning(
-                        "Communication error in review events - retrying: %s", e
-                    )
-                    await asyncio.sleep(60)
+                    # For 5xx errors (network issues), use exponential backoff
+                    self._increment_retry_count()
+                    delay = self._get_retry_delay()
+                    _LOGGER.warning("Communication error in review events: %s", e)
+                    await asyncio.sleep(delay)
                 except Exception:
                     _LOGGER.exception("Unexpected error in review events task")
-                    # For unexpected errors, wait and continue
-                    await asyncio.sleep(60)
+                    # For unexpected errors, use exponential backoff
+                    self._increment_retry_count()
+                    delay = self._get_retry_delay()
+                    await asyncio.sleep(delay)
 
         finally:
             _LOGGER.debug("Review events task stopped")
+
+    def _get_retry_delay(self) -> int:
+        """Calculate exponential backoff delay for retries."""
+        if self._review_events_retry_count == 0:
+            return 5  # First retry after 5 seconds
+
+        # Exponential backoff: 5, 10, 20, 40, 80, 160, 300 (capped)
+        return min(
+            5 * (2 ** (self._review_events_retry_count - 1)),
+            self._review_events_max_retry_delay,
+        )
+
+    def _reset_retry_count(self) -> None:
+        """Reset retry count after successful operation."""
+        if self._review_events_retry_count > 0:
+            _LOGGER.debug("Review events monitoring recovered, resetting retry count")
+            self._review_events_retry_count = 0
+
+    def _increment_retry_count(self) -> None:
+        """Increment retry count and log the backoff strategy."""
+        self._review_events_retry_count += 1
+        delay = self._get_retry_delay()
+        _LOGGER.warning(
+            "Review events error #%d, retrying in %d seconds",
+            self._review_events_retry_count,
+            delay,
+        )
 
     async def close(self) -> None:
         """Close the session."""
@@ -506,6 +539,7 @@ class InceptionApiClient:
         # Start new task
         self._review_events_enabled = True
         self._review_events_categories = categories[:]
+        self._review_events_retry_count = 0  # Reset retry count on start
         self._review_events_task = asyncio.create_task(self._review_events_monitor())
         _LOGGER.info("Review events listener started for categories: %s", categories)
 

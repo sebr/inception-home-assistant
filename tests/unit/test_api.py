@@ -254,12 +254,51 @@ class TestReviewEventsPermissions:
             with contextlib.suppress(asyncio.CancelledError):
                 await task
 
-            # Verify that the communication error was logged as a warning (retry)
+            # Verify that the communication error was logged and retry scheduled
             log_messages = [record.message for record in caplog.records]
             assert any(
-                "Communication error in review events - retrying" in msg
+                "Communication error in review events:" in msg for msg in log_messages
+            ), f"Expected communication error not found in: {log_messages}"
+            assert any(
+                "Review events error #1, retrying in 5 seconds" in msg
                 for msg in log_messages
-            ), f"Expected retry warning not found in: {log_messages}"
+            ), f"Expected retry backoff message not found in: {log_messages}"
+
+    @pytest.mark.asyncio
+    async def test_review_events_exponential_backoff(self, mock_session: Mock) -> None:
+        """Test that exponential backoff works correctly for retries."""
+        api_client = InceptionApiClient(
+            token="test_token",
+            host="http://test.com",
+            session=mock_session,
+        )
+
+        # Test the backoff calculation directly
+        assert api_client._get_retry_delay() == 5  # First retry
+
+        api_client._review_events_retry_count = 1
+        assert api_client._get_retry_delay() == 5  # 5 * 2^0 = 5
+
+        api_client._review_events_retry_count = 2
+        assert api_client._get_retry_delay() == 10  # 5 * 2^1 = 10
+
+        api_client._review_events_retry_count = 3
+        assert api_client._get_retry_delay() == 20  # 5 * 2^2 = 20
+
+        api_client._review_events_retry_count = 4
+        assert api_client._get_retry_delay() == 40  # 5 * 2^3 = 40
+
+        api_client._review_events_retry_count = 5
+        assert api_client._get_retry_delay() == 80  # 5 * 2^4 = 80
+
+        api_client._review_events_retry_count = 6
+        assert api_client._get_retry_delay() == 160  # 5 * 2^5 = 160
+
+        api_client._review_events_retry_count = 7
+        assert api_client._get_retry_delay() == 300  # Capped at max (5 minutes)
+
+        api_client._review_events_retry_count = 10
+        assert api_client._get_retry_delay() == 300  # Still capped at max
 
 
 class TestReviewEventCallbacks:
