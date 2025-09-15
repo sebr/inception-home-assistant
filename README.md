@@ -47,6 +47,89 @@ For each output that the authenticated user has permission to access, the follow
 
 * A `switch` entity to control the output. Typically a siren or strobe.
 
+## Events
+
+The integration emits Home Assistant events for real-time security notifications:
+
+### Review Events
+
+The integration automatically monitors and emits `inception_review_event` events for security activities such as:
+
+* Door access attempts (card access, PIN entry)
+* Area arming/disarming activities
+* Input state changes (motion detection, door sensors)
+* System events (tamper alerts, communication errors)
+
+**Event Data Structure:**
+```json
+{
+  "event_id": "evt_123",
+  "event_type": "DoorAccess",
+  "description": "Card access granted",
+  "message_category": "2011",
+  "message_description": "Door Access Granted from Access Button",
+  "when": "2025-09-14T21:48:41.3832147+10:00",
+  "who": "John Doe",
+  "what": "Front Door",
+  "where": "Main Entrance",
+  "when_ticks": 1701432600
+}
+```
+
+**Event Fields:**
+- `event_id`: Unique identifier for the event
+- `event_type`: Type of event (e.g., "DoorAccess", "AreaArmed")
+- `description`: Human-readable description from the system
+- `message_category`: Category of the message (e.g., "Access", "Security")
+- `message_description`: Detailed description based on the MessageID (automatically added by integration)
+- `when`: Timestamp in ISO format
+- `who`: User associated with the event
+- `what`: Item/entity involved (e.g., door name)
+- `where`: Location of the event
+- `when_ticks`: Unix timestamp
+- `message_id`: Numeric message identifier from the system
+
+**Using in Automations:**
+```yaml
+automation:
+  - alias: "Log Security Events"
+    trigger:
+      platform: event
+      event_type: inception_review_event
+      event_data:
+        event_type: "DoorAccess"
+    action:
+      - service: logbook.log
+        data:
+          name: "Security System"
+          message: "{{ trigger.event.data.description }} - {{ trigger.event.data.who }} at {{ trigger.event.data.where }}"
+
+  - alias: "Alert on Security Breach"
+    trigger:
+      platform: event
+      event_type: inception_review_event
+      event_data:
+        message_category: "Security"
+    action:
+      - service: notify.mobile_app
+        data:
+          message: "Security Alert: {{ trigger.event.data.description }}"
+
+  - alias: "Door Access Notification"
+    trigger:
+      platform: event
+      event_type: inception_review_event
+      event_data:
+        event_type: "DoorAccess"
+    action:
+      - service: notify.mobile_app
+        data:
+          title: "Door Access"
+          message: "{{ trigger.event.data.message_description }} - {{ trigger.event.data.who }} at {{ trigger.event.data.what }}"
+```
+
+**Note:** Review events are only available if your Inception user account has permission to access the review/audit logs. If you see 404 errors in the logs, contact your system administrator to enable review event permissions.
+
 ## Installation
 
 Recommended installation is via the [Home Assistant Community Store (HACS)](https://hacs.xyz/). [![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg)](https://github.com/custom-components/hacs)
