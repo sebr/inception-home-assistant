@@ -6,6 +6,7 @@ import asyncio
 import contextlib
 import logging
 import socket
+import time
 from typing import TYPE_CHECKING, Any, ClassVar, TypeVar
 from urllib.parse import urlencode
 
@@ -79,9 +80,11 @@ class InceptionApiClient:
         self.review_event_cbs: list = []
         self.loop: asyncio.AbstractEventLoop = asyncio.get_running_loop()
         self.rest_task: asyncio.Task | None = None
+        self._review_events_task: asyncio.Task | None = None
         self._last_update: int | None = None
         self._review_events_enabled: bool = False
         self._review_events_categories: list[str] = []
+        self._last_review_log_time: float = 0
 
     T = TypeVar("T", DoorSummary, InputSummary, OutputSummary, AreaSummary)
 
@@ -212,8 +215,6 @@ class InceptionApiClient:
 
     async def monitor_review_events(self, categories: list[str] | None = None) -> None:
         """Monitor review events from the API."""
-        _LOGGER.debug("Starting review events monitor")
-
         try:
             # Build query parameters for the review endpoint
             params = {
@@ -325,57 +326,66 @@ class InceptionApiClient:
         """Poll data periodically via Rest."""
         while True:
             try:
-                # Run entity state monitoring and review events
-                await asyncio.gather(
-                    self.monitor_entity_states(),
-                    self._review_events_task(),
-                    return_exceptions=True,
-                )
+                # Run entity state monitoring only
+                # Review events are now managed separately with their own task
+                await self.monitor_entity_states()
             except Exception:
                 _LOGGER.exception("_rest_task: Error in monitoring tasks")
             self._schedule_data_callbacks()
 
-    async def _review_events_task(self) -> None:
-        """Periodically poll review events."""
-        while True:
-            try:
-                # Only monitor if review events are enabled
-                if self._review_events_enabled:
+    async def _review_events_monitor(self) -> None:
+        """Periodically poll review events while enabled."""
+        _LOGGER.debug("Review events task started")
+
+        try:
+            while self._review_events_enabled:
+                try:
+                    # Only log debug message every 60 seconds to reduce spam
+                    current_time = time.time()
+                    if current_time - self._last_review_log_time > 60:
+                        _LOGGER.debug(
+                            "Review events monitoring categories: %s",
+                            self._review_events_categories,
+                        )
+                        self._last_review_log_time = current_time
+
                     await self.monitor_review_events(self._review_events_categories)
-                else:
-                    # Sleep for a bit if disabled to avoid busy waiting
-                    await asyncio.sleep(30)
-                    continue
-            except InceptionApiClientAuthenticationError:
-                _LOGGER.exception(
-                    "Authentication error in review events - stopping retries"
-                )
-                return
-            except InceptionApiClientCommunicationError as e:
-                # Check if it's a 4xx client error (irrecoverable)
-                if (
-                    "404" in str(e)
-                    or "400" in str(e)
-                    or "403" in str(e)
-                    or "401" in str(e)
-                ):
-                    _LOGGER.exception(
-                        "Client error in review events - stopping retries"
+                    # Add a brief delay between monitoring cycles to prevent spam
+                    await asyncio.sleep(60)
+                except InceptionApiClientAuthenticationError:
+                    # Authentication errors always stop the task
+                    raise
+                except InceptionApiClientCommunicationError as e:
+                    # Check if it's a 4xx client error (irrecoverable)
+                    if (
+                        "404" in str(e)
+                        or "400" in str(e)
+                        or "403" in str(e)
+                        or "401" in str(e)
+                    ):
+                        # 4xx errors stop the task
+                        raise
+                    # For 5xx errors (network issues), log and continue
+                    _LOGGER.warning(
+                        "Communication error in review events - retrying: %s", e
                     )
-                    _LOGGER.debug("Error details: %s", e)
-                    return
-                # For other communication errors, wait and retry
-                _LOGGER.warning(
-                    "Communication error in review events - retrying: %s", e
-                )
-                await asyncio.sleep(60)
-            except Exception:
-                _LOGGER.exception("Unexpected error in review events task")
-                await asyncio.sleep(60)
+                    await asyncio.sleep(60)
+                except Exception:
+                    _LOGGER.exception("Unexpected error in review events task")
+                    # For unexpected errors, wait and continue
+                    await asyncio.sleep(60)
+
+        finally:
+            _LOGGER.debug("Review events task stopped")
 
     async def close(self) -> None:
         """Close the session."""
         _LOGGER.debug("Closing session")
+
+        # Stop review events task
+        await self.stop_review_listener()
+
+        # Stop main rest task
         if self.rest_task:
             if not self.rest_task.cancelled():
                 self.rest_task.cancel()
@@ -484,12 +494,37 @@ class InceptionApiClient:
 
     async def start_review_listener(self, categories: list[str]) -> None:
         """Start the review event listener with specific categories."""
+        _LOGGER.debug(
+            "Starting review events listener for categories: %s (was enabled: %s)",
+            categories,
+            self._review_events_enabled,
+        )
+
+        # Stop existing task if running
+        await self.stop_review_listener()
+
+        # Start new task
         self._review_events_enabled = True
         self._review_events_categories = categories[:]
-        _LOGGER.debug("Review events listener enabled for categories: %s", categories)
+        self._review_events_task = asyncio.create_task(self._review_events_monitor())
+        _LOGGER.info("Review events listener started for categories: %s", categories)
 
     async def stop_review_listener(self) -> None:
         """Stop the review event listener."""
+        _LOGGER.debug(
+            "Stopping review events listener (was enabled: %s)",
+            self._review_events_enabled,
+        )
+
+        # Set disabled first to stop the loop
         self._review_events_enabled = False
         self._review_events_categories = []
-        _LOGGER.debug("Review events listener disabled")
+
+        # Cancel and wait for the task to finish
+        if self._review_events_task and not self._review_events_task.done():
+            self._review_events_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await self._review_events_task
+
+        self._review_events_task = None
+        _LOGGER.info("Review events listener stopped")

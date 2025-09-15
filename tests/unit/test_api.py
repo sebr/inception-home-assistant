@@ -133,18 +133,17 @@ class TestReviewEventsPermissions:
                 "Error fetching information - 404, message='Not Found', url='http://test.com/api/v1/review'"
             )
 
-            # Start the review events task - it should exit after the first error
-            await api_client._review_events_task()
+            # Start the review events task - it should exit after raising the error
+            with pytest.raises(InceptionApiClientCommunicationError) as exc_info:
+                await api_client._review_events_monitor()
 
-            # Verify that the error was logged and task stopped
+            # Verify the 404 error was raised
+            assert "404" in str(exc_info.value)
+
+            # Verify task started and stopped correctly
             log_messages = [record.message for record in caplog.records]
-            assert any(
-                "Client error in review events - stopping retries" in msg
-                for msg in log_messages
-            ), f"Expected error log not found in: {log_messages}"
-            assert any("404" in msg for msg in log_messages), (
-                f"404 not found in logs: {log_messages}"
-            )
+            assert any("Review events task started" in msg for msg in log_messages)
+            assert any("Review events task stopped" in msg for msg in log_messages)
 
     @pytest.mark.asyncio
     async def test_review_events_403_logs_warning_and_stops_retries(
@@ -169,18 +168,17 @@ class TestReviewEventsPermissions:
                 "Error fetching information - 403, message='Forbidden', url='http://test.com/api/v1/review'"
             )
 
-            # Start the review events task - it should exit after the first error
-            await api_client._review_events_task()
+            # Start the review events task - it should exit after raising the error
+            with pytest.raises(InceptionApiClientCommunicationError) as exc_info:
+                await api_client._review_events_monitor()
 
-            # Verify that the error was logged and task stopped
+            # Verify the 403 error was raised
+            assert "403" in str(exc_info.value)
+
+            # Verify task started and stopped correctly
             log_messages = [record.message for record in caplog.records]
-            assert any(
-                "Client error in review events - stopping retries" in msg
-                for msg in log_messages
-            ), f"Expected error log not found in: {log_messages}"
-            assert any("403" in msg for msg in log_messages), (
-                f"403 not found in logs: {log_messages}"
-            )
+            assert any("Review events task started" in msg for msg in log_messages)
+            assert any("Review events task stopped" in msg for msg in log_messages)
 
     @pytest.mark.asyncio
     async def test_review_events_auth_error_stops_retries(
@@ -204,15 +202,14 @@ class TestReviewEventsPermissions:
                 "Invalid credentials"
             )
 
-            # Start the review events task - it should exit after the first error
-            await api_client._review_events_task()
+            # Start the review events task - it should exit after raising the error
+            with pytest.raises(InceptionApiClientAuthenticationError):
+                await api_client._review_events_monitor()
 
-            # Verify that the authentication error was logged
+            # Verify task started and stopped correctly
             log_messages = [record.message for record in caplog.records]
-            assert any(
-                "Authentication error in review events - stopping retries" in msg
-                for msg in log_messages
-            ), f"Expected auth error log not found in: {log_messages}"
+            assert any("Review events task started" in msg for msg in log_messages)
+            assert any("Review events task stopped" in msg for msg in log_messages)
 
     @pytest.mark.asyncio
     async def test_review_events_network_error_retries(
@@ -248,7 +245,7 @@ class TestReviewEventsPermissions:
 
         with patch.object(api_client, "monitor_review_events", side_effect=side_effect):
             # Start the review events task, let it run once to see retry behavior
-            task = asyncio.create_task(api_client._review_events_task())
+            task = asyncio.create_task(api_client._review_events_monitor())
 
             # Let it run briefly to process the first error and start waiting
             await asyncio.sleep(0.1)

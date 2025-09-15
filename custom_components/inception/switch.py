@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -12,6 +13,7 @@ from homeassistant.components.switch import (
 )
 from homeassistant.const import EntityCategory
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.entity_registry import async_get
 from homeassistant.helpers.storage import Store
 
 from .const import DOMAIN, LOGGER
@@ -261,9 +263,12 @@ class ReviewEventGlobalSwitch(SwitchEntity):
         stored_data = await self._store.async_load() or {}
         self._attr_is_on = stored_data.get("global_enabled", False)
 
-        # If enabled, start the listener
+        # Store the global state in the coordinator for other switches to access
+        self.coordinator._review_events_global_enabled = self._attr_is_on
+
+        # Schedule a deferred startup check to allow all entities to load first
         if self._attr_is_on:
-            await self._start_review_listener()
+            self.hass.async_create_task(self._deferred_startup_check())
 
     @property
     def is_on(self) -> bool:
@@ -276,6 +281,8 @@ class ReviewEventGlobalSwitch(SwitchEntity):
         await self._save_state()
         await self._start_review_listener()
         self.async_write_ha_state()
+        # Update category switches availability
+        await self._update_category_switches_availability()
 
     async def async_turn_off(self) -> None:
         """Turn off the global review event listener."""
@@ -283,32 +290,12 @@ class ReviewEventGlobalSwitch(SwitchEntity):
         await self._save_state()
         await self._stop_review_listener()
         self.async_write_ha_state()
+        # Update category switches availability
+        await self._update_category_switches_availability()
 
     async def _start_review_listener(self) -> None:
         """Start the review event listener if categories are enabled."""
-        # Check if any category switches are enabled by their entity IDs
-        enabled_categories = []
-        categories = ["System", "Audit", "Access", "Security", "Hardware"]
-
-        for category in categories:
-            entity_id = (
-                f"switch.{self.coordinator.config_entry.entry_id}_review_events_"
-                f"{category.lower()}"
-            )
-            state = self.hass.states.get(entity_id)
-            if state and state.state == "on":
-                enabled_categories.append(category)
-
-        if not enabled_categories:
-            LOGGER.warning(
-                "Review event listener global switch is enabled but no categories are "
-                "selected. Please enable at least one category (System, Audit, Access, "
-                "Security, Hardware)."
-            )
-            return
-
-        # Start the listener with enabled categories
-        await self.coordinator.start_review_listener(enabled_categories)
+        await self.coordinator.update_review_listener_from_switches()
 
     async def _stop_review_listener(self) -> None:
         """Stop the review event listener."""
@@ -317,6 +304,41 @@ class ReviewEventGlobalSwitch(SwitchEntity):
     async def _save_state(self) -> None:
         """Save the current state to storage."""
         await self._store.async_save({"global_enabled": self._attr_is_on})
+
+    async def _update_category_switches_availability(self) -> None:
+        """Update the availability of all category switches."""
+        # Store the global state in the coordinator for other switches to access
+        self.coordinator._review_events_global_enabled = self._attr_is_on
+
+        # Force update of all entities by asking Home Assistant to refresh them
+        entity_registry = async_get(self.hass)
+        categories = ["system", "audit", "access", "security", "hardware"]
+
+        for category in categories:
+            unique_id = (
+                f"{self.coordinator.config_entry.entry_id}_review_events_{category}"
+            )
+            entity_id = entity_registry.async_get_entity_id("switch", DOMAIN, unique_id)
+
+            if entity_id:
+                # Schedule a state update
+                self.hass.async_create_task(
+                    self.hass.services.async_call(
+                        "homeassistant",
+                        "update_entity",
+                        {"entity_id": entity_id},
+                        blocking=False,
+                    )
+                )
+
+    async def _deferred_startup_check(self) -> None:
+        """Check if we should start the listener after all entities are loaded."""
+        # Wait a bit for all entities to be loaded
+        await asyncio.sleep(2)
+
+        # Now check if we should start the listener
+        if self._attr_is_on:
+            await self._start_review_listener()
 
 
 class ReviewEventCategorySwitch(SwitchEntity):
@@ -362,12 +384,8 @@ class ReviewEventCategorySwitch(SwitchEntity):
     @property
     def available(self) -> bool:
         """Return if the switch is available (global switch must be on)."""
-        # Check the global switch state by entity ID
-        global_entity_id = (
-            f"switch.{self.coordinator.config_entry.entry_id}_review_events_global"
-        )
-        global_state = self.hass.states.get(global_entity_id)
-        return global_state is not None and global_state.state == "on"
+        # Check the global state stored in the coordinator
+        return getattr(self.coordinator, "_review_events_global_enabled", False)
 
     async def async_turn_on(self) -> None:
         """Turn on the category review event listener."""
@@ -393,38 +411,7 @@ class ReviewEventCategorySwitch(SwitchEntity):
 
     async def _update_review_listener(self) -> None:
         """Update the review listener with current category settings."""
-        # Check the global switch state by entity ID
-        global_entity_id = (
-            f"switch.{self.coordinator.config_entry.entry_id}_review_events_global"
-        )
-        global_state = self.hass.states.get(global_entity_id)
-
-        if not global_state or global_state.state != "on":
-            return
-
-        # Get all enabled categories by checking entity states
-        enabled_categories = []
-        categories = ["System", "Audit", "Access", "Security", "Hardware"]
-
-        for category in categories:
-            entity_id = (
-                f"switch.{self.coordinator.config_entry.entry_id}_review_events_"
-                f"{category.lower()}"
-            )
-            state = self.hass.states.get(entity_id)
-            if state and state.state == "on":
-                enabled_categories.append(category)
-
-        if not enabled_categories:
-            LOGGER.warning(
-                "All review event categories are disabled. "
-                "Please enable at least one category or disable the global switch."
-            )
-            await self.coordinator.stop_review_listener()
-            return
-
-        # Restart the listener with updated categories
-        await self.coordinator.start_review_listener(enabled_categories)
+        await self.coordinator.update_review_listener_from_switches()
 
     async def _save_state(self) -> None:
         """Save the current state to storage."""

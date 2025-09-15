@@ -131,10 +131,6 @@ class InceptionUpdateCoordinator(DataUpdateCoordinator[InceptionApiData]):
 
     async def start_review_listener(self, categories: list[str]) -> None:
         """Start the review event listener with specific categories."""
-        if self.monitor_connected:
-            # Stop existing listener first
-            await self.stop_review_listener()
-
         try:
             LOGGER.debug(
                 "Starting review event listener for categories: %s", categories
@@ -154,3 +150,45 @@ class InceptionUpdateCoordinator(DataUpdateCoordinator[InceptionApiData]):
         except Exception as err:
             LOGGER.error("Failed to stop review event listener: %s", err)
             raise
+
+    async def update_review_listener_from_switches(self) -> None:
+        """Update review listener based on current switch states."""
+        # Check if global switch is enabled
+        if not getattr(self, "_review_events_global_enabled", False):
+            LOGGER.debug("Global review events switch is disabled, stopping listener")
+            await self.stop_review_listener()
+            return
+
+        # Get enabled categories from storage
+        enabled_categories = await self._get_enabled_categories_from_storage()
+
+        if not enabled_categories:
+            LOGGER.warning(
+                "Review event listener global switch is enabled but no categories are "
+                "selected. Please enable at least one category (System, Audit, Access, "
+                "Security, Hardware)."
+            )
+            await self.stop_review_listener()
+            return
+
+        # Start/update the listener with enabled categories
+        await self.start_review_listener(enabled_categories)
+
+    async def _get_enabled_categories_from_storage(self) -> list[str]:
+        """Get enabled categories from storage."""
+        from homeassistant.helpers.storage import Store
+
+        store = Store(
+            self.hass,
+            version=1,
+            key=f"{DOMAIN}.{self.config_entry.entry_id}.review_events",
+        )
+
+        stored_data = await store.async_load() or {}
+        categories = ["System", "Audit", "Access", "Security", "Hardware"]
+
+        return [
+            category
+            for category in categories
+            if stored_data.get(f"{category.lower()}_enabled", False)
+        ]
