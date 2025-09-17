@@ -15,7 +15,7 @@ from homeassistant.components.alarm_control_panel.const import (
     CodeFormat,
 )
 
-from .const import DOMAIN
+from .const import DOMAIN, LOGGER
 from .entity import InceptionEntity
 from .pyinception.schemas.area import AreaPublicState
 
@@ -133,9 +133,11 @@ class InceptionAlarm(InceptionEntity, AlarmControlPanelEntity):
             "AreaControlType": control_type,
         }
 
+        data["ExecuteAsOtherUser"] = "true"
         if code:
-            data["ExecuteAsOtherUser"] = "true"
             data["OtherUserPIN"] = code
+        else:
+            LOGGER.warning("No alarm code provided")
 
         return await self.coordinator.api.request(
             method="post",
