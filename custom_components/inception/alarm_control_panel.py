@@ -12,6 +12,7 @@ from homeassistant.components.alarm_control_panel import (
 from homeassistant.components.alarm_control_panel.const import (
     AlarmControlPanelEntityFeature,
     AlarmControlPanelState,
+    CodeFormat,
 )
 
 from .const import DOMAIN
@@ -61,7 +62,8 @@ class InceptionAlarm(InceptionEntity, AlarmControlPanelEntity):
     entity_description: InceptionAlarmDescription
     data: AreaSummaryEntry
 
-    _attr_code_arm_required: bool = False
+    _attr_code_arm_required: bool = True
+    _attr_code_format = CodeFormat.NUMBER
     _attr_supported_features = (
         AlarmControlPanelEntityFeature.ARM_HOME
         | AlarmControlPanelEntityFeature.ARM_AWAY
@@ -124,15 +126,21 @@ class InceptionAlarm(InceptionEntity, AlarmControlPanelEntity):
 
         return None
 
-    async def _alarm_control(self, control_type: str, _code: str | None = None) -> None:
+    async def _alarm_control(self, control_type: str, code: str | None = None) -> None:
         """Control the switch."""
+        data = {
+            "Type": "ControlArea",
+            "AreaControlType": control_type,
+        }
+
+        if code:
+            data["ExecuteAsOtherUser"] = "true"
+            data["OtherUserPIN"] = code
+
         return await self.coordinator.api.request(
             method="post",
             path=f"/control/area/{self.data.entity_info.id}/activity",
-            data={
-                "Type": "ControlArea",
-                "AreaControlType": control_type,
-            },
+            data=data,
         )
 
     async def async_alarm_arm_away(self, code: str | None = None) -> None:
