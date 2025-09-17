@@ -102,19 +102,18 @@ class InceptionUpdateCoordinator(DataUpdateCoordinator[InceptionApiData]):
         # Create a clean event data structure for Home Assistant
         event_payload = {
             "event_id": event_data.get("ID"),
-            "event_type": event_data.get("MessageType"),
             "description": event_data.get("Description"),
             "message_category": message_category,
             "message_description": message_description,
             "when": event_data.get("When"),
+            "reference_time": event_data.get("ReferenceTime"),
             "who": event_data.get("Who"),
+            "who_id": event_data.get("WhoID"),
             "what": event_data.get("What"),
+            "what_id": event_data.get("WhatID"),
             "where": event_data.get("Where"),
-            "when_ticks": event_data.get("WhenTicks"),
+            "where_id": event_data.get("WhereID"),
         }
-
-        # Remove None values to keep the event clean
-        event_payload = {k: v for k, v in event_payload.items() if v is not None}
 
         # Fire the Home Assistant event
         self.hass.bus.async_fire(
@@ -125,7 +124,7 @@ class InceptionUpdateCoordinator(DataUpdateCoordinator[InceptionApiData]):
         LOGGER.debug(
             "Emitted %s event: %s - %s",
             EVENT_REVIEW_EVENT,
-            event_payload.get("event_type", "Unknown"),
+            event_payload.get("message_category", "Unknown"),
             event_payload.get("description", "No description"),
         )
 

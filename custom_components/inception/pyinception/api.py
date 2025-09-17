@@ -449,6 +449,7 @@ class InceptionApiClient:
     async def _review_events_request(self, query_params: str) -> Any | None:
         """Get review events from the API."""
         try:
+            _LOGGER.debug("Request: %s", f"/review?{query_params}")
             response = await self.request(
                 method="get",
                 path=f"/review?{query_params}",

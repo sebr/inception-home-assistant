@@ -10,7 +10,6 @@ from __future__ import annotations
 # Message ID to description mapping from Inception API documentation
 MESSAGE_DESCRIPTIONS: dict[int, tuple[str, str]] = {
     # Format: message_id: (string_value, description)
-    # System Messages
     0: ("Unknown", "Unknown"),
     1: ("System_Started", "System Started"),
     2: ("System_AppVersion", "System Application Version"),
@@ -104,9 +103,204 @@ MESSAGE_DESCRIPTIONS: dict[int, tuple[str, str]] = {
     ),
     154: (
         "System_WebLoginFailedInterventionLockout",
-        "Web Login Failed, login attempts will be blocked until administrator intervention",  # noqa: E501
+        "Web Login Failed, login attempts will be blocked until administrator intervention",
     ),
-    # Audit Messages
+    181: ("System_FWUpdateRequested", "System Firmware Update Requested"),
+    182: ("System_FWUpdateSucceeded", "System Firmware Update Succeeded"),
+    183: ("System_FWUpdateFailed", "System Firmware Update Failed"),
+    184: (
+        "System_FWUpdateDefaultRequired",
+        "System Firmware Update Requires Factory Default",
+    ),
+    185: (
+        "System_FWUpdateDefaultApproved",
+        "System Firmware Update Factory Default Approved",
+    ),
+    186: ("System_FWDownloadRequested", "Firmware Download via SkyTunnel Requested"),
+    187: ("System_FWDownloadStarted", "Firmware Download via SkyTunnel Started"),
+    188: ("System_FWDownloadCompleted", "Firmware Download via SkyTunnel Completed"),
+    189: ("System_FWDownloadCancelled", "Firmware Download via SkyTunnel Cancelled"),
+    190: (
+        "System_FWDownloadFailedNoConnection",
+        "Firmware Download via SkyTunnel Unable to Start, No Connection",
+    ),
+    191: (
+        "System_FWDownloadFailedLostConnection",
+        "Firmware Download via SkyTunnel Failed, Lost Connection",
+    ),
+    192: (
+        "System_FWDownloadFailedAlreadyInProgress",
+        "Firmware Download via SkyTunnel Unable to Start, Download Already in Progress",
+    ),
+    193: (
+        "System_FWDownloadFailedValidation",
+        "Firmware Download via SkyTunnel Failed Validation",
+    ),
+    241: ("System_DBBackupRequested", "Database Backup Requested"),
+    242: ("System_DBRestoreRequested", "Database Restore Requested"),
+    243: (
+        "System_DBRestoreFailedInvalidFile",
+        "Database Restore Failed because the File was Invalid",
+    ),
+    244: (
+        "System_DBBackupFailedUSBError",
+        "Database Backup Failed due to USB Drive error",
+    ),
+    245: ("System_DBBackupCompleted", "Database Backup Completed"),
+    261: ("System_FactoryDefaultRequested", "Factory Reset Requested"),
+    262: (
+        "System_Level3UserAccessEnabledByUser",
+        "Level 3 User Access Enabled By User",
+    ),
+    263: (
+        "System_Level3UserAccessDisabledByUser",
+        "Level 3 User Access Disabled By User",
+    ),
+    264: ("System_EULAAcceptedByUser", "EULA Accepted By User"),
+    265: ("System_InitialConfigurationPerformed", "Initial Configuration Performed"),
+    361: ("System_TimePeriodActive", "Time Period went Active"),
+    362: ("System_TimePeriodInactive", "Time Period went Inactive"),
+    381: ("System_AutomatedActionTrue", "Automated Action Changed State to True"),
+    382: ("System_AutomatedActionFalse", "Automated Action Changed State to False"),
+    401: ("System_NotificationCreated", "Notification Event Created"),
+    402: (
+        "System_NotificationFailedExpiredUser",
+        "Notification Failed, User is Expired / Cancelled",
+    ),
+    403: (
+        "System_NotificationFailedServiceMode",
+        "Notification Failed, Service Mode is Enabled",
+    ),
+    451: ("System_EmailFailedNoServer", "Email Failed, No Server Configured"),
+    452: (
+        "System_EmailFailedUnableToContactServer",
+        "Email Failed, Unable to Connect to Server",
+    ),
+    453: (
+        "System_EmailFailedNoUserEmailAddress",
+        "Email Failed, No User Email Address",
+    ),
+    454: ("System_EmailFailedUnknownError", "Email Failed, Unknown Error"),
+    455: ("System_EmailTestEmailPrepared", "Test Email Preparing to Send"),
+    456: ("System_EmailTestEmailSent", "Test Email Sent"),
+    457: ("System_EmailCreatedPreparingToSend", "Email Created, Preparing to Send"),
+    458: ("System_EmailQueuedRateLimiting", "Email Queued due to Rate Limiting"),
+    459: ("System_EmailAppended", "Email Appended to Existing Message"),
+    460: ("System_EmailSent", "Email Message Sent"),
+    501: (
+        "System_PermissionDeniedExpiredUser",
+        "Permission Denied for Expired / Cancelled User attempting to control Item",
+    ),
+    521: (
+        "System_SkyCommandRequestFailUnknownUser",
+        "SkyCommand Request Failed because Unknown User",
+    ),
+    522: (
+        "System_SkyCommandRequestFailedUnknownItem",
+        "SkyCommand Request Failed because Unknown Item",
+    ),
+    523: ("System_SkyCommandControlRequest", "SkyCommand Control Request Received"),
+    524: ("System_SkyCommandListRequest", "SkyCommand List Request Received"),
+    525: (
+        "System_SkyCommandUserAssociated",
+        "SkyCommand User Associated to Inception User",
+    ),
+    526: (
+        "System_SkyCommandUserAssociationRemoved",
+        "SkyCommand User Association Removed",
+    ),
+    527: (
+        "System_SkyCommandUserAssociationRemovedForAnotherUser",
+        "SkyCommand User Association Removed for Another User",
+    ),
+    528: (
+        "System_SkyCommandNotificationFailedNoUser",
+        "SkyCommand Notification Failed, No SkyCommand User",
+    ),
+    529: (
+        "System_SkyCommandNotificationFailedNoSkyTunnel",
+        "SkyCommand Notification Failed, No SkyTunnel Connection",
+    ),
+    530: (
+        "System_SkyCommandNotificationFailedTimedOut",
+        "SkyCommand Notification Failed, Connection Timed Out",
+    ),
+    531: (
+        "System_SkyCommandNotificationFailedSubscriptionRequired",
+        "SkyCommand Notification Failed, Subscription Required",
+    ),
+    532: (
+        "System_SkyCommandNotificationFailedSkyCommandUserMissing",
+        "SkyCommand Notification Failed, SkyCommand User Not Found",
+    ),
+    533: (
+        "System_SkyCommandNotificationFailedUnknownError",
+        "SkyCommand Notification Failed, Unknown Error",
+    ),
+    534: (
+        "System_SkyCommandNotificationPrepared",
+        "SkyCommand Notification Created, Preparing to Send",
+    ),
+    535: ("System_SkyCommandNotificationSent", "SkyCommand Notification Message Sent"),
+    536: ("System_SkyCommandNotificationExpired", "SkyCommand Notification(s) Expired"),
+    537: ("System_SkyCommandAppLogin", "SkyCommand App Login"),
+    601: ("System_ConnectionConnected", "Connection Connected"),
+    602: ("System_ConnectionDisconnected", "Connection Disconnected"),
+    603: ("System_ConnectionFailed", "Connection Failed to Connect"),
+    604: ("System_ConnectionReceivedMessage", "Connection Received Message"),
+    605: ("System_ConnectionSentMessage", "Connection Sent Message"),
+    606: (
+        "System_ConnectionDiscardedTextIncorrectFraming",
+        "Connection Discarded Text because Incorrect Framing",
+    ),
+    607: (
+        "System_ConnectionDiscardedTextBufferFull",
+        "Connection Discarded Text because Buffer Full",
+    ),
+    608: (
+        "System_ConnectionDiscardedMessageSendRetryTimeout",
+        "Connection Discarded Message Because Send Retry Timeout",
+    ),
+    609: (
+        "System_ConnectionHttpMessageFailedNoResponse",
+        "HTTP Connection Failed Because No Response",
+    ),
+    610: (
+        "System_ConnectionHttpMessageFailedClientError",
+        "HTTP Connection Failed Because Client Error",
+    ),
+    611: (
+        "System_ConnectionHttpMessageFailedServerError",
+        "HTTP Connection Failed Because Server Error",
+    ),
+    612: (
+        "System_ConnectionDiscardedMessageQueueFull",
+        "Connection Discarded Message Because Queue Is Full",
+    ),
+    651: ("System_ScheduledTaskStarted", "Scheduled Task Started"),
+    652: ("System_ScheduledTaskSucceeded", "Scheduled Task Succeeded"),
+    653: ("System_ScheduledTaskFailed", "Scheduled Task Failed"),
+    654: ("System_RestApiRequestReceived", "REST API Request Received"),
+    655: ("System_RestApiRequestCompleted", "REST API Request Completed"),
+    656: (
+        "System_RestApiRequestFailureUnauthorized",
+        "REST API Request Failed because User not Authorized",
+    ),
+    657: (
+        "System_RestApiRequestFailureInternalServerError",
+        "REST API Request Failed due to Internal Server Error",
+    ),
+    658: (
+        "System_RestApiUserLookupViaPinRequested",
+        "REST API User Lookup by PIN Requested",
+    ),
+    659: (
+        "System_RestApiRequestFailureInvalidApiToken",
+        "REST API Request Failed due to invalid API Token",
+    ),
+    660: ("System_DuimFileImportSuccess", "DUIM User File Import Successful"),
+    661: ("System_DuimFileImportFailure", "DUIM User File Import Failed"),
+    662: ("System_DuimNetworkShareAccessFailure", "DUIM Network Share Access Failed"),
     1500: ("Audit_ItemCreated", "Item Created"),
     1501: ("Audit_ItemChanged", "Item Changed"),
     1502: ("Audit_ItemDeleted", "Item Deleted"),
@@ -123,7 +317,6 @@ MESSAGE_DESCRIPTIONS: dict[int, tuple[str, str]] = {
     1510: ("Audit_UserPINSent", "User PIN Sent to User"),
     1511: ("Audit_EntityPasswordRevealed", "User Revealed an Entity Password"),
     1550: ("Audit_ReportGenerated", "Report Generated"),
-    # Access Messages - Door Events
     2000: ("Access_DoorUnlocked", "Door Unlocked"),
     2001: ("Access_DoorLocked", "Door Locked"),
     2002: ("Access_DoorOpened", "Door Opened (unsecured)"),
@@ -207,7 +400,27 @@ MESSAGE_DESCRIPTIONS: dict[int, tuple[str, str]] = {
         "Access_DoorUserCredentialTimeout",
         "Multi Credential Failed Due To Timeout",
     ),
-    # Access Messages - Card/Credential Events
+    2501: ("Access_AntiPassbackViolation", "Anti-Passback Violation by User"),
+    2502: (
+        "Access_AntiPassbackTimedViolation",
+        "Anti-Passback Timed Violation by User",
+    ),
+    2503: (
+        "Access_AntiPassbackAutoForgiveness",
+        "Anti-Passback Automatic Forgiveness to User",
+    ),
+    2504: (
+        "Access_AntiPassbackManualForgiveness",
+        "Anti-Passback Manual Forgiveness to User",
+    ),
+    2505: (
+        "Access_AntiPassbackForgivenessAllUsers",
+        "Anti-Passback Forgiveness to All Users",
+    ),
+    2506: (
+        "Access_AntiPassbackForgivenessUsersWithViolations",
+        "Anti-Passback Forgiveness to All Users with Violations",
+    ),
     3001: ("Access_CardReadSuccessful", "Credential Read Successful"),
     3002: (
         "Access_CardFailedUnknownReader",
@@ -251,7 +464,6 @@ MESSAGE_DESCRIPTIONS: dict[int, tuple[str, str]] = {
         "Credential Read Failed because Credential Template was Unknown",
     ),
     3013: ("Access_Card2BadgeDetected", "Card 2-Badge Action Detected"),
-    # Access Messages - PIN Events
     3501: ("Access_PINValid", "PIN Valid"),
     3502: (
         "Access_PINFailedKeypadInvalid",
@@ -263,7 +475,60 @@ MESSAGE_DESCRIPTIONS: dict[int, tuple[str, str]] = {
         "PIN Failed because Reader is Locked Out",
     ),
     3505: ("Access_UserCancelledFirstPINUsed", "User Cancelled because First PIN Use"),
-    # Security Messages - Area Events
+    3801: ("Access_UserAreaUpdated", "User Location Updated"),
+    4001: ("Access_FloorFreeAccess", "Floor Free Access"),
+    4002: ("Access_FloorSecured", "Floor Secured"),
+    4003: (
+        "Access_FloorUserControlDeniedPermission",
+        "Floor Control by User Denied because No Permission",
+    ),
+    4004: (
+        "Access_FloorOverrideSetToFreeAccess",
+        "Floor State Override set to Free Access",
+    ),
+    4005: ("Access_FloorOverrideSetToSecure", "Floor State Override set to Secure"),
+    4006: ("Access_FloorOverrideSetToLockOut", "Floor State Override set to Lock out"),
+    4007: ("Access_FloorOverrideCleared", "Floor State Override Cleared"),
+    4008: (
+        "Access_FloorFreeAccessDeniedAreaArmed",
+        "Floor Control by User Denied because Area Armed",
+    ),
+    4201: (
+        "Access_LiftCarButtonDeniedAreaArmed",
+        "Lift Car Floor Access Denied because Area Armed",
+    ),
+    4202: (
+        "Access_LiftCarAccessFailedNoFloors",
+        "Lift Car Access Failed, no Floors Programmed",
+    ),
+    4203: (
+        "Access_LiftCarButtonDeniedNoPermission",
+        "Lift Car Denied because No Permission",
+    ),
+    4204: ("Access_LiftCarAccessGranted", "Lift Car Access Granted"),
+    4205: ("Access_LiftFloorSelected", "Lift Floor Selected by User"),
+    4206: (
+        "Access_LiftCarButtonDeniedFloorLockout",
+        "Lift Car Floor Access Denied because Floor Lockout",
+    ),
+    4207: (
+        "Access_LiftCarButtonDeniedUserExpired",
+        "Lift Car Denied because User Expired",
+    ),
+    4251: ("Access_StorageBlockAccessRequested", "Storage Block Access Requested"),
+    4252: ("Access_StorageBlockExitRequested", "Storage Block Exit Requested"),
+    4253: (
+        "Access_StorageBlockAccessFailedNoUnits",
+        "Storage Block Access Failed, no Units Programmed",
+    ),
+    4254: (
+        "Access_StorageBlockAccessFailedNoPermission",
+        "Storage Block Access Failed, no Unit Permissions",
+    ),
+    4255: (
+        "Access_StorageBlockDeniedUserExpired",
+        "Storage Block Denied because User Expired",
+    ),
     5000: ("Security_AreaArmedByUser", "Area Armed by User"),
     5001: ("Security_AreaArmedByUserWithExit", "Area Armed With Exit Delay by User"),
     5002: ("Security_AreaArmedByTimePeriod", "Area Armed by Time Period"),
@@ -325,7 +590,10 @@ MESSAGE_DESCRIPTIONS: dict[int, tuple[str, str]] = {
         "Security_AreaDisarmUnnecessary",
         "Area Disarm Unnecessary because Area is Already Disarmed",
     ),
-    # Security Messages - Input Events
+    5301: ("Security_AreaWalkTestStarted", "Area Walk Test Started"),
+    5302: ("Security_AreaWalkTestCompleted", "Area Walk Test Completed"),
+    5303: ("Security_AreaWalkTestCancelled", "Area Walk Test Cancelled"),
+    5304: ("Security_AreaWalkTestFailedAreaArmed", "Area Walk Test Failed, Area Armed"),
     5401: ("Security_InputDeisolatedByUser", "Input De-Isolated by User"),
     5402: ("Security_InputDeisolatedByAutomation", "Input De-Isolated by Automation"),
     5403: ("Security_InputDeisolatedBySystem", "Input De-Isolated by System"),
@@ -340,7 +608,316 @@ MESSAGE_DESCRIPTIONS: dict[int, tuple[str, str]] = {
         "Security_InputIsolatedTemporarilyBySystem",
         "Input Temporarily Isolated by System",
     ),
-    # Hardware Messages
+    5409: ("Security_InputSoakTestStartedByUser", "Input Soak Test Started by User"),
+    5410: ("Security_InputSoakTestCompletedBySystem", "Input Soak Test Completed"),
+    5411: ("Security_InputSoakTestFailed", "Input Soak Test Failed"),
+    5412: (
+        "Security_InputSoakTestCancelledByUser",
+        "Input Soak Test Cancelled by User",
+    ),
+    5413: (
+        "Security_InputSoakTestCancelledBySystem",
+        "Input Soak Test Cancelled by System",
+    ),
+    5414: ("Security_InputPulseDetected", "Input Pulse Detected"),
+    5501: ("Security_InputEventCreated", "Input Event Created"),
+    5502: ("Security_InputEventTransmitted", "Input Event Successfully Transmitted"),
+    5503: ("Security_HardwareEventCreated", "Hardware Event Created"),
+    5504: (
+        "Security_HardwareEventTransmitted",
+        "Hardware Event Successfully Transmitted",
+    ),
+    5505: ("Security_AreaEventCreated", "Area Event Created"),
+    5506: ("Security_AreaEventTransmitted", "Area Event Successfully Transmitted"),
+    5507: ("Security_ResetEventCreated", "System Reset Event Created"),
+    5508: ("Security_ResetEventTransmitted", "System Reset Successfully Transmitted"),
+    5509: (
+        "Security_TestReportTransmitted",
+        "Test Report Event Successfully Transmitted",
+    ),
+    5510: ("Security_CommsFailEventCreated", "Comms Failure Event Created"),
+    5511: (
+        "Security_CommsFailEventTransmitted",
+        "Comms Failure Successfully Transmitted",
+    ),
+    5512: ("Security_UserDuressEventCreated", "User Duress Event Created"),
+    5513: (
+        "Security_UserDuressEventTransmitted",
+        "User Duress Successfully Transmitted",
+    ),
+    5514: ("Security_TechOnSiteEventCreated", "Tech On Site Event Created"),
+    5515: (
+        "Security_TechOnSiteEventTransmitted",
+        "Tech On Site Event Successfully Transmitted",
+    ),
+    5516: ("Security_ConfirmationEventCreated", "Confirmation Event Created"),
+    5517: (
+        "Security_ConfirmationEventTransmitted",
+        "Confirmation Event Successfully Transmitted",
+    ),
+    5518: ("Security_SwingerEventCreated", "Swinger Shutdown Event Created"),
+    5519: (
+        "Security_SwingerEventTransmitted",
+        "Swinger Shutdown Event Successfully Transmitted",
+    ),
+    5520: ("Security_AlarmCancelledBySystem", "Alarm Cancelled by System"),
+    5521: ("Security_AlarmCancelledByUser", "Alarm Cancelled by User"),
+    5801: (
+        "Security_ReportingPathFailNoPathsConfigured",
+        "Alarm Event Failed to Send, No Paths Configured",
+    ),
+    5802: (
+        "Security_ReportingPathFailNoPathsAvailable",
+        "Alarm Event Failed to Send because No Paths Available. Retrying to Send",
+    ),
+    5803: (
+        "Security_ReportingPathFailServiceMode",
+        "Alarm Event Failed to Send, Service Mode is Enabled",
+    ),
+    5804: (
+        "Security_ReportingPathDiscardedTimeout",
+        "Alarm Event Failed, Event Discarded due to Timeout",
+    ),
+    5805: (
+        "Security_ReportingPathDiscardedQueueLimit",
+        "Alarm Event Failed, Past Event Discarded due to Too Many Events Queued",
+    ),
+    5806: (
+        "Security_ReportingPathDiscardedUnknownError",
+        "Alarm Event Failed, Event Discarded due to Unknown Error",
+    ),
+    5807: ("PlaceholderUnused", "Placeholder"),
+    5808: (
+        "Security_ReportingPathFailSpecificPathNotEnabled",
+        "Alarm Event Failed to Send, Specified Path Not Enabled",
+    ),
+    5809: (
+        "Security_ReportingPathFailSoakTestActive",
+        "Alarm Event Failed to Send, Soak Test is Active",
+    ),
+    5810: (
+        "Security_ReportingPathFailSwingerActive",
+        "Alarm Event Failed, Swinger Shutdown Active",
+    ),
+    6001: (
+        "Security_ReportingPathSkyTunnelEnabled",
+        "SkyTunnel Alarm Reporting Path Enabled",
+    ),
+    6002: (
+        "Security_ReportingPathSkyTunnelFailed",
+        "SkyTunnel Alarm Reporting Path Comms Failure",
+    ),
+    6003: (
+        "Security_ReportingPathSkyTunnelReesetablished",
+        "SkyTunnel Alarm Reporting Path Comms Re-established",
+    ),
+    6004: (
+        "Security_ReportingPathSkyTunnelDisabled",
+        "SkyTunnel Alarm Reporting Path Disabled",
+    ),
+    6005: (
+        "Security_ReportingPathSkyTunnelTestReport",
+        "SkyTunnel Alarm Test Report Sent",
+    ),
+    6006: ("Security_ReportingPathT4000Enabled", "Alarm Device Reporting Path Enabled"),
+    6007: (
+        "Security_ReportingPathT4000Failed",
+        "Alarm Device Reporting Path Comms Failure",
+    ),
+    6008: (
+        "Security_ReportingPathT4000Reestablished",
+        "Alarm Device Reporting Path Comms Re-established",
+    ),
+    6009: (
+        "Security_ReportingPathT4000Disabled",
+        "Alarm Device Reporting Path Disabled",
+    ),
+    6010: ("Security_ReportingPathT4000TestReport", "Alarm Device Test Report Sent"),
+    6011: (
+        "OBSOLETE_Security_ReportingPathDialerEnabled",
+        "Dialer Alarm Reporting Path Enabled",
+    ),
+    6012: (
+        "OBSOLETE_Security_ReportingPathDialerFailed",
+        "Dialer Alarm Reporting Path Comms Failure",
+    ),
+    6013: (
+        "OBSOLETE_Security_ReportingPathDialerReestablished",
+        "Dialer Alarm Reporting Path Comms Re-established",
+    ),
+    6014: (
+        "OBSOLETE_Security_ReportingPathDialerDisabled",
+        "Dialer Alarm Reporting Path Disabled",
+    ),
+    6015: (
+        "OBSOLETE_Security_ReportingPathDialerTestReport",
+        "Dialer Alarm Test Report Sent",
+    ),
+    6016: ("Security_ReportingPathManualTestReport", "Manual Test Report Sent"),
+    6017: (
+        "Security_ReportingPathAlarmQueueClearedByUser",
+        "Alarm Queue Cleared By User",
+    ),
+    6018: (
+        "Security_ReportingPathAllAlarmsGenerated",
+        "All Possible Alarms Generated By User",
+    ),
+    6019: (
+        "Security_ReportingPathTempIsolateUser",
+        "Alarm Comms Issues Temporarily Isolated by User",
+    ),
+    6020: (
+        "Security_ReportingPathTempIsolateSystem",
+        "Alarm Comms Issues Temporarily Isolated by System",
+    ),
+    6021: (
+        "Security_ReportingPathDeIsolateUser",
+        "Alarm Comms Issues De-Isolated by User",
+    ),
+    6022: (
+        "Security_ReportingPathDeIsolateSystem",
+        "Alarm Comms Issues De-Isolated by System",
+    ),
+    6023: ("Security_ReportingPathSIAIPEnabled", "SIA IP Alarm Reporting Path Enabled"),
+    6024: (
+        "Security_ReportingPathSIAIPFailed",
+        "SIA IP Alarm Reporting Path Comms Failure",
+    ),
+    6025: (
+        "Security_ReportingPathSIAIPReestablished",
+        "SIA IP Alarm Reporting Path Comms Re-established",
+    ),
+    6026: (
+        "Security_ReportingPathSIAIPDisabled",
+        "SIA IP Alarm Reporting Path Disabled",
+    ),
+    6027: ("Security_ReportingPathSIAIPTestReport", "SIA IP Alarm Test Report Sent"),
+    6201: ("Security_SirensTestStartedByUser", "Siren Testing Started by User"),
+    6202: ("Security_SirensTestStoppedByUser", "Siren Testing Stopped by User"),
+    6203: ("Security_SirensActivatedInArea", "Sirens Activated in Area"),
+    6204: ("Security_SirensStoppedInArea", "Sirens Stopped in Area"),
+    6205: (
+        "Security_SirensFailServiceMode",
+        "Siren Failed to Sound, Service Mode is Enabled",
+    ),
+    6206: (
+        "Security_SirensFailLimitReached",
+        "Siren Failed to Sound, Activation Limit",
+    ),
+    6207: (
+        "Security_SirensFailRetriggerNotAllowed",
+        "Siren Failed to Sound, Retrigger Not Allowed",
+    ),
+    6208: (
+        "Security_SirenResponseSuppressedServiceMode",
+        "Siren Response Suppressed, Service Mode is Enabled",
+    ),
+    6301: ("Security_StrobeActivatedInArea", "Strobe Activated in Area"),
+    6302: ("Security_StrobeStoppedInArea", "Strobe Stopped in Area"),
+    6303: ("Security_StrobeTestStartedByUser", "Strobe Testing Started by User"),
+    6304: ("Security_StrobeTestStoppedByUser", "Strobe Testing Stopped by User"),
+    6401: ("Security_HardwareDeIsolatedByUser", "Hardware De-Isolated by User"),
+    6402: ("Security_HardwareDeIsolatedBySystem", "Hardware De-Isolated by System"),
+    6403: ("Security_HardwareIsolatedByUser", "Hardware Isolated by User"),
+    6404: (
+        "Security_HardwareTempIsolatedByUser",
+        "Hardware Temporarily Isolated by User",
+    ),
+    6405: (
+        "Security_HardwareTempIsolatedBySystem",
+        "Hardware Temporarily Isolated by System",
+    ),
+    6501: (
+        "Security_AnticodePermissionGrantedToUser",
+        "Anti-code Permission Granted to User",
+    ),
+    6601: ("Security_GSMAlarmCommsConnected", "Alarm Comms Device Connected"),
+    6602: ("Security_GSMAlarmCommsDisconnected", "Alarm Comms Device Disconnected"),
+    6603: (
+        "Security_GSMAlarmCommsUnableReconnect",
+        "Alarm Comms Device Unable to Reconnect",
+    ),
+    6604: (
+        "Security_GSMAlarmCommsConnectedDepricated",
+        "Alarm Comms Device Connected ",
+    ),
+    6605: (
+        "Security_GSMAlarmCommsDisconnectedDepricated",
+        "Alarm Comms Device Disconnected ",
+    ),
+    6606: (
+        "Security_GSMAlarmCommsUnableReconnectDepricated",
+        "Alarm Comms Device Unable to Reconnect ",
+    ),
+    6607: (
+        "Security_GSMAlarmCommsPathsUnavailable",
+        "Alarm Comms Device No Paths Available",
+    ),
+    6608: ("Security_GSMAlarmCommsPathsRestored", "Alarm Comms Device Paths Available"),
+    6701: (
+        "Security_UnconfirmedIntruderDetected",
+        "Unconfirmed Intruder Condition Detected",
+    ),
+    6702: ("Security_IntruderReinstated", "Intruder Condition Reinstated"),
+    6703: (
+        "Security_ConfirmedIntruderDetected",
+        "Confirmed Intruder Condition Detected",
+    ),
+    6704: (
+        "Security_UnconfirmedDuressDetected",
+        "Unconfirmed Duress Condition Detected",
+    ),
+    6705: ("Security_DuressReinstated", "Duress Condition Reinstated"),
+    6706: ("Security_ConfirmedDuressDetected", "Confirmed Duress Condition Detected"),
+    6707: (
+        "Security_IntruderConfirmationTimerExtended",
+        "Intruder Confirmation Timer Extended",
+    ),
+    6708: (
+        "Security_DuressConfirmationTimerExtended",
+        "Duress Confirmation Timer Extended",
+    ),
+    6801: ("Security_UnitUnlocked", "Storage Unit Unlocked"),
+    6802: ("Security_UnitSecured", "Storage Unit Secured"),
+    6804: ("Security_UnitSecuredByReSecure", "Storage Unit Secured by Re-secure Time"),
+    6805: ("Security_UnitVacant", "Storage Unit Marked as Vacant"),
+    6806: ("Security_UnitVacancyCleared", "Storage Unit Vacancy Cleared"),
+    6808: ("Security_UnitAlarmDetected", "Storage Unit Alarm Detected"),
+    6809: ("Security_UnitAlarmRestored", "Storage Unit Alarm Restored"),
+    6810: ("Security_UnitDoorOpened", "Storage Unit Door Opened"),
+    6811: ("Security_UnitDoorClosed", "Storage Unit Door Closed"),
+    6812: ("Security_UnitUnlockedTooLong", "Storage Unit Unlocked Too Long"),
+    6813: ("Security_UnitTamperDetected", "Storage Unit Tamper Detected"),
+    6814: ("Security_UnitTamperRestored", "Storage Unit Tamper Restored"),
+    6815: (
+        "Security_UnitSecureDeniedNoPermission",
+        "Storage Unit Secure by User Denied because No Permission",
+    ),
+    6816: (
+        "Security_UnitUnlockDeniedNoPermission",
+        "Storage Unit Unlock by User Denied because No Permission",
+    ),
+    6817: (
+        "Security_UnitVacantDeniedNoPermission",
+        "Storage Unit Make Vacant by User Denied because No Permission",
+    ),
+    6818: (
+        "Security_UnitVacancyClearDeniedNoPermission",
+        "Storage Unit Clear Vacancy by User Denied because No Permission",
+    ),
+    6819: (
+        "Security_UnitSecurePending",
+        "Storage Unit Moved to Secure Pending State due to Active Inputs",
+    ),
+    6820: ("Security_UnitAlarmClearedByUser", "Storage Unit Alarm Cleared by User"),
+    6821: (
+        "Security_UnitAlarmClearDeniedNoPermission",
+        "Failed to Clear Alarms on Storage Unit due to No Permission",
+    ),
+    6822: (
+        "Security_UnitAlarmClearDeniedActiveInputs",
+        "Failed to Clear Alarms on Storage Unit due to Active Inputs",
+    ),
     10000: ("Hardware_LanModuleDiscovered", "LAN Module Discovered"),
     10001: ("Hardware_LanModuleConnected", "LAN Module Connected"),
     10002: ("Hardware_LanModuleDisconnected", "LAN Module Disconnected"),
@@ -366,6 +943,230 @@ MESSAGE_DESCRIPTIONS: dict[int, tuple[str, str]] = {
         "Hardware_LANModuleImpersonationDetected",
         "LAN Module Impersonation Detected",
     ),
+    10501: ("Hardware_OSDPReaderDiscovered", "SIFER/OSDP Reader Discovered"),
+    10502: ("Hardware_OSDPReaderConnected", "SIFER/OSDP Reader Connected"),
+    10503: (
+        "Hardware_OSDPReaderConnectedAndMoved",
+        "SIFER/OSDP Reader Connected and Moved",
+    ),
+    10504: ("Hardware_OSDPReaderDisconnected", "SIFER/OSDP Reader Disconnected"),
+    10505: (
+        "Hardware_OSDPReaderFWUpdateStarted",
+        "SIFER/OSDP Reader Firmware Update Started",
+    ),
+    10506: (
+        "Hardware_OSDPReaderFWUpdateFailed",
+        "SIFER/OSDP Reader Firmware Update Failed",
+    ),
+    10507: (
+        "Hardware_OSDPReaderFWUpdateCompleted",
+        "SIFER/OSDP Reader Firmware Update Completed",
+    ),
+    10508: ("Hardware_OSDPReaderFWVersion", "SIFER/OSDP Reader Current Firmware"),
+    10509: (
+        "Hardware_OSDPReaderFWVersionUpdated",
+        "SIFER/OSDP Reader F/W Version Detected",
+    ),
+    10510: ("Hardware_OSDPReaderFeedbackUpdated", "SIFER/OSDP Feedback Updated"),
+    10511: ("Hardware_OSDPReaderFeedbackStopped", "SIFER/OSDP Feedback Stopped"),
+    10512: (
+        "Hardware_OSDPReaderAddressChangeCommand",
+        "OSDP Reader Address Change Command Sent",
+    ),
+    10701: ("Hardware_UnibusDiscovered", "Unibus Expander Discovered"),
+    10702: ("Hardware_UnibusConnected", "Unibus Expander Connected"),
+    10703: ("Hardware_UnibusConnectedAndMoved", "Unibus Expander Connected and Moved"),
+    10704: ("Hardware_UnibusDisconnected", "Unibus Expander Disconnected"),
+    10705: (
+        "Hardware_UnibusFWUpdateStarted",
+        "Unibus Expander Firmware Update Started",
+    ),
+    10706: ("Hardware_UnibusFWUpdateFailed", "Unibus Expander Firmware Update Failed"),
+    10707: (
+        "Hardware_UnibusFWUpdateCompleted",
+        "Unibus Expander Firmware Update Completed",
+    ),
+    10708: ("Hardware_UnibusFWVersion", "Unibus Expander Current Firmware"),
+    10709: ("Hardware_UnibusFWVersionUpdated", "Unibus Expander F/W Version Detected"),
+    10801: ("OBSOLETEHardware_EthernetPlugonDiscovered", "Ethernet Plugon Discovered"),
+    10802: ("OBSOLETEHardware_EthernetPlugonConnected", "Ethernet Plugon Connected"),
+    10803: (
+        "OBSOLETEHardware_EthernetPlugonConnectedAndMoved",
+        "Ethernet Plugon Connected and Moved",
+    ),
+    10804: (
+        "OBSOLETEHardware_EthernetPlugonDisconnected",
+        "Ethernet Plugon Disconnected",
+    ),
+    10805: (
+        "OBSOLETEHardware_EthernetPlugonFWUpdateStarted",
+        "Ethernet Plugon Firmware Update Started",
+    ),
+    10806: (
+        "OBSOLETEHardware_EthernetPlugonFWUpdateFailed",
+        "Ethernet Plugon Firmware Update Failed",
+    ),
+    10807: (
+        "OBSOLETEHardware_EthernetPlugonFWUpdateCompleted",
+        "Ethernet Plugon Firmware Update Completed",
+    ),
+    10808: (
+        "OBSOLETEHardware_EthernetPlugonFWVersion",
+        "Ethernet Plugon Current Firmware",
+    ),
+    10809: (
+        "OBSOLETEHardware_EthernetPlugonFWVersionUpdated",
+        "Ethernet Plugon F/W Version Detected",
+    ),
+    11001: ("Hardware_InputChangeToUnknown", "Input Changed State to Unknown"),
+    11002: ("Hardware_InputChangeToSealed", "Input Changed State to Sealed"),
+    11003: ("Hardware_InputChangeToAlarm", "Input Changed State to Alarm"),
+    11004: ("Hardware_InputChangeToTampered", "Input Changed State to Tampered"),
+    11005: ("Hardware_InputChangeToOn", "Input Changed State to On"),
+    11006: ("Hardware_InputChangeToOff", "Input Changed State to Off"),
+    11007: ("Hardware_InputChangeToActive", "Input Changed State to Active"),
+    11008: ("Hardware_InputChangeToInactive", "Input Changed State to Inactive"),
+    11009: ("Hardware_InputChangeToMask", "Input Changed State to Mask"),
+    11010: ("Hardware_InputChangeToAlarmMask", "Input Changed State to Alarm + Mask"),
+    11011: ("Hardware_InputStateChange", "Input State Changed"),
+    11201: ("Hardware_OutputChangeToUnknown", "Output Changed State to Unknown"),
+    11202: ("Hardware_OutputChangeToOn", "Output Changed State to On"),
+    11203: ("Hardware_OutputChangeToOff", "Output Changed State to Off"),
+    11204: (
+        "Hardware_OutputControlFailNotControllable",
+        "Output Control Failed because Not User Controllable",
+    ),
+    11205: (
+        "Hardware_OutputControlFailNoPermission",
+        "Output Control Failed because No Permission",
+    ),
+    11206: ("Hardware_OutputControlUserTurnOn", "Output Turned On by User"),
+    11207: ("Hardware_OutputControlUserTurnOff", "Output Turned Off by User"),
+    11208: (
+        "Hardware_OutputControlUserTurnOnTimed",
+        "Output Turned On for Time by User",
+    ),
+    11209: (
+        "Hardware_OutputControlUserTurnOffTimed",
+        "Output Turned Off for Time by User",
+    ),
+    11210: ("Hardware_OutputControlAutomationTurnOn", "Output Turned On by Automation"),
+    11211: (
+        "Hardware_OutputControlAutomationTurnOff",
+        "Output Turned Off by Automation",
+    ),
+    11212: (
+        "Hardware_OutputControlAutomationTurnOnTimed",
+        "Output Turned On for Time by Automation",
+    ),
+    11213: (
+        "Hardware_OutputControlAutomationTurnOffTimed",
+        "Output Turned Off for Time by Automation",
+    ),
+    11401: ("Hardware_SirenToneStarted", "Siren Tone Started"),
+    11402: ("Hardware_SirenToneStopped", "Siren Tone Stopped"),
+    11403: ("Hardware_SirenSquawkActivated", "Siren Squawk Activated"),
+    11404: (
+        "Hardware_SirenSquawkIgnored",
+        "Siren Squawk Ignored, Tone Already Playing",
+    ),
+    12501: ("Hardware_USBWiFiModuleConnected", "WiFi Module Connected"),
+    12502: ("Hardware_USBWiFiModuleDisconnected", "WiFi Module Disconnected"),
+    13001: ("Hardware_TerminalLoginSuccess", "Terminal Login was Successful by User"),
+    13002: (
+        "Hardware_TerminalLoginFailedPINUnknown",
+        "Terminal Login Failed because PIN was Unknown",
+    ),
+    13003: (
+        "Hardware_TerminalLoginFailedNoPermission",
+        "Terminal Login Failed because User does not have Permission",
+    ),
+    13004: (
+        "Hardware_TerminalLogoutSuccessful",
+        "Terminal Logout was Successful by User",
+    ),
+    13005: (
+        "Hardware_TerminalLockedOut",
+        "Terminal Locked Out, Too Many Failed Attempts",
+    ),
+    13006: (
+        "Hardware_TerminalLoginFailedUserExpired",
+        "Terminal Login Failed because User is Expired",
+    ),
+    13007: (
+        "Hardware_TerminalLoginFailedAreaArmed",
+        "Terminal Login Failed because one or more Areas were Armed",
+    ),
+    13008: (
+        "Hardware_TerminalLoginFailedCredentialInactive",
+        "Terminal Login Failed because User's Credential was Inactive",
+    ),
+    13501: ("Hardware_RemoteFobButtonUnknownFob", "Remote Fob Button from Unknown Fob"),
+    13502: (
+        "Hardware_RemoteFobButtonFromUser",
+        "Remote Fob Button press received from User",
+    ),
+    13503: (
+        "Hardware_RemoteFobButtonDuplicate",
+        "Remote Fob Button press received (duplicate)",
+    ),
+    13504: (
+        "Hardware_RemoteFobButtonMissingTemplate",
+        "Remote Fob Button press received for missing Template",
+    ),
+    13505: (
+        "Hardware_RemoteFobButtonNoAction",
+        "Remote Fob Button press received but no Action assigned",
+    ),
+    13506: ("Hardware_RfDetectorDiscovered", "Rf Device Learn Button Pressed"),
+    13507: ("Hardware_RfSignalStrength", "Rf Input Signal Strength Update"),
+    13508: (
+        "Hardware_RemoteFobButtonFromExpiredUser",
+        "Remote Fob Button press received from Expired / Cancelled User",
+    ),
+    13509: ("Hardware_RemoteFobBatteryLow", "Remote Fob Low Battery Detected"),
+    13510: ("Hardware_RemoteFobBatteryOk", "Remote Fob Low Battery Restored"),
+    14001: ("Hardware_BatteryTestQueued", "Battery Test Queued"),
+    14002: ("Hardware_BatteryTestManuallyRequested", "Battery Test Manually Requested"),
+    14003: ("Hardware_BatteryTestStarted", "Battery Test Started"),
+    14004: ("Hardware_BatteryTestUnableToStart", "Battery Test Unable to Start"),
+    14005: ("Hardware_BatteryTestPassed", "Battery Test Passed"),
+    14006: ("Hardware_BatteryTestFailed", "Battery Test Failed"),
+    14007: ("Hardware_BatteryTestAborted", "Battery Test Aborted"),
+    14201: (
+        "Hardware_ReaderAreaFailedNoDoor",
+        "Keypad Reader Area Control Failed, No Door",
+    ),
+    14202: (
+        "Hardware_ReaderAreaFailedNoArea",
+        "Keypad Reader Area Control Failed, No Area",
+    ),
+    14203: ("Hardware_ReaderLockedOut", "Reader Locked Out, Too Many Failed Attempts"),
+    14301: ("Hardware_ILAMStartedOfflineSync", "ILAM Started Synchronising Offline DB"),
+    14302: (
+        "Hardware_ILAMFinishedOfflineSync",
+        "ILAM Finished Synchronising Offline DB",
+    ),
+    20000: ("Integration_IntegratedConnectionOnline", "Integrated Connection Online"),
+    20001: ("Integration_IntegratedConnectionOffline", "Integrated Connection Offline"),
+    20002: ("Integration_IntegratedConnectionError", "Integrated Connection Error"),
+    20003: ("Integration_DeviceStateOnline", "Integrated Device Online"),
+    20004: ("Integration_DeviceStateOffline", "Integrated Device Offline"),
+    20005: ("Integration_AnalyticsEventDetected", "Integration Analytics Detected"),
+    20006: ("Integration_AnalyticsEventRestored", "Integration Analytics Restored"),
+    20007: (
+        "Integration_ThirdPartyDeviceConfigurationErrorDetected",
+        "3rd Party Device Configuration Error Detected",
+    ),
+    20008: (
+        "Integration_ThirdPartyDeviceConfigurationErrorRestored",
+        "3rd Party Device Configuration Error Restored",
+    ),
+    20009: ("Integration_VideoSignalErrorDetected", "Video Signal Error Detected"),
+    20010: ("Integration_VideoSignalErrorRestored", "Video Signal Error Restored"),
+    20011: ("Integration_ThirdPartyDiskErrorDetected", "3rd Party Disk Error Detected"),
+    20012: ("Integration_ThirdPartyDiskErrorRestored", "3rd Party Disk Error Restored"),
+    20013: ("Integration_CommandActivity", "Integration Command Activity"),
 }
 
 

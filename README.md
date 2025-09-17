@@ -64,7 +64,6 @@ The integration automatically monitors and emits `inception_review_event` events
 ```json
 {
   "event_id": "evt_123",
-  "event_type": "DoorAccess",
   "description": "Card access granted",
   "message_category": "2011",
   "message_description": "Door Access Granted from Access Button",
@@ -78,16 +77,17 @@ The integration automatically monitors and emits `inception_review_event` events
 
 **Event Fields:**
 - `event_id`: Unique identifier for the event
-- `event_type`: Type of event (e.g., "DoorAccess", "AreaArmed")
 - `description`: Human-readable description from the system
 - `message_category`: Category of the message (e.g., "Access", "Security")
 - `message_description`: Detailed description based on the MessageID (automatically added by integration)
-- `when`: Timestamp in ISO format
-- `who`: User associated with the event
-- `what`: Item/entity involved (e.g., door name)
-- `where`: Location of the event
-- `when_ticks`: Unix timestamp
-- `message_id`: Numeric message identifier from the system
+- `when`: Timestamp in ISO 6801 format
+- `reference_time`: The timestamp of the event in UTC ticks in string form, used as a reference point to query for newer events
+- `who`: The name of the Inception User or entity that triggered this event, if applicable
+- `who_id`: The Inception ID of the entity who triggered this event
+- `what`: The name of the Inception entity that was affected by this event, if applicable
+- `what_id`: The Inception ID of the entity who was affected by this event
+- `where`: The name of the area or location where the event occurred, if applicable
+- `where_id`: The Inception ID of the entity where the event was triggered
 
 **Using in Automations:**
 ```yaml
