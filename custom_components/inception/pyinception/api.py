@@ -219,9 +219,12 @@ class InceptionApiClient:
         """Monitor review events from the API."""
         try:
             # Build query parameters for the review endpoint
+            # On initial load, only get 1 event to establish reference point
+            # On subsequent calls, get up to 50 new events
+            initial_load = self._review_events_update_time == 0
             params = {
                 "dir": "desc",
-                "limit": 50,
+                "limit": 1 if initial_load else 50,
             }
 
             # Add category filtering if specified
@@ -273,6 +276,8 @@ class InceptionApiClient:
 
         # Find the latest event time to use as reference for next request
         latest_time = 0
+        is_initial_load = self._review_events_update_time == 0
+
         for event_data in events:
             # Handle both dict and string responses
             if not isinstance(event_data, dict):
@@ -280,10 +285,6 @@ class InceptionApiClient:
                 continue
 
             _LOGGER.debug("Review Event: %s", event_data)
-
-            # Trigger review event callbacks
-            for cb in self.review_event_cbs:
-                self._schedule_review_event_callback(cb, event_data)
 
             # Update reference time and ID
             event_ref_time = event_data.get("WhenTicks", 0)
@@ -297,9 +298,24 @@ class InceptionApiClient:
                 # Store the reference ID for the latest event
                 InceptionApiClient._review_events_reference_id = event_id
 
+            # Only trigger callbacks for new events (not during initial load)
+            if not is_initial_load:
+                # Trigger review event callbacks for new events only
+                for cb in self.review_event_cbs:
+                    self._schedule_review_event_callback(cb, event_data)
+
         # Update the reference time for next request
         if latest_time > self._review_events_update_time:
             InceptionApiClient._review_events_update_time = latest_time
+
+        # Log the initial load behavior
+        if is_initial_load:
+            _LOGGER.info(
+                "Initial review events load completed. Found %d historical event(s), "
+                "reference time set to %d. Future events will be emitted to HA.",
+                len(events),
+                latest_time,
+            )
 
     def _schedule_data_callback(self, cb: Callable) -> None:
         """Schedule a data callback."""

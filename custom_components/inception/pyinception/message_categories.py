@@ -103,7 +103,7 @@ MESSAGE_DESCRIPTIONS: dict[int, tuple[str, str]] = {
     ),
     154: (
         "System_WebLoginFailedInterventionLockout",
-        "Web Login Failed, login attempts will be blocked until administrator intervention",
+        "Web Login Failed, login attempts will be blocked until administrator intervention",  # noqa: E501
     ),
     181: ("System_FWUpdateRequested", "System Firmware Update Requested"),
     182: ("System_FWUpdateSucceeded", "System Firmware Update Succeeded"),

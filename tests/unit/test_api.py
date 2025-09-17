@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+from typing import TYPE_CHECKING, Any
 from unittest.mock import Mock, patch
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 import aiohttp
 import pytest
@@ -398,3 +402,110 @@ class TestReviewEventCallbacks:
 
         assert len(api_client.review_event_cbs) == 1
         assert callback in api_client.review_event_cbs
+
+
+class TestReviewEventsInitialLoad:
+    """Test review events initial load behavior."""
+
+    @pytest.fixture
+    def mock_session(self) -> Mock:
+        """Create a mock session."""
+        return Mock(spec=aiohttp.ClientSession)
+
+    def setup_method(self) -> None:
+        """Set up test method with clean state."""
+        # Reset class variables for test isolation
+        InceptionApiClient._review_events_update_time = 0
+        InceptionApiClient._review_events_reference_id = None
+
+    @pytest.mark.asyncio
+    async def test_initial_load_doesnt_emit_historical_events(
+        self, mock_session: Mock, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Test that historical events on initial load are not emitted."""
+        api_client = InceptionApiClient(
+            token="test_token",
+            host="http://test.com",
+            session=mock_session,
+        )
+
+        # Register a callback to track emissions
+        callback = Mock()
+        api_client.register_review_event_callback(callback)
+
+        # Reset class variables to ensure clean state
+        InceptionApiClient._review_events_update_time = 0
+        InceptionApiClient._review_events_reference_id = None
+
+        # Simulate initial state (no previous events loaded)
+        assert api_client._review_events_update_time == 0
+
+        # Mock historical event from initial load (only 1 event on initial load)
+        historical_events = [
+            {
+                "ID": "event1",
+                "Description": "Most recent historical event",
+                "WhenTicks": 1701432800,
+            },
+        ]
+
+        # Process the historical events
+        api_client._process_review_events_data(historical_events)
+
+        # Verify callbacks were NOT called for historical events
+        callback.assert_not_called()
+
+        # Verify reference time was updated
+        assert InceptionApiClient._review_events_update_time == 1701432800
+        assert InceptionApiClient._review_events_reference_id == "event1"
+
+        # Verify appropriate log message
+        log_messages = [record.message for record in caplog.records]
+        assert any(
+            "Initial review events load completed. Found 1 historical event(s)" in msg
+            for msg in log_messages
+        )
+
+    @pytest.mark.asyncio
+    async def test_subsequent_events_are_emitted(self, mock_session: Mock) -> None:
+        """Test that new events after initial load are properly emitted."""
+        api_client = InceptionApiClient(
+            token="test_token",
+            host="http://test.com",
+            session=mock_session,
+        )
+
+        # Mock the callback scheduling to directly call the callback
+        callback = Mock()
+        api_client.register_review_event_callback(callback)
+
+        def direct_callback(
+            cb: Callable[[dict[str, Any]], None], event: dict[str, Any]
+        ) -> None:
+            """Call callback directly instead of scheduling."""
+            cb(event)
+
+        api_client._schedule_review_event_callback = direct_callback
+
+        # Simulate that initial load has already occurred
+        # (non-zero time means not initial)
+        InceptionApiClient._review_events_update_time = 1701432800
+        InceptionApiClient._review_events_reference_id = "event1"
+
+        # Mock new events after initial load
+        new_events = [
+            {
+                "ID": "event4",
+                "Description": "New event",
+                "WhenTicks": 1701432900,
+            },
+        ]
+
+        # Verify that it's not treated as initial load
+        assert api_client._review_events_update_time == 1701432800
+
+        # Process the new events
+        api_client._process_review_events_data(new_events)
+
+        # Verify callback WAS called for new events
+        assert callback.call_count == 1
