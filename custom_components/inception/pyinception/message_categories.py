@@ -1170,7 +1170,7 @@ MESSAGE_DESCRIPTIONS: dict[int, tuple[str, str]] = {
 }
 
 
-def get_message_info(message_id: int | None) -> tuple[str, str] | None:
+def get_message_info(message_id: int) -> tuple[str, str] | None:
     """
     Get message information for a given message ID.
 
@@ -1181,12 +1181,10 @@ def get_message_info(message_id: int | None) -> tuple[str, str] | None:
         Tuple of (string_value, description) or None if not found
 
     """
-    if message_id is None:
-        return None
     return MESSAGE_DESCRIPTIONS.get(message_id)
 
 
-def get_message_description(message_id: int | None) -> str | None:
+def get_message_description(message_id: int) -> str | None:
     """
     Get human-readable description for a message ID.
 
@@ -1201,7 +1199,7 @@ def get_message_description(message_id: int | None) -> str | None:
     return info[1] if info else None
 
 
-def get_message_string_value(message_id: int | None) -> str | None:
+def get_message_string_value(message_id: int) -> str | None:
     """
     Get string value for a message ID.
 

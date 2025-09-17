@@ -12,7 +12,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from .const import DOMAIN, EVENT_REVIEW_EVENT, LOGGER
 from .pyinception.api import InceptionApiClient
 from .pyinception.data import InceptionApiData
-from .pyinception.message_categories import get_message_description
+from .pyinception.message_categories import get_message_info
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -95,14 +95,33 @@ class InceptionUpdateCoordinator(DataUpdateCoordinator[InceptionApiData]):
     @callback
     def review_event_callback(self, event_data: dict[str, Any]) -> None:
         """Process review event callbacks and emit Home Assistant events."""
-        # Get message description from MessageID
-        message_category = event_data.get("MessageCategory", 0)
-        message_description = get_message_description(message_category)
+        # Get MessageCategory as integer, fallback to 0
+        raw_message_category = event_data.get("MessageCategory")
+        try:
+            if raw_message_category is not None:
+                message_value = int(raw_message_category)
+            else:
+                message_value = 0
+        except (ValueError, TypeError):
+            message_value = 0
+
+        message_info = get_message_info(message_value)
+        if message_info is not None:
+            message_string_value, message_description = message_info
+        else:
+            message_string_value, message_description = "Unknown", "Unknown"
+
+        # Extract category from message_description (first part before underscore)
+        if message_string_value and "_" in message_string_value:
+            message_category = message_string_value.split("_")[0]
+        else:
+            message_category = "Unknown"
 
         # Create a clean event data structure for Home Assistant
         event_payload = {
             "event_id": event_data.get("ID"),
             "description": event_data.get("Description"),
+            "message_value": message_value,
             "message_category": message_category,
             "message_description": message_description,
             "when": event_data.get("When"),

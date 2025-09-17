@@ -65,7 +65,8 @@ The integration automatically monitors and emits `inception_review_event` events
 {
   "event_id": "evt_123",
   "description": "Card access granted",
-  "message_category": "2011",
+  "message_category": "Access",
+  "message_value": "2011",
   "message_description": "Door Access Granted from Access Button",
   "when": "2025-09-14T21:48:41.3832147+10:00",
   "who": "John Doe",
@@ -79,6 +80,7 @@ The integration automatically monitors and emits `inception_review_event` events
 - `event_id`: Unique identifier for the event
 - `description`: Human-readable description from the system
 - `message_category`: Category of the message (e.g., "Access", "Security")
+- `message_value`: Category of the message (e.g., 2001, 5000)
 - `message_description`: Detailed description based on the MessageID (automatically added by integration)
 - `when`: Timestamp in ISO 6801 format
 - `reference_time`: The timestamp of the event in UTC ticks in string form, used as a reference point to query for newer events
@@ -97,7 +99,7 @@ automation:
       platform: event
       event_type: inception_review_event
       event_data:
-        event_type: "DoorAccess"
+        message_category: "Access"
     action:
       - service: logbook.log
         data:
@@ -109,7 +111,7 @@ automation:
       platform: event
       event_type: inception_review_event
       event_data:
-        message_category: "Security"
+        message_value: 5501 # Input Event Created
     action:
       - service: notify.mobile_app
         data:
@@ -120,7 +122,7 @@ automation:
       platform: event
       event_type: inception_review_event
       event_data:
-        event_type: "DoorAccess"
+        message_category: "Access"
     action:
       - service: notify.mobile_app
         data:

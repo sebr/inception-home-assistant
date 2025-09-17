@@ -49,7 +49,6 @@ def test_review_event_callback_emits_ha_event() -> None:
     # Create sample event data
     event_data = {
         "ID": "event123",
-        "MessageType": "DoorAccess",
         "Description": "Card access granted",
         "MessageCategory": 2011,
         "When": "2023-12-01T10:30:00Z",
@@ -66,7 +65,8 @@ def test_review_event_callback_emits_ha_event() -> None:
     expected_event_data = {
         "event_id": "event123",
         "description": "Card access granted",
-        "message_category": 2011,
+        "message_value": 2011,
+        "message_category": "Access",
         "message_description": "Door Access Granted from Access Button",
         "when": "2023-12-01T10:30:00Z",
         "reference_time": None,
@@ -110,7 +110,6 @@ def test_review_event_callback_filters_none_values() -> None:
     # Create sample event data with some None values
     event_data = {
         "ID": "event123",
-        "MessageType": "DoorAccess",
         "Description": "Card access granted",
         "MessageCategory": None,  # This should be filtered out
         "When": "2023-12-01T10:30:00Z",
@@ -129,8 +128,9 @@ def test_review_event_callback_filters_none_values() -> None:
     expected_event_data = {
         "event_id": "event123",
         "description": "Card access granted",
-        "message_category": None,
-        "message_description": None,
+        "message_value": 0,
+        "message_category": "Unknown",
+        "message_description": "Unknown",
         "when": "2023-12-01T10:30:00Z",
         "reference_time": None,
         "who": None,
@@ -184,7 +184,8 @@ def test_review_event_callback_handles_missing_fields() -> None:
     expected_event_data = {
         "event_id": "event456",
         "description": "Motion detected",
-        "message_category": 0,
+        "message_value": 0,
+        "message_category": "Unknown",
         "message_description": "Unknown",
         "when": None,
         "reference_time": None,
