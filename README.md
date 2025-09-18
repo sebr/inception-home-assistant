@@ -15,7 +15,8 @@ Platform | Description
 `select` | A select which is used to choose the unlock operation of each door (i.e. Unlock or Timed Unlock).
 `alarm_control_panel` | For each Area that can be armed or disarmed.
 `binary_sensor` | For each Input and for Door attributes such as Open or Isolated states.
-`switch` | A switch for each Siren or Strobe.
+`sensor` | Diagnostic sensor for the last received review event.
+`switch` | A switch for each Siren or Strobe, plus switches to control review event monitoring.
 
 ## Supported Inception Entities
 
@@ -46,6 +47,19 @@ For each input that the authenticated user has permission to access, the followi
 For each output that the authenticated user has permission to access, the following entities are created:
 
 * A `switch` entity to control the output. Typically a siren or strobe.
+
+### Diagnostic Sensors
+
+The integration provides diagnostic sensors for monitoring and troubleshooting:
+
+* **Last Review Event Sensor**: A diagnostic sensor that displays the message description of the most recently received review event. All event data is available as entity attributes including event ID, timestamps, who/what/where information, and message details. This sensor is automatically disabled when review event monitoring is turned off and is useful for debugging event reception and creating dashboards showing recent security activity.
+
+### Review Event Controls
+
+The integration includes configuration switches to control review event monitoring:
+
+* **Global Review Events Switch**: Master switch to enable/disable all review event monitoring
+* **Category Switches**: Individual switches for each event category (System, Audit, Access, Security, Hardware) allowing fine-grained control over which types of events are monitored
 
 ## Events
 

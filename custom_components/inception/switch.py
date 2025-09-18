@@ -264,7 +264,7 @@ class ReviewEventGlobalSwitch(SwitchEntity):
         self._attr_is_on = stored_data.get("global_enabled", False)
 
         # Store the global state in the coordinator for other switches to access
-        self.coordinator._review_events_global_enabled = self._attr_is_on
+        self.coordinator.review_events_global_enabled = self._attr_is_on or False
 
         # Schedule a deferred startup check to allow all entities to load first
         if self._attr_is_on:
@@ -308,7 +308,7 @@ class ReviewEventGlobalSwitch(SwitchEntity):
     async def _update_category_switches_availability(self) -> None:
         """Update the availability of all category switches."""
         # Store the global state in the coordinator for other switches to access
-        self.coordinator._review_events_global_enabled = self._attr_is_on
+        self.coordinator.review_events_global_enabled = self._attr_is_on or False
 
         # Force update of all entities by asking Home Assistant to refresh them
         entity_registry = async_get(self.hass)

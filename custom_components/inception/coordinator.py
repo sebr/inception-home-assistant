@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any
 from homeassistant.const import CONF_HOST, CONF_TOKEN, EVENT_HOMEASSISTANT_STOP
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.entity_registry import RegistryEntryDisabler
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import DOMAIN, EVENT_REVIEW_EVENT, LOGGER
@@ -45,6 +46,7 @@ class InceptionUpdateCoordinator(DataUpdateCoordinator[InceptionApiData]):
         )
 
         self.monitor_connected: bool = False
+        self._review_events_global_enabled: bool = False
 
     async def _async_setup(self) -> None:
         self._shutdown_remove_listener = self.hass.bus.async_listen_once(
@@ -210,3 +212,42 @@ class InceptionUpdateCoordinator(DataUpdateCoordinator[InceptionApiData]):
             for category in categories
             if stored_data.get(f"{category.lower()}_enabled", False)
         ]
+
+    @property
+    def review_events_global_enabled(self) -> bool:
+        """Get the review events global enabled state."""
+        return self._review_events_global_enabled
+
+    @review_events_global_enabled.setter
+    def review_events_global_enabled(self, value: bool) -> None:
+        """Set the review events global enabled state and notify entities."""
+        if self._review_events_global_enabled != value:
+            self._review_events_global_enabled = value
+            # Force update to notify sensor entities of state change
+            self.async_update_listeners()
+            # Update sensor entity enabled state
+            self.hass.async_create_task(self._update_sensor_enabled_state())
+
+    async def _update_sensor_enabled_state(self) -> None:
+        """Update sensor entity enabled state based on review events setting."""
+        from homeassistant.helpers.entity_registry import async_get
+
+        entity_registry = async_get(self.hass)
+        # Construct the sensor entity ID based on the unique ID pattern
+        sensor_unique_id = f"{self.config_entry.entry_id}_last_review_event"
+        # Find the entity by unique ID rather than guessing entity ID
+        for entity_id, entity_entry in entity_registry.entities.items():
+            if entity_entry.unique_id == sensor_unique_id:
+                should_be_enabled = self._review_events_global_enabled
+                if entity_entry.disabled_by is None and not should_be_enabled:
+                    # Disable the entity
+                    entity_registry.async_update_entity(
+                        entity_id, disabled_by=RegistryEntryDisabler.INTEGRATION
+                    )
+                elif (
+                    entity_entry.disabled_by == RegistryEntryDisabler.INTEGRATION
+                    and should_be_enabled
+                ):
+                    # Enable the entity
+                    entity_registry.async_update_entity(entity_id, disabled_by=None)
+                break
