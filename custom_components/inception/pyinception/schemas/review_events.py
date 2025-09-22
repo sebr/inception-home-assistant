@@ -7,29 +7,46 @@ from typing import Any
 
 
 @dataclass
-class ReviewEventRequest:
-    """Request to monitor review events."""
+class LiveReviewEventsRequest:
+    """Request to monitor live review events via monitor-updates."""
 
     request_id: str
-    time_since_last_update: int
+    reference_id: str
+    reference_time: int
+    category_filter: list[str] | None = None
+    message_type_id_filter: str | None = None
 
     def __init__(
         self,
         request_id: str,
-        time_since_last_update: int,
+        reference_id: str,
+        reference_time: int,
+        category_filter: list[str] | None = None,
+        message_type_id_filter: str | None = None,
     ) -> None:
         """Initialize the object."""
         self.request_id = request_id
-        self.time_since_last_update = time_since_last_update
+        self.reference_id = reference_id
+        self.reference_time = reference_time
+        self.category_filter = category_filter
+        self.message_type_id_filter = message_type_id_filter
 
     def get_request_payload(self) -> dict[str, Any]:
-        """Return the payload for review events request."""
+        """Return the payload for live review events request."""
+        input_data = {
+            "referenceId": self.reference_id,
+            "referenceTime": self.reference_time,
+        }
+
+        if self.category_filter and len(self.category_filter) > 0:
+            input_data["categoryFilter"] = ",".join(self.category_filter)
+
+        if self.message_type_id_filter:
+            input_data["messageTypeIdFilter"] = self.message_type_id_filter
+
         return {
-            "ID": self.request_id,
-            "RequestType": "MonitorEvents",
-            "InputData": {
-                "timeSinceUpdate": self.time_since_last_update,
-            },
+            "RequestType": "LiveReviewEvents",
+            "InputData": input_data,
         }
 
 

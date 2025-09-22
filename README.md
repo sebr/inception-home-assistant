@@ -15,7 +15,8 @@ Platform | Description
 `select` | A select which is used to choose the unlock operation of each door (i.e. Unlock or Timed Unlock).
 `alarm_control_panel` | For each Area that can be armed or disarmed.
 `binary_sensor` | For each Input and for Door attributes such as Open or Isolated states.
-`switch` | A switch for each Siren or Strobe.
+`sensor` | Diagnostic sensor for the last received review event.
+`switch` | A switch for each Siren or Strobe, plus switches to control review event monitoring.
 
 ## Supported Inception Entities
 
@@ -47,6 +48,19 @@ For each output that the authenticated user has permission to access, the follow
 
 * A `switch` entity to control the output. Typically a siren or strobe.
 
+### Diagnostic Sensors
+
+The integration provides diagnostic sensors for monitoring and troubleshooting:
+
+* **Last Review Event Sensor**: A diagnostic sensor that displays the message description of the most recently received review event. All event data is available as entity attributes including event ID, timestamps, who/what/where information, and message details. This sensor is automatically disabled when review event monitoring is turned off and is useful for debugging event reception and creating dashboards showing recent security activity.
+
+### Review Event Controls
+
+The integration includes configuration switches to control review event monitoring:
+
+* **Global Review Events Switch**: Master switch to enable/disable all review event monitoring
+* **Category Switches**: Individual switches for each event category (System, Audit, Access, Security, Hardware) allowing fine-grained control over which types of events are monitored
+
 ## Events
 
 The integration emits Home Assistant events for real-time security notifications:
@@ -64,9 +78,9 @@ The integration automatically monitors and emits `inception_review_event` events
 ```json
 {
   "event_id": "evt_123",
-  "event_type": "DoorAccess",
   "description": "Card access granted",
-  "message_category": "2011",
+  "message_category": "Access",
+  "message_value": "2011",
   "message_description": "Door Access Granted from Access Button",
   "when": "2025-09-14T21:48:41.3832147+10:00",
   "who": "John Doe",
@@ -78,16 +92,18 @@ The integration automatically monitors and emits `inception_review_event` events
 
 **Event Fields:**
 - `event_id`: Unique identifier for the event
-- `event_type`: Type of event (e.g., "DoorAccess", "AreaArmed")
 - `description`: Human-readable description from the system
 - `message_category`: Category of the message (e.g., "Access", "Security")
+- `message_value`: Category of the message (e.g., 2001, 5000)
 - `message_description`: Detailed description based on the MessageID (automatically added by integration)
-- `when`: Timestamp in ISO format
-- `who`: User associated with the event
-- `what`: Item/entity involved (e.g., door name)
-- `where`: Location of the event
-- `when_ticks`: Unix timestamp
-- `message_id`: Numeric message identifier from the system
+- `when`: Timestamp in ISO 6801 format
+- `reference_time`: The timestamp of the event in UTC ticks in string form, used as a reference point to query for newer events
+- `who`: The name of the Inception User or entity that triggered this event, if applicable
+- `who_id`: The Inception ID of the entity who triggered this event
+- `what`: The name of the Inception entity that was affected by this event, if applicable
+- `what_id`: The Inception ID of the entity who was affected by this event
+- `where`: The name of the area or location where the event occurred, if applicable
+- `where_id`: The Inception ID of the entity where the event was triggered
 
 **Using in Automations:**
 ```yaml
@@ -97,7 +113,7 @@ automation:
       platform: event
       event_type: inception_review_event
       event_data:
-        event_type: "DoorAccess"
+        message_category: "Access"
     action:
       - service: logbook.log
         data:
@@ -109,7 +125,7 @@ automation:
       platform: event
       event_type: inception_review_event
       event_data:
-        message_category: "Security"
+        message_value: 5501 # Input Event Created
     action:
       - service: notify.mobile_app
         data:
@@ -120,7 +136,7 @@ automation:
       platform: event
       event_type: inception_review_event
       event_data:
-        event_type: "DoorAccess"
+        message_category: "Access"
     action:
       - service: notify.mobile_app
         data:
