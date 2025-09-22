@@ -282,21 +282,11 @@ class InceptionApiClient:
             response = await self._monitor_events_request(payload)
 
             if not response:
-                # No response from the API, try again later
-                _LOGGER.debug("no response from monitor-updates")
                 return
 
-            # Check if this is our LiveReviewEvents response
-            if response.get("ID") != "LiveReviewEventsRequest":
-                _LOGGER.warning("Unexpected response ID: %s", response.get("ID"))
-                return
-
-            result = response.get("Result", {})
-            events_data = result.get("events", [])
-
-            # Process the review events
-            if events_data:
-                self._process_review_events_data(events_data)
+            result = response.get("Result", [])
+            if len(result) > 0:
+                self._process_review_events_data(result)
 
         except (
             InceptionApiClientAuthenticationError,

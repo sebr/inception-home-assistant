@@ -38,14 +38,13 @@ class LiveReviewEventsRequest:
             "referenceTime": self.reference_time,
         }
 
-        if self.category_filter:
-            input_data["categoryFilter"] = self.category_filter
+        if self.category_filter and len(self.category_filter) > 0:
+            input_data["categoryFilter"] = ",".join(self.category_filter)
 
         if self.message_type_id_filter:
             input_data["messageTypeIdFilter"] = self.message_type_id_filter
 
         return {
-            "ID": self.request_id,
             "RequestType": "LiveReviewEvents",
             "InputData": input_data,
         }
