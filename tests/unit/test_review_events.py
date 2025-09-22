@@ -48,7 +48,6 @@ class TestLiveReviewEventsRequest:
         payload = request.get_request_payload()
 
         expected_payload = {
-            "ID": "LiveReviewEventsRequest",
             "RequestType": "LiveReviewEvents",
             "InputData": {
                 "referenceId": "ref123",
@@ -69,12 +68,11 @@ class TestLiveReviewEventsRequest:
         payload = request.get_request_payload()
 
         expected_payload = {
-            "ID": "LiveReviewEventsRequest",
             "RequestType": "LiveReviewEvents",
             "InputData": {
                 "referenceId": "ref456",
                 "referenceTime": 9876543210,
-                "categoryFilter": ["Access", "Alarm"],
+                "categoryFilter": "Access,Alarm",
                 "messageTypeIdFilter": "5501",
             },
         }
@@ -219,11 +217,10 @@ class TestReviewEventsIntegration:
 
         # Verify request payload
         payload = request.get_request_payload()
-        assert payload["ID"] == "LiveReviewEventsRequest"
         assert payload["RequestType"] == "LiveReviewEvents"
         assert payload["InputData"]["referenceId"] == "ref123"
         assert payload["InputData"]["referenceTime"] == 1701432600
-        assert payload["InputData"]["categoryFilter"] == ["Access"]
+        assert payload["InputData"]["categoryFilter"] == "Access"
 
         # Simulate API response
         api_response_data = {
