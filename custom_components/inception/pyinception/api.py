@@ -17,6 +17,7 @@ from .schemas.area import AreaPublicState, AreaSummary
 from .schemas.door import DoorPublicState, DoorSummary
 from .schemas.input import InputPublicState, InputSummary
 from .schemas.output import OutputPublicState, OutputSummary
+from .schemas.review_events import LiveReviewEventsRequest
 from .schemas.update_monitor import (
     MonitorEntityStatesRequest,
     UpdateMonitorResponse,
@@ -215,50 +216,77 @@ class InceptionApiClient:
 
         self._schedule_data_callbacks()
 
-    async def monitor_review_events(self, categories: list[str] | None = None) -> None:
-        """Monitor review events from the API."""
+    async def _get_latest_review_event(self) -> dict[str, Any] | None:
+        """Get the latest review event to establish reference point."""
         try:
-            # Build query parameters for the review endpoint
-            # On initial load, only get 1 event to establish reference point
-            # On subsequent calls, get up to 50 new events
-            initial_load = self._review_events_update_time == 0
-            params = {
-                "dir": "desc",
-                "limit": 1 if initial_load else 50,
-            }
-
-            # Add category filtering if specified
-            if categories:
-                params["categories"] = ",".join(categories)
-
-            # If we have a reference time and ID, use them to get newer events
-            if self._review_events_update_time > 0 and self._review_events_reference_id:
-                params.update(
-                    {
-                        "referenceId": self._review_events_reference_id,
-                        "referenceTime": self._review_events_update_time,
-                        "dir": "asc",
-                    }
-                )
-
+            params = {"dir": "desc", "limit": 1}
             query_params = urlencode(params)
             response = await self._review_events_request(query_params)
 
             if not response:
-                # No response from the API, try again later
-                _LOGGER.debug("no response")
+                return None
+
+            # The response should be a list of events
+            if isinstance(response, list) and response:
+                return response[0]
+
+            if isinstance(response, dict) and "Data" in response:
+                data = response["Data"]
+                if isinstance(data, list) and data:
+                    return data[0]
+
+            return None  # noqa: TRY300
+        except Exception:
+            _LOGGER.exception("Error getting latest review event")
+            return None
+
+    async def monitor_review_events(self, categories: list[str] | None = None) -> None:
+        """Monitor review events from the API using long polling."""
+        try:
+            # If we don't have a reference point, get the latest event first
+            if (
+                self._review_events_update_time == 0
+                or not self._review_events_reference_id
+            ):
+                latest_event = await self._get_latest_review_event()
+                if latest_event:
+                    InceptionApiClient._review_events_update_time = latest_event.get(
+                        "WhenTicks", 0
+                    )
+                    InceptionApiClient._review_events_reference_id = latest_event.get(
+                        "ID"
+                    )
+                    _LOGGER.info(
+                        "Established review events reference point: ID=%s, Time=%d",
+                        self._review_events_reference_id,
+                        self._review_events_update_time,
+                    )
+                else:
+                    _LOGGER.warning("Failed to establish review events reference point")
+                    return
+
+            # Create the live review events request
+            # Ensure we have a valid reference_id (should never be None at this point)
+            if not self._review_events_reference_id:
+                _LOGGER.error("No reference ID available for live review events")
                 return
 
-            # The response is now a direct array of review events
-            if isinstance(response, list):
-                events_data = response
-            else:
-                # Handle case where response might be wrapped
-                events_data = response.get("Data", response)
+            request = LiveReviewEventsRequest(
+                request_id="LiveReviewEventsRequest",
+                reference_id=self._review_events_reference_id,
+                reference_time=self._review_events_update_time,
+                category_filter=categories,
+            )
 
-            # Process the review events
-            if events_data:
-                self._process_review_events_data(events_data)
+            payload = [request.get_request_payload()]
+            response = await self._monitor_events_request(payload)
+
+            if not response:
+                return
+
+            result = response.get("Result", [])
+            if len(result) > 0:
+                self._process_review_events_data(result)
 
         except (
             InceptionApiClientAuthenticationError,
@@ -352,8 +380,8 @@ class InceptionApiClient:
             self._schedule_data_callbacks()
 
     async def _review_events_monitor(self) -> None:
-        """Periodically poll review events while enabled."""
-        _LOGGER.debug("Review events task started")
+        """Monitor review events using long polling while enabled."""
+        _LOGGER.debug("Review events task started with long polling")
 
         try:
             while self._review_events_enabled:
@@ -370,8 +398,7 @@ class InceptionApiClient:
                     await self.monitor_review_events(self._review_events_categories)
                     # Reset retry count on successful monitoring
                     self._reset_retry_count()
-                    # Add a brief delay between monitoring cycles to prevent spam
-                    await asyncio.sleep(60)
+                    # No sleep needed - long polling will wait for events
                 except InceptionApiClientAuthenticationError:
                     # Authentication errors always stop the task
                     raise

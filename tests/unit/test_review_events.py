@@ -1,37 +1,81 @@
 """Test review events schemas and functionality."""
 
 from custom_components.inception.pyinception.schemas.review_events import (
-    ReviewEventRequest,
+    LiveReviewEventsRequest,
     ReviewEventResponse,
     ReviewEventsResponse,
 )
 
 
-class TestReviewEventRequest:
-    """Test ReviewEventRequest class."""
+class TestLiveReviewEventsRequest:
+    """Test LiveReviewEventsRequest class."""
 
-    def test_review_event_request_creation(self) -> None:
-        """Test ReviewEventRequest can be created with required parameters."""
-        request = ReviewEventRequest(
-            request_id="test_request",
-            time_since_last_update=12345,
+    def test_live_review_events_request_creation_minimal(self) -> None:
+        """Test LiveReviewEventsRequest can be created with minimal parameters."""
+        request = LiveReviewEventsRequest(
+            request_id="LiveReviewEventsRequest",
+            reference_id="ref123",
+            reference_time=1234567890,
         )
-        assert request.request_id == "test_request"
-        assert request.time_since_last_update == 12345
+        assert request.request_id == "LiveReviewEventsRequest"
+        assert request.reference_id == "ref123"
+        assert request.reference_time == 1234567890
+        assert request.category_filter is None
+        assert request.message_type_id_filter is None
 
-    def test_get_request_payload(self) -> None:
-        """Test get_request_payload returns correct structure."""
-        request = ReviewEventRequest(
-            request_id="ReviewEventsRequest",
-            time_since_last_update=67890,
+    def test_live_review_events_request_creation_with_filters(self) -> None:
+        """Test LiveReviewEventsRequest with filters."""
+        request = LiveReviewEventsRequest(
+            request_id="LiveReviewEventsRequest",
+            reference_id="ref456",
+            reference_time=9876543210,
+            category_filter=["Access", "Alarm"],
+            message_type_id_filter="5501",
+        )
+        assert request.request_id == "LiveReviewEventsRequest"
+        assert request.reference_id == "ref456"
+        assert request.reference_time == 9876543210
+        assert request.category_filter == ["Access", "Alarm"]
+        assert request.message_type_id_filter == "5501"
+
+    def test_get_request_payload_minimal(self) -> None:
+        """Test get_request_payload returns correct structure with minimal data."""
+        request = LiveReviewEventsRequest(
+            request_id="LiveReviewEventsRequest",
+            reference_id="ref123",
+            reference_time=1234567890,
         )
         payload = request.get_request_payload()
 
         expected_payload = {
-            "ID": "ReviewEventsRequest",
-            "RequestType": "MonitorEvents",
+            "ID": "LiveReviewEventsRequest",
+            "RequestType": "LiveReviewEvents",
             "InputData": {
-                "timeSinceUpdate": 67890,
+                "referenceId": "ref123",
+                "referenceTime": 1234567890,
+            },
+        }
+        assert payload == expected_payload
+
+    def test_get_request_payload_with_filters(self) -> None:
+        """Test get_request_payload with filters."""
+        request = LiveReviewEventsRequest(
+            request_id="LiveReviewEventsRequest",
+            reference_id="ref456",
+            reference_time=9876543210,
+            category_filter=["Access", "Alarm"],
+            message_type_id_filter="5501",
+        )
+        payload = request.get_request_payload()
+
+        expected_payload = {
+            "ID": "LiveReviewEventsRequest",
+            "RequestType": "LiveReviewEvents",
+            "InputData": {
+                "referenceId": "ref456",
+                "referenceTime": 9876543210,
+                "categoryFilter": ["Access", "Alarm"],
+                "messageTypeIdFilter": "5501",
             },
         }
         assert payload == expected_payload
@@ -165,16 +209,21 @@ class TestReviewEventsIntegration:
 
     def test_full_workflow(self) -> None:
         """Test complete workflow from request to response processing."""
-        # Create request
-        request = ReviewEventRequest(
-            request_id="ReviewEventsRequest",
-            time_since_last_update=0,
+        # Create live review events request
+        request = LiveReviewEventsRequest(
+            request_id="LiveReviewEventsRequest",
+            reference_id="ref123",
+            reference_time=1701432600,
+            category_filter=["Access"],
         )
 
         # Verify request payload
         payload = request.get_request_payload()
-        assert payload["ID"] == "ReviewEventsRequest"
-        assert payload["RequestType"] == "MonitorEvents"
+        assert payload["ID"] == "LiveReviewEventsRequest"
+        assert payload["RequestType"] == "LiveReviewEvents"
+        assert payload["InputData"]["referenceId"] == "ref123"
+        assert payload["InputData"]["referenceTime"] == 1701432600
+        assert payload["InputData"]["categoryFilter"] == ["Access"]
 
         # Simulate API response
         api_response_data = {
