@@ -15,7 +15,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from .const import DOMAIN, MANUFACTURER
 from .entity import InceptionEntity
 from .pyinception.schemas.door import DoorPublicState
-from .pyinception.schemas.input import InputPublicState
+from .pyinception.schemas.input import InputPublicState, InputType
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -103,27 +103,8 @@ async def async_setup_entry(
     """Set up the binary_sensor platform."""
     coordinator: InceptionUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
 
+    # Create door binary sensors
     entities: list[InceptionBinarySensor] = [
-        InceptionInputBinarySensor(
-            coordinator=coordinator,
-            entity_description=InceptionBinarySensorDescription(
-                key=inception_input.entity_info.id,
-                device_class=get_device_class_for_name(
-                    inception_input.entity_info.name
-                ),
-                name="Sensor",
-                value_fn=lambda data: data.public_state is not None
-                and bool(data.public_state & InputPublicState.ACTIVE),
-                entity_registry_enabled_default=is_entity_registry_enabled_default(
-                    inception_input.entity_info.name
-                ),
-            ),
-            data=inception_input,
-        )
-        for inception_input in coordinator.data.inputs.get_items()
-    ]
-
-    entities += [
         InceptionDoorBinarySensor(
             coordinator=coordinator,
             entity_description=InceptionBinarySensorDescription(
@@ -144,6 +125,37 @@ async def async_setup_entry(
         ]
         for door in coordinator.data.doors.get_items()
     ]
+
+    # Create input binary sensors, handling logical inputs specially
+    door_dict = {
+        door.entity_info.name: door for door in coordinator.data.doors.get_items()
+    }
+
+    for i_input in coordinator.data.inputs.get_items():
+        # Skip logical inputs that match door names (they'll be handled by switch.py)
+        input_name = i_input.entity_info.name
+        if i_input.entity_info.input_type == InputType.LOGICAL and " - " in input_name:
+            door_name = input_name.split(" - ")[0]
+            if door_dict.get(door_name):
+                continue
+
+        # Create binary sensor for all other inputs
+        entities.append(
+            InceptionInputBinarySensor(
+                coordinator=coordinator,
+                entity_description=InceptionBinarySensorDescription(
+                    key=i_input.entity_info.id,
+                    device_class=get_device_class_for_name(i_input.entity_info.name),
+                    name="Sensor",
+                    value_fn=lambda data: data.public_state is not None
+                    and bool(data.public_state & InputPublicState.ACTIVE),
+                    entity_registry_enabled_default=is_entity_registry_enabled_default(
+                        i_input.entity_info.name
+                    ),
+                ),
+                data=i_input,
+            )
+        )
 
     async_add_entities(entities)
 
