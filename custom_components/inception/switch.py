@@ -233,13 +233,8 @@ class InceptionInputSwitch(InceptionSwitch, SwitchEntity):
         )
 
 
-class InceptionLogicalInputSwitch(InceptionSwitch, SwitchEntity):
+class InceptionLogicalInputSwitch(InceptionInputSwitch):
     """inception switch class for Logical Inputs grouped with Door devices."""
-
-    entity_description: InceptionSwitchDescription
-    data: InputSummaryEntry
-
-    _attr_has_entity_name = True
 
     def __init__(
         self,
@@ -248,42 +243,15 @@ class InceptionLogicalInputSwitch(InceptionSwitch, SwitchEntity):
         data: InputSummaryEntry,
         door_device_id: str,
     ) -> None:
-        """Initialize the switch class."""
+        """Initialize the switch class grouped with a Door device."""
+        # Call parent __init__ first
         super().__init__(coordinator, entity_description=entity_description, data=data)
-        # Extract door name from the input name (remove " - {Event Type}")
-        door_name = (
-            data.entity_info.name.split(" - ")[0]
-            if " - " in data.entity_info.name
-            else data.entity_info.name
-        )
+
+        # Override device_info to group with door device instead of creating own device
+        door_name, _ = extract_door_name_from_input(data.entity_info.name)
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, door_device_id)},
-            name=door_name,
-        )
-
-    @property
-    def name(self) -> str:
-        """Return the name of the entity."""
-        return self.entity_description.name
-
-    async def async_turn_on(self) -> None:
-        """Isolate the Input."""
-        return await self.coordinator.api.control_input(
-            input_id=self.data.entity_info.id,
-            data={
-                "Type": "ControlInput",
-                "InputControlType": "Isolate",
-            },
-        )
-
-    async def async_turn_off(self) -> None:
-        """Deisolate the Input."""
-        return await self.coordinator.api.control_input(
-            input_id=self.data.entity_info.id,
-            data={
-                "Type": "ControlInput",
-                "InputControlType": "Deisolate",
-            },
+            name=door_name or data.entity_info.name,
         )
 
 
