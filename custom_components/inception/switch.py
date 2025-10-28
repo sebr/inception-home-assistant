@@ -46,6 +46,8 @@ class InceptionSwitchDescription(SwitchEntityDescription):
 
     name: str = ""
     value_fn: Callable[[InceptionSummaryEntry], bool]
+    turn_on_data: dict[str, str] | None = None
+    turn_off_data: dict[str, str] | None = None
 
 
 def extract_door_name_from_input(input_name: str) -> tuple[str | None, str | None]:
@@ -123,6 +125,14 @@ async def async_setup_entry(
                         entity_registry_visible_default=False,
                         value_fn=lambda data: data.public_state is not None
                         and bool(data.public_state & InputPublicState.ISOLATED),
+                        turn_on_data={
+                            "Type": "ControlInput",
+                            "InputControlType": "Isolate",
+                        },
+                        turn_off_data={
+                            "Type": "ControlInput",
+                            "InputControlType": "Deisolate",
+                        },
                     ),
                     data=i_input,
                     door_device_id=matching_door.entity_info.id,
@@ -142,6 +152,14 @@ async def async_setup_entry(
                     entity_registry_visible_default=False,
                     value_fn=lambda data: data.public_state is not None
                     and bool(data.public_state & InputPublicState.ISOLATED),
+                    turn_on_data={
+                        "Type": "ControlInput",
+                        "InputControlType": "Isolate",
+                    },
+                    turn_off_data={
+                        "Type": "ControlInput",
+                        "InputControlType": "Deisolate",
+                    },
                 ),
                 data=i_input,
             )
@@ -213,23 +231,23 @@ class InceptionInputSwitch(InceptionSwitch, SwitchEntity):
         return self.entity_description.name
 
     async def async_turn_on(self) -> None:
-        """Isolate the Input."""
+        """Turn on the switch."""
+        if self.entity_description.turn_on_data is None:
+            msg = f"No turn_on_data defined for {self.entity_id}"
+            raise NotImplementedError(msg)
         return await self.coordinator.api.control_input(
             input_id=self.data.entity_info.id,
-            data={
-                "Type": "ControlInput",
-                "InputControlType": "Isolate",
-            },
+            data=self.entity_description.turn_on_data,
         )
 
     async def async_turn_off(self) -> None:
-        """Deisolate the Input."""
+        """Turn off the switch."""
+        if self.entity_description.turn_off_data is None:
+            msg = f"No turn_off_data defined for {self.entity_id}"
+            raise NotImplementedError(msg)
         return await self.coordinator.api.control_input(
             input_id=self.data.entity_info.id,
-            data={
-                "Type": "ControlInput",
-                "InputControlType": "Deisolate",
-            },
+            data=self.entity_description.turn_off_data,
         )
 
 
