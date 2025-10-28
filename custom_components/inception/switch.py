@@ -46,6 +46,36 @@ class InceptionSwitchDescription(SwitchEntityDescription):
 
     name: str = ""
     value_fn: Callable[[InceptionSummaryEntry], bool]
+    turn_on_data: dict[str, str] | None = None
+    turn_off_data: dict[str, str] | None = None
+
+
+def extract_door_name_from_input(input_name: str) -> tuple[str | None, str | None]:
+    """
+    Extract door name from input name if it matches a known pattern.
+
+    Patterns:
+    - "{Door Name} - {Event Type}" -> returns ("Door Name", "Event Type")
+    - "{Door Name} {Suffix}" -> returns ("Door Name", "Suffix")
+
+    Returns:
+        Tuple of (door_name, suffix) or (None, None) if no pattern matches
+
+    """
+    # Check for pattern with dash separator
+    if " - " in input_name:
+        parts = input_name.split(" - ", 1)
+        return (parts[0], parts[1])
+
+    # Check for known suffix patterns (case-insensitive)
+    door_input_suffixes = [" Reed"]
+    for suffix in door_input_suffixes:
+        if input_name.lower().endswith(suffix.lower()):
+            door_name = input_name[: -len(suffix)]
+            # Return the actual suffix from the original case (strip leading space)
+            return (door_name, suffix.strip())
+
+    return (None, None)
 
 
 async def async_setup_entry(
@@ -70,22 +100,70 @@ async def async_setup_entry(
         for output in coordinator.data.outputs.get_items()
     ]
 
-    entities += [
-        InceptionInputSwitch(
-            coordinator=coordinator,
-            entity_description=InceptionSwitchDescription(
-                key=f"{i_input.entity_info.id}_isolated",
-                device_class=SwitchDeviceClass.SWITCH,
-                name="Isolated",
-                has_entity_name=True,
-                entity_registry_visible_default=False,
-                value_fn=lambda data: data.public_state is not None
-                and bool(data.public_state & InputPublicState.ISOLATED),
-            ),
-            data=i_input,
+    # Handle all input switches, treating door-related inputs specially
+    door_dict = {
+        door.entity_info.name: door for door in coordinator.data.doors.get_items()
+    }
+
+    for i_input in coordinator.data.inputs.get_items():
+        input_name = i_input.entity_info.name
+
+        # Check if input matches a door pattern
+        door_name, suffix = extract_door_name_from_input(input_name)
+        matching_door = door_dict.get(door_name) if door_name else None
+
+        if matching_door and suffix:
+            # Create isolated switch grouped with door device
+            entities.append(
+                InceptionLogicalInputSwitch(
+                    coordinator=coordinator,
+                    entity_description=InceptionSwitchDescription(
+                        key=f"{i_input.entity_info.id}_isolated",
+                        device_class=SwitchDeviceClass.SWITCH,
+                        name=f"{suffix} Isolated",
+                        has_entity_name=True,
+                        entity_registry_visible_default=False,
+                        value_fn=lambda data: data.public_state is not None
+                        and bool(data.public_state & InputPublicState.ISOLATED),
+                        turn_on_data={
+                            "Type": "ControlInput",
+                            "InputControlType": "Isolate",
+                        },
+                        turn_off_data={
+                            "Type": "ControlInput",
+                            "InputControlType": "Deisolate",
+                        },
+                    ),
+                    data=i_input,
+                    door_device_id=matching_door.entity_info.id,
+                )
+            )
+            continue
+
+        # Create isolated switch with its own device for all other inputs
+        entities.append(
+            InceptionInputSwitch(
+                coordinator=coordinator,
+                entity_description=InceptionSwitchDescription(
+                    key=f"{i_input.entity_info.id}_isolated",
+                    device_class=SwitchDeviceClass.SWITCH,
+                    name="Isolated",
+                    has_entity_name=True,
+                    entity_registry_visible_default=False,
+                    value_fn=lambda data: data.public_state is not None
+                    and bool(data.public_state & InputPublicState.ISOLATED),
+                    turn_on_data={
+                        "Type": "ControlInput",
+                        "InputControlType": "Isolate",
+                    },
+                    turn_off_data={
+                        "Type": "ControlInput",
+                        "InputControlType": "Deisolate",
+                    },
+                ),
+                data=i_input,
+            )
         )
-        for i_input in coordinator.data.inputs.get_items()
-    ]
 
     # Add review event control switches
     entities += [
@@ -153,23 +231,45 @@ class InceptionInputSwitch(InceptionSwitch, SwitchEntity):
         return self.entity_description.name
 
     async def async_turn_on(self) -> None:
-        """Isolate the Input."""
+        """Turn on the switch."""
+        if self.entity_description.turn_on_data is None:
+            msg = f"No turn_on_data defined for {self.entity_id}"
+            raise NotImplementedError(msg)
         return await self.coordinator.api.control_input(
             input_id=self.data.entity_info.id,
-            data={
-                "Type": "ControlInput",
-                "InputControlType": "Isolate",
-            },
+            data=self.entity_description.turn_on_data,
         )
 
     async def async_turn_off(self) -> None:
-        """Deisolate the Input."""
+        """Turn off the switch."""
+        if self.entity_description.turn_off_data is None:
+            msg = f"No turn_off_data defined for {self.entity_id}"
+            raise NotImplementedError(msg)
         return await self.coordinator.api.control_input(
             input_id=self.data.entity_info.id,
-            data={
-                "Type": "ControlInput",
-                "InputControlType": "Deisolate",
-            },
+            data=self.entity_description.turn_off_data,
+        )
+
+
+class InceptionLogicalInputSwitch(InceptionInputSwitch):
+    """inception switch class for Logical Inputs grouped with Door devices."""
+
+    def __init__(
+        self,
+        coordinator: InceptionUpdateCoordinator,
+        entity_description: InceptionSwitchDescription,
+        data: InputSummaryEntry,
+        door_device_id: str,
+    ) -> None:
+        """Initialize the switch class grouped with a Door device."""
+        # Call parent __init__ first
+        super().__init__(coordinator, entity_description=entity_description, data=data)
+
+        # Override device_info to group with door device instead of creating own device
+        door_name, _ = extract_door_name_from_input(data.entity_info.name)
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, door_device_id)},
+            name=door_name or data.entity_info.name,
         )
 
 
