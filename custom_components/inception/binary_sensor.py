@@ -95,6 +95,27 @@ def is_entity_registry_enabled_default(name: str) -> bool:
     )
 
 
+def extract_door_name_from_input(input_name: str) -> str | None:
+    """
+    Extract door name from input name if it matches a known pattern.
+
+    Patterns:
+    - "{Door Name} - {Event Type}" -> returns "Door Name"
+    - "{Door Name} {Suffix}" where Suffix is a known suffix -> returns "Door Name"
+    """
+    # Check for pattern with dash separator
+    if " - " in input_name:
+        return input_name.split(" - ")[0]
+
+    # Check for known suffix patterns (case-insensitive)
+    door_input_suffixes = [" Reed"]
+    for suffix in door_input_suffixes:
+        if input_name.lower().endswith(suffix.lower()):
+            return input_name[: -len(suffix)]
+
+    return None
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: InceptionConfigEntry,
@@ -103,27 +124,8 @@ async def async_setup_entry(
     """Set up the binary_sensor platform."""
     coordinator: InceptionUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
 
+    # Create door binary sensors
     entities: list[InceptionBinarySensor] = [
-        InceptionInputBinarySensor(
-            coordinator=coordinator,
-            entity_description=InceptionBinarySensorDescription(
-                key=inception_input.entity_info.id,
-                device_class=get_device_class_for_name(
-                    inception_input.entity_info.name
-                ),
-                name="Sensor",
-                value_fn=lambda data: data.public_state is not None
-                and bool(data.public_state & InputPublicState.ACTIVE),
-                entity_registry_enabled_default=is_entity_registry_enabled_default(
-                    inception_input.entity_info.name
-                ),
-            ),
-            data=inception_input,
-        )
-        for inception_input in coordinator.data.inputs.get_items()
-    ]
-
-    entities += [
         InceptionDoorBinarySensor(
             coordinator=coordinator,
             entity_description=InceptionBinarySensorDescription(
@@ -144,6 +146,38 @@ async def async_setup_entry(
         ]
         for door in coordinator.data.doors.get_items()
     ]
+
+    # Create input binary sensors, skipping inputs that match door patterns
+    door_dict = {
+        door.entity_info.name: door for door in coordinator.data.doors.get_items()
+    }
+
+    for i_input in coordinator.data.inputs.get_items():
+        input_name = i_input.entity_info.name
+
+        # Check if input matches a door pattern
+        door_name = extract_door_name_from_input(input_name)
+        if door_name and door_dict.get(door_name):
+            # Skip inputs that match doors (handled by switch.py for isolation)
+            continue
+
+        # Create binary sensor for all other inputs
+        entities.append(
+            InceptionInputBinarySensor(
+                coordinator=coordinator,
+                entity_description=InceptionBinarySensorDescription(
+                    key=i_input.entity_info.id,
+                    device_class=get_device_class_for_name(i_input.entity_info.name),
+                    name="Sensor",
+                    value_fn=lambda data: data.public_state is not None
+                    and bool(data.public_state & InputPublicState.ACTIVE),
+                    entity_registry_enabled_default=is_entity_registry_enabled_default(
+                        i_input.entity_info.name
+                    ),
+                ),
+                data=i_input,
+            )
+        )
 
     async_add_entities(entities)
 
