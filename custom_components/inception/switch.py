@@ -18,7 +18,7 @@ from homeassistant.helpers.storage import Store
 
 from .const import DOMAIN, LOGGER
 from .entity import InceptionEntity
-from .pyinception.schemas.input import InputPublicState, InputType
+from .pyinception.schemas.input import InputPublicState
 from .pyinception.schemas.output import OutputPublicState
 
 if TYPE_CHECKING:
@@ -48,6 +48,34 @@ class InceptionSwitchDescription(SwitchEntityDescription):
     value_fn: Callable[[InceptionSummaryEntry], bool]
 
 
+def extract_door_name_from_input(input_name: str) -> tuple[str | None, str | None]:
+    """
+    Extract door name from input name if it matches a known pattern.
+
+    Patterns:
+    - "{Door Name} - {Event Type}" -> returns ("Door Name", "Event Type")
+    - "{Door Name} {Suffix}" -> returns ("Door Name", "Suffix")
+
+    Returns:
+        Tuple of (door_name, suffix) or (None, None) if no pattern matches
+
+    """
+    # Check for pattern with dash separator
+    if " - " in input_name:
+        parts = input_name.split(" - ", 1)
+        return (parts[0], parts[1])
+
+    # Check for known suffix patterns (case-insensitive)
+    door_input_suffixes = [" Reed"]
+    for suffix in door_input_suffixes:
+        if input_name.lower().endswith(suffix.lower()):
+            door_name = input_name[: -len(suffix)]
+            # Return the actual suffix from the original case (strip leading space)
+            return (door_name, suffix.strip())
+
+    return (None, None)
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: InceptionConfigEntry,
@@ -70,36 +98,37 @@ async def async_setup_entry(
         for output in coordinator.data.outputs.get_items()
     ]
 
-    # Handle all input switches, treating logical inputs specially
+    # Handle all input switches, treating door-related inputs specially
     door_dict = {
         door.entity_info.name: door for door in coordinator.data.doors.get_items()
     }
 
     for i_input in coordinator.data.inputs.get_items():
-        # Check if this is a logical input that matches a door pattern
         input_name = i_input.entity_info.name
-        if i_input.entity_info.input_type == InputType.LOGICAL and " - " in input_name:
-            [door_name, event_type] = input_name.split(" - ")
-            matching_door = door_dict.get(door_name)
-            if matching_door:
-                # Create isolated switch grouped with door device
-                entities.append(
-                    InceptionLogicalInputSwitch(
-                        coordinator=coordinator,
-                        entity_description=InceptionSwitchDescription(
-                            key=f"{i_input.entity_info.id}_isolated",
-                            device_class=SwitchDeviceClass.SWITCH,
-                            name=f"{event_type} Isolated",
-                            has_entity_name=True,
-                            entity_registry_visible_default=False,
-                            value_fn=lambda data: data.public_state is not None
-                            and bool(data.public_state & InputPublicState.ISOLATED),
-                        ),
-                        data=i_input,
-                        door_device_id=matching_door.entity_info.id,
-                    )
+
+        # Check if input matches a door pattern
+        door_name, suffix = extract_door_name_from_input(input_name)
+        matching_door = door_dict.get(door_name) if door_name else None
+
+        if matching_door and suffix:
+            # Create isolated switch grouped with door device
+            entities.append(
+                InceptionLogicalInputSwitch(
+                    coordinator=coordinator,
+                    entity_description=InceptionSwitchDescription(
+                        key=f"{i_input.entity_info.id}_isolated",
+                        device_class=SwitchDeviceClass.SWITCH,
+                        name=f"{suffix} Isolated",
+                        has_entity_name=True,
+                        entity_registry_visible_default=False,
+                        value_fn=lambda data: data.public_state is not None
+                        and bool(data.public_state & InputPublicState.ISOLATED),
+                    ),
+                    data=i_input,
+                    door_device_id=matching_door.entity_info.id,
                 )
-                continue
+            )
+            continue
 
         # Create isolated switch with its own device for all other inputs
         entities.append(
