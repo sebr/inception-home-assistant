@@ -7,6 +7,11 @@
                     "name": "Name",
                     "token": "Token",
                     "host": "Host"
+                },
+                "data_description": {
+                    "name": "A name for this Inception hub",
+                    "token": "An Inception User API token. Available under Users > Remote / Web Access > User API Token.",
+                    "host": "The host address of your Inception hub. If no protocol is specified, http:// will be used."
                 }
             }
         },
