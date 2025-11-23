@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import voluptuous as vol
-from homeassistant import config_entries, data_entry_flow
+from homeassistant import config_entries
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_TOKEN
 from homeassistant.helpers import selector
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
@@ -16,6 +18,9 @@ from .pyinception.api import (
     InceptionApiClientError,
 )
 
+if TYPE_CHECKING:
+    from homeassistant.config_entries import ConfigFlowResult
+
 
 class InceptionFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
     """Config flow for Inception."""
@@ -25,14 +30,20 @@ class InceptionFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_user(
         self,
         user_input: dict | None = None,
-    ) -> data_entry_flow.FlowResult:
+    ) -> ConfigFlowResult:
         """Handle a flow initialized by the user."""
         _errors = {}
         if user_input is not None:
+            cleaned_input = {
+                **user_input,
+                CONF_HOST: f"http://{user_input[CONF_HOST]}"
+                if not user_input[CONF_HOST].startswith(("http://", "https://"))
+                else user_input[CONF_HOST],
+            }
             try:
                 await self._test_credentials(
-                    token=user_input[CONF_TOKEN],
-                    host=user_input[CONF_HOST],
+                    token=cleaned_input[CONF_TOKEN],
+                    host=cleaned_input[CONF_HOST],
                 )
             except InceptionApiClientAuthenticationError as exception:
                 LOGGER.warning(exception)
@@ -45,8 +56,8 @@ class InceptionFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 _errors["base"] = "unknown"
             else:
                 return self.async_create_entry(
-                    title=user_input[CONF_NAME],
-                    data=user_input,
+                    title=cleaned_input[CONF_NAME],
+                    data=cleaned_input,
                 )
 
         return self.async_show_form(
@@ -61,14 +72,14 @@ class InceptionFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                             type=selector.TextSelectorType.TEXT,
                         ),
                     ),
-                    vol.Required(CONF_TOKEN): selector.TextSelector(
-                        selector.TextSelectorConfig(
-                            type=selector.TextSelectorType.PASSWORD,
-                        ),
-                    ),
                     vol.Required(CONF_HOST): selector.TextSelector(
                         selector.TextSelectorConfig(
                             type=selector.TextSelectorType.URL,
+                        ),
+                    ),
+                    vol.Required(CONF_TOKEN): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.PASSWORD,
                         ),
                     ),
                 },
