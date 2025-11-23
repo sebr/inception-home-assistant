@@ -72,12 +72,18 @@ class InceptionFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                             type=selector.TextSelectorType.TEXT,
                         ),
                     ),
-                    vol.Required(CONF_HOST): selector.TextSelector(
+                    vol.Required(
+                        CONF_HOST,
+                        default=(user_input or {}).get(CONF_HOST, vol.UNDEFINED),
+                    ): selector.TextSelector(
                         selector.TextSelectorConfig(
                             type=selector.TextSelectorType.URL,
                         ),
                     ),
-                    vol.Required(CONF_TOKEN): selector.TextSelector(
+                    vol.Required(
+                        CONF_TOKEN,
+                        default=(user_input or {}).get(CONF_TOKEN, vol.UNDEFINED),
+                    ): selector.TextSelector(
                         selector.TextSelectorConfig(
                             type=selector.TextSelectorType.PASSWORD,
                         ),
