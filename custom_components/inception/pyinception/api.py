@@ -203,7 +203,8 @@ class InceptionApiClient:
                     continue
 
                 _LOGGER.debug(
-                    "Event: %s, %s, %s",
+                    "Event: [%s]: %s, %s, %s",
+                    event.id,
                     entity_data.items[event.id].entity_info.name,
                     event.public_state,
                     event.extra_fields,

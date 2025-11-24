@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 from unittest.mock import Mock
 
 import pytest
@@ -15,8 +16,6 @@ def test_review_event_callback_method_exists() -> None:
     assert hasattr(InceptionUpdateCoordinator, "review_event_callback")
 
     # Test method signature
-    import inspect
-
     signature = inspect.signature(InceptionUpdateCoordinator.review_event_callback)
     params = list(signature.parameters.keys())
     assert "self" in params

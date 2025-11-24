@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from homeassistant.components.lock import LockEntity, LockEntityDescription
+
+from custom_components.inception.entity import InceptionEntity
 from custom_components.inception.lock import (
     InceptionDoorEntityDescription,
     InceptionLock,
@@ -23,18 +26,12 @@ class TestInceptionLock:
 
     def test_lock_inheritance(self) -> None:
         """Test lock entity inheritance."""
-        from homeassistant.components.lock import LockEntity
-
-        from custom_components.inception.entity import InceptionEntity
-
         # Test inheritance
         assert issubclass(InceptionLock, LockEntity)
         assert issubclass(InceptionLock, InceptionEntity)
 
     def test_entity_description_class(self) -> None:
         """Test entity description class exists."""
-        from homeassistant.components.lock import LockEntityDescription
-
         # Test that entity description exists and inherits properly
         assert hasattr(InceptionDoorEntityDescription, "__init__")
         assert issubclass(InceptionDoorEntityDescription, LockEntityDescription)

@@ -10,7 +10,7 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.const import EntityCategory
 from homeassistant.core import callback
-from homeassistant.helpers.entity_registry import RegistryEntryDisabler
+from homeassistant.helpers.entity_registry import RegistryEntryDisabler, async_get
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN, EVENT_REVIEW_EVENT
@@ -94,8 +94,6 @@ class InceptionLastReviewEventSensor(
 
     async def _update_entity_enabled_state(self) -> None:
         """Update the entity's enabled state based on review events switch."""
-        from homeassistant.helpers.entity_registry import async_get
-
         coordinator = cast("InceptionUpdateCoordinator", self.coordinator)
         entity_registry = async_get(self.hass)
 
@@ -137,8 +135,6 @@ class InceptionLastReviewEventSensor(
 
     def _is_entity_enabled(self) -> bool:
         """Check if the entity is currently enabled."""
-        from homeassistant.helpers.entity_registry import async_get
-
         if self.entity_id is None or self.hass is None:
             return False
 

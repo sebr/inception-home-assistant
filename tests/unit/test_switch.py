@@ -5,7 +5,9 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 import pytest
+from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
 
+from custom_components.inception.entity import InceptionEntity
 from custom_components.inception.pyinception.schemas.input import (
     InputPublicState,
     InputShortEntity,
@@ -34,18 +36,12 @@ class TestInceptionSwitch:
 
     def test_switch_inheritance(self) -> None:
         """Test switch entity inheritance."""
-        from homeassistant.components.switch import SwitchEntity
-
-        from custom_components.inception.entity import InceptionEntity
-
         # Test inheritance
         assert issubclass(InceptionSwitch, SwitchEntity)
         assert issubclass(InceptionSwitch, InceptionEntity)
 
     def test_entity_description_class(self) -> None:
         """Test entity description class exists."""
-        from homeassistant.components.switch import SwitchEntityDescription
-
         # Test that entity description exists and inherits properly
         assert hasattr(InceptionSwitchDescription, "__init__")
         assert issubclass(InceptionSwitchDescription, SwitchEntityDescription)

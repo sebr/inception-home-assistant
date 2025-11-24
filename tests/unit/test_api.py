@@ -17,6 +17,7 @@ from custom_components.inception.pyinception.api import (
     InceptionApiClient,
     InceptionApiClientAuthenticationError,
     InceptionApiClientCommunicationError,
+    InceptionApiClientError,
     _verify_response_or_raise,
 )
 
@@ -60,8 +61,6 @@ class TestInceptionApiClient:
 
     def test_constants_defined(self) -> None:
         """Test that API client constants are properly defined."""
-        from custom_components.inception.pyinception.api import InceptionApiClient
-
         # Test that the class exists and has expected attributes
         assert hasattr(InceptionApiClient, "__init__")
         assert hasattr(InceptionApiClient, "get_data")
@@ -70,28 +69,18 @@ class TestInceptionApiClient:
 
     def test_review_events_methods_exist(self) -> None:
         """Test that review events methods exist on API client."""
-        from custom_components.inception.pyinception.api import InceptionApiClient
-
         # Test that review events methods exist
         assert hasattr(InceptionApiClient, "monitor_review_events")
         assert hasattr(InceptionApiClient, "_review_events_request")
 
     def test_review_events_class_variable_exists(self) -> None:
         """Test that review events class variable exists."""
-        from custom_components.inception.pyinception.api import InceptionApiClient
-
         # Test that the class variable exists
         assert hasattr(InceptionApiClient, "_review_events_update_time")
         assert InceptionApiClient._review_events_update_time == 0
 
     def test_exception_hierarchy(self) -> None:
         """Test exception class hierarchy."""
-        from custom_components.inception.pyinception.api import (
-            InceptionApiClientAuthenticationError,
-            InceptionApiClientCommunicationError,
-            InceptionApiClientError,
-        )
-
         # Test exception inheritance
         assert issubclass(
             InceptionApiClientAuthenticationError, InceptionApiClientError

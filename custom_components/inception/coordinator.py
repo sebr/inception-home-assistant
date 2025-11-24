@@ -7,7 +7,8 @@ from typing import TYPE_CHECKING, Any
 from homeassistant.const import CONF_HOST, CONF_TOKEN, EVENT_HOMEASSISTANT_STOP
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.entity_registry import RegistryEntryDisabler
+from homeassistant.helpers.entity_registry import RegistryEntryDisabler, async_get
+from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import DOMAIN, EVENT_REVIEW_EVENT, LOGGER
@@ -196,8 +197,6 @@ class InceptionUpdateCoordinator(DataUpdateCoordinator[InceptionApiData]):
 
     async def _get_enabled_categories_from_storage(self) -> list[str]:
         """Get enabled categories from storage."""
-        from homeassistant.helpers.storage import Store
-
         store = Store(
             self.hass,
             version=1,
@@ -230,8 +229,6 @@ class InceptionUpdateCoordinator(DataUpdateCoordinator[InceptionApiData]):
 
     async def _update_sensor_enabled_state(self) -> None:
         """Update sensor entity enabled state based on review events setting."""
-        from homeassistant.helpers.entity_registry import async_get
-
         entity_registry = async_get(self.hass)
         # Construct the sensor entity ID based on the unique ID pattern
         sensor_unique_id = f"{self.config_entry.entry_id}_last_review_event"
