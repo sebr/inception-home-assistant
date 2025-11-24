@@ -112,42 +112,13 @@ async def async_setup_entry(
         door_name, suffix = extract_door_name_from_input(input_name)
         matching_door = door_dict.get(door_name) if door_name else None
 
-        if matching_door and suffix:
-            # Create isolated switch grouped with door device
-            entities.append(
-                InceptionLogicalInputSwitch(
-                    coordinator=coordinator,
-                    entity_description=InceptionSwitchDescription(
-                        key=f"{i_input.entity_info.id}_isolated",
-                        device_class=SwitchDeviceClass.SWITCH,
-                        name=f"{suffix} Isolated",
-                        has_entity_name=True,
-                        entity_registry_visible_default=False,
-                        value_fn=lambda data: data.public_state is not None
-                        and bool(data.public_state & InputPublicState.ISOLATED),
-                        turn_on_data={
-                            "Type": "ControlInput",
-                            "InputControlType": "Isolate",
-                        },
-                        turn_off_data={
-                            "Type": "ControlInput",
-                            "InputControlType": "Deisolate",
-                        },
-                    ),
-                    data=i_input,
-                    door_device_id=matching_door.entity_info.id,
-                )
-            )
-            continue
-
-        # Create isolated switch with its own device for all other inputs
         entities.append(
-            InceptionInputSwitch(
+            InceptionLogicalInputSwitch(
                 coordinator=coordinator,
                 entity_description=InceptionSwitchDescription(
                     key=f"{i_input.entity_info.id}_isolated",
                     device_class=SwitchDeviceClass.SWITCH,
-                    name="Isolated",
+                    name=f"{suffix} Isolated" if suffix else "Isolated",
                     has_entity_name=True,
                     entity_registry_visible_default=False,
                     value_fn=lambda data: data.public_state is not None
@@ -162,8 +133,37 @@ async def async_setup_entry(
                     },
                 ),
                 data=i_input,
+                door_device_id=matching_door.entity_info.id if matching_door else None,
             )
         )
+
+        if i_input.entity_info.is_custom_input:
+            entities.append(
+                InceptionLogicalInputSwitch(
+                    coordinator=coordinator,
+                    entity_description=InceptionSwitchDescription(
+                        key=f"{i_input.entity_info.id}_active",
+                        device_class=SwitchDeviceClass.SWITCH,
+                        name=f"{suffix} Active" if suffix else "Active",
+                        has_entity_name=True,
+                        entity_registry_visible_default=True,
+                        value_fn=lambda data: data.public_state is not None
+                        and bool(data.public_state & InputPublicState.ACTIVE),
+                        turn_on_data={
+                            "Type": "ControlCustomInput",
+                            "CustomInputControlType": "Activate",
+                        },
+                        turn_off_data={
+                            "Type": "ControlCustomInput",
+                            "CustomInputControlType": "Deactivate",
+                        },
+                    ),
+                    data=i_input,
+                    door_device_id=matching_door.entity_info.id
+                    if matching_door
+                    else None,
+                )
+            )
 
     # Add review event control switches
     entities += [
@@ -194,6 +194,7 @@ class InceptionSwitch(InceptionEntity, SwitchEntity):
         super().__init__(
             coordinator, entity_description=entity_description, inception_object=data
         )
+        self._attr_unique_id = entity_description.key
         self.data = data
         self.entity_description = entity_description
         self.reporting_id = data.entity_info.reporting_id
@@ -259,18 +260,23 @@ class InceptionLogicalInputSwitch(InceptionInputSwitch):
         coordinator: InceptionUpdateCoordinator,
         entity_description: InceptionSwitchDescription,
         data: InputSummaryEntry,
-        door_device_id: str,
+        door_device_id: str | None = None,
     ) -> None:
         """Initialize the switch class grouped with a Door device."""
         # Call parent __init__ first
-        super().__init__(coordinator, entity_description=entity_description, data=data)
+        super().__init__(
+            coordinator,
+            entity_description=entity_description,
+            data=data,
+        )
 
         # Override device_info to group with door device instead of creating own device
-        door_name, _ = extract_door_name_from_input(data.entity_info.name)
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, door_device_id)},
-            name=door_name or data.entity_info.name,
-        )
+        if door_device_id is not None:
+            door_name, _ = extract_door_name_from_input(data.entity_info.name)
+            self._attr_device_info = DeviceInfo(
+                identifiers={(DOMAIN, door_device_id)},
+                name=door_name or data.entity_info.name,
+            )
 
 
 class InceptionOutputSwitch(InceptionSwitch, SwitchEntity):
