@@ -5,6 +5,10 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
+from homeassistant.components.alarm_control_panel import (
+    AlarmControlPanelEntity,
+    AlarmControlPanelEntityDescription,
+)
 from homeassistant.components.alarm_control_panel.const import (
     AlarmControlPanelEntityFeature,
     AlarmControlPanelState,
@@ -15,6 +19,7 @@ from custom_components.inception.alarm_control_panel import (
     InceptionAlarm,
     InceptionAlarmDescription,
 )
+from custom_components.inception.entity import InceptionEntity
 from custom_components.inception.pyinception.schemas.area import AreaPublicState
 
 
@@ -33,21 +38,11 @@ class TestInceptionAlarm:
 
     def test_alarm_inheritance(self) -> None:
         """Test alarm entity inheritance."""
-        from homeassistant.components.alarm_control_panel import (
-            AlarmControlPanelEntity,
-        )
-
-        from custom_components.inception.entity import InceptionEntity
-
         assert issubclass(InceptionAlarm, AlarmControlPanelEntity)
         assert issubclass(InceptionAlarm, InceptionEntity)
 
     def test_entity_description_class(self) -> None:
         """Test entity description class exists."""
-        from homeassistant.components.alarm_control_panel import (
-            AlarmControlPanelEntityDescription,
-        )
-
         assert hasattr(InceptionAlarmDescription, "__init__")
         assert issubclass(InceptionAlarmDescription, AlarmControlPanelEntityDescription)
 

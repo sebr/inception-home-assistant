@@ -1,4 +1,4 @@
-# ruff: noqa: E501 ANN003
+# ruff: noqa: ANN003
 
 """Inception Output schemas."""
 

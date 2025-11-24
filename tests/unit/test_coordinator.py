@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+
 from custom_components.inception.coordinator import InceptionUpdateCoordinator
 
 
@@ -19,7 +21,5 @@ class TestInceptionUpdateCoordinator:
 
     def test_coordinator_inheritance(self) -> None:
         """Test coordinator inheritance."""
-        from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
-
         # Test inheritance
         assert issubclass(InceptionUpdateCoordinator, DataUpdateCoordinator)

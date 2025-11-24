@@ -11,8 +11,6 @@ class TestInceptionFlowHandler:
     def test_handler_domain(self) -> None:
         """Test flow handler is configured for correct domain."""
         # The domain is set via the class decorator, so we test the class configuration
-        from custom_components.inception.config_flow import InceptionFlowHandler
-
         # Test that the class has the expected configuration
         assert hasattr(InceptionFlowHandler, "VERSION")
 
