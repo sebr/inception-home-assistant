@@ -144,7 +144,7 @@ async def async_setup_entry(
                     entity_description=InceptionSwitchDescription(
                         key=f"{i_input.entity_info.id}_active",
                         device_class=SwitchDeviceClass.SWITCH,
-                        name="Active",
+                        name=f"{suffix} Active" if suffix else "Active",
                         has_entity_name=True,
                         entity_registry_visible_default=True,
                         value_fn=lambda data: data.public_state is not None
@@ -159,6 +159,9 @@ async def async_setup_entry(
                         },
                     ),
                     data=i_input,
+                    door_device_id=matching_door.entity_info.id
+                    if matching_door
+                    else None,
                 )
             )
 
@@ -191,7 +194,7 @@ class InceptionSwitch(InceptionEntity, SwitchEntity):
         super().__init__(
             coordinator, entity_description=entity_description, inception_object=data
         )
-        self.unique_id = entity_description.key
+        self._attr_unique_id = entity_description.key
         self.data = data
         self.entity_description = entity_description
         self.reporting_id = data.entity_info.reporting_id
