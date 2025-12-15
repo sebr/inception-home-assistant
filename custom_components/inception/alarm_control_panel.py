@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+import voluptuous as vol
 from homeassistant.components.alarm_control_panel import (
     AlarmControlPanelEntity,
     AlarmControlPanelEntityDescription,
@@ -14,6 +15,8 @@ from homeassistant.components.alarm_control_panel.const import (
     AlarmControlPanelState,
     CodeFormat,
 )
+from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import entity_platform
 
 from .const import DOMAIN, LOGGER
 from .entity import InceptionEntity
@@ -26,6 +29,8 @@ if TYPE_CHECKING:
     from .coordinator import InceptionUpdateCoordinator
     from .data import InceptionConfigEntry
     from .pyinception.schemas.area import AreaSummaryEntry
+
+SERVICE_AREA_ARM = "area_arm"
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -54,6 +59,18 @@ async def async_setup_entry(
     ]
 
     async_add_entities(entities)
+
+    platform = entity_platform.async_get_current_platform()
+
+    platform.async_register_entity_service(
+        SERVICE_AREA_ARM,
+        {
+            vol.Optional("exit_delay"): cv.boolean,
+            vol.Optional("seal_check"): cv.boolean,
+            vol.Optional("code"): cv.string,
+        },
+        "area_arm_service",
+    )
 
 
 class InceptionAlarm(InceptionEntity, AlarmControlPanelEntity):
@@ -126,7 +143,14 @@ class InceptionAlarm(InceptionEntity, AlarmControlPanelEntity):
 
         return None
 
-    async def _alarm_control(self, control_type: str, code: str | None = None) -> None:
+    async def _alarm_control(
+        self,
+        control_type: str,
+        code: str | None = None,
+        *,
+        exit_delay: bool | None = None,
+        seal_check: bool | None = None,
+    ) -> None:
         """Control the switch."""
         data = {
             "Type": "ControlArea",
@@ -138,6 +162,12 @@ class InceptionAlarm(InceptionEntity, AlarmControlPanelEntity):
             data["OtherUserPIN"] = code
         else:
             LOGGER.warning("No alarm code provided")
+
+        # Only add optional parameters if explicitly provided
+        if exit_delay is not None:
+            data["ExitDelay"] = str(exit_delay).lower()
+        if seal_check is not None:
+            data["SealCheck"] = str(seal_check).lower()
 
         return await self.coordinator.api.request(
             method="post",
@@ -160,3 +190,15 @@ class InceptionAlarm(InceptionEntity, AlarmControlPanelEntity):
     async def async_alarm_arm_night(self, code: str | None = None) -> None:
         """Send arm night command."""
         return await self._alarm_control("ArmSleep", code)
+
+    async def area_arm_service(
+        self,
+        *,
+        exit_delay: bool | None = None,
+        seal_check: bool | None = None,
+        code: str | None = None,
+    ) -> None:
+        """Arm the area with custom exit delay and seal check settings."""
+        return await self._alarm_control(
+            "Arm", code, exit_delay=exit_delay, seal_check=seal_check
+        )
