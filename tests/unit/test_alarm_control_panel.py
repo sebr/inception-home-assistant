@@ -280,3 +280,186 @@ class TestInceptionAlarm:
             assert mock_control.call_count == 4
             for i, expected_call in enumerate(expected_calls):
                 assert mock_control.call_args_list[i] == expected_call
+
+
+class TestInceptionAlarmAreaArmService:
+    """Test area_arm service for alarm control panel."""
+
+    @pytest.fixture
+    def mock_coordinator(self) -> Mock:
+        """Create a mock coordinator."""
+        coordinator = Mock()
+        coordinator.api = Mock()
+        coordinator.api.request = AsyncMock()
+        return coordinator
+
+    @pytest.fixture
+    def mock_area_data(self) -> Mock:
+        """Create mock area data."""
+        area_data = Mock()
+        area_data.entity_info.id = "area_123"
+        area_data.entity_info.name = "Test Area"
+        area_data.arm_info.multi_mode_arm_enabled = True
+        area_data.public_state = AreaPublicState.DISARMED
+        return area_data
+
+    @pytest.fixture
+    def alarm_entity(
+        self, mock_coordinator: Mock, mock_area_data: Mock
+    ) -> InceptionAlarm:
+        """Create an alarm entity for testing."""
+        description = InceptionAlarmDescription(
+            key="area_123",
+            name="Test Area",
+        )
+        return InceptionAlarm(
+            coordinator=mock_coordinator,
+            entity_description=description,
+            data=mock_area_data,
+        )
+
+    @pytest.mark.asyncio
+    async def test_area_arm_service_with_both_params(
+        self, alarm_entity: InceptionAlarm
+    ) -> None:
+        """Test area_arm service with both exit_delay and seal_check provided."""
+        code = "1234"
+        exit_delay = True
+        seal_check = False
+
+        await alarm_entity.area_arm_service(
+            exit_delay=exit_delay, seal_check=seal_check, code=code
+        )
+
+        expected_data = {
+            "Type": "ControlArea",
+            "AreaControlType": "Arm",
+            "ExecuteAsOtherUser": "true",
+            "OtherUserPIN": code,
+            "ExitDelay": "true",
+            "SealCheck": "false",
+        }
+
+        alarm_entity.coordinator.api.request.assert_called_once_with(  # type: ignore[attr-defined]
+            method="post",
+            path="/control/area/area_123/activity",
+            data=expected_data,
+        )
+
+    @pytest.mark.asyncio
+    async def test_area_arm_service_with_only_exit_delay(
+        self, alarm_entity: InceptionAlarm
+    ) -> None:
+        """Test area_arm service with only exit_delay provided."""
+        code = "1234"
+        exit_delay = False
+
+        await alarm_entity.area_arm_service(exit_delay=exit_delay, code=code)
+
+        expected_data = {
+            "Type": "ControlArea",
+            "AreaControlType": "Arm",
+            "ExecuteAsOtherUser": "true",
+            "OtherUserPIN": code,
+            "ExitDelay": "false",
+        }
+
+        alarm_entity.coordinator.api.request.assert_called_once_with(  # type: ignore[attr-defined]
+            method="post",
+            path="/control/area/area_123/activity",
+            data=expected_data,
+        )
+
+    @pytest.mark.asyncio
+    async def test_area_arm_service_with_only_seal_check(
+        self, alarm_entity: InceptionAlarm
+    ) -> None:
+        """Test area_arm service with only seal_check provided."""
+        code = "1234"
+        seal_check = True
+
+        await alarm_entity.area_arm_service(seal_check=seal_check, code=code)
+
+        expected_data = {
+            "Type": "ControlArea",
+            "AreaControlType": "Arm",
+            "ExecuteAsOtherUser": "true",
+            "OtherUserPIN": code,
+            "SealCheck": "true",
+        }
+
+        alarm_entity.coordinator.api.request.assert_called_once_with(  # type: ignore[attr-defined]
+            method="post",
+            path="/control/area/area_123/activity",
+            data=expected_data,
+        )
+
+    @pytest.mark.asyncio
+    async def test_area_arm_service_with_no_optional_params(
+        self, alarm_entity: InceptionAlarm
+    ) -> None:
+        """Test area_arm service with neither exit_delay nor seal_check provided."""
+        code = "1234"
+
+        await alarm_entity.area_arm_service(code=code)
+
+        expected_data = {
+            "Type": "ControlArea",
+            "AreaControlType": "Arm",
+            "ExecuteAsOtherUser": "true",
+            "OtherUserPIN": code,
+        }
+
+        alarm_entity.coordinator.api.request.assert_called_once_with(  # type: ignore[attr-defined]
+            method="post",
+            path="/control/area/area_123/activity",
+            data=expected_data,
+        )
+
+    @pytest.mark.asyncio
+    async def test_area_arm_service_without_code(
+        self, alarm_entity: InceptionAlarm
+    ) -> None:
+        """Test area_arm service without code (should log warning)."""
+        exit_delay = True
+        seal_check = False
+
+        with patch(
+            "custom_components.inception.alarm_control_panel.LOGGER"
+        ) as mock_logger:
+            await alarm_entity.area_arm_service(
+                exit_delay=exit_delay, seal_check=seal_check
+            )
+
+            mock_logger.warning.assert_called_once_with("No alarm code provided")
+
+        expected_data = {
+            "Type": "ControlArea",
+            "AreaControlType": "Arm",
+            "ExecuteAsOtherUser": "true",
+            "ExitDelay": "true",
+            "SealCheck": "false",
+        }
+
+        alarm_entity.coordinator.api.request.assert_called_once_with(  # type: ignore[attr-defined]
+            method="post",
+            path="/control/area/area_123/activity",
+            data=expected_data,
+        )
+
+    @pytest.mark.asyncio
+    async def test_area_arm_service_calls_alarm_control(
+        self, alarm_entity: InceptionAlarm
+    ) -> None:
+        """Test that area_arm_service calls _alarm_control with correct parameters."""
+        code = "1234"
+        exit_delay = True
+        seal_check = False
+
+        with patch.object(alarm_entity, "_alarm_control") as mock_control:
+            await alarm_entity.area_arm_service(
+                exit_delay=exit_delay, seal_check=seal_check, code=code
+            )
+            mock_control.assert_called_once_with(
+                "Arm", code, exit_delay=exit_delay, seal_check=seal_check
+            )
