@@ -10,3 +10,21 @@ unlock:
           min: 0
           max: 7200
           unit_of_measurement: seconds
+
+area_arm:
+  target:
+    entity:
+      domain: alarm_control_panel
+  fields:
+    exit_delay:
+      required: false
+      selector:
+        boolean:
+    seal_check:
+      required: false
+      selector:
+        boolean:
+    code:
+      required: false
+      selector:
+        text:

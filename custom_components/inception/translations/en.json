@@ -31,6 +31,24 @@
                     "description": "Number of seconds to grant access."
                 }
             }
+        },
+        "area_arm": {
+            "name": "Area Arm",
+            "description": "Arms an area with custom exit delay and seal check settings.",
+            "fields": {
+                "exit_delay": {
+                    "name": "Exit Delay",
+                    "description": "If true, puts the Area into Exit Delay mode for a specified length of time before the Area arms fully. The length of the exit delay time is determined by the Area item's settings in the Inception web interface."
+                },
+                "seal_check": {
+                    "name": "Seal Check",
+                    "description": "If true, performs a seal check on the Inputs associated with this area. If any Inputs are found to be unsealed, the area will fail to arm."
+                },
+                "code": {
+                    "name": "Code",
+                    "description": "PIN code for arming the area. If omitted, defaults to the user which is associated with the configured API token."
+                }
+            }
         }
     },
     "entity": {

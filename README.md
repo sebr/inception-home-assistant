@@ -61,6 +61,90 @@ The integration includes configuration switches to control review event monitori
 * **Global Review Events Switch**: Master switch to enable/disable all review event monitoring
 * **Category Switches**: Individual switches for each event category (System, Audit, Access, Security, Hardware) allowing fine-grained control over which types of events are monitored
 
+## Services
+
+The integration provides custom services for advanced control of Inception entities.
+
+### inception.unlock
+
+Unlocks a door with optional timed unlock functionality.
+
+**Target:** Lock entities (`lock` domain)
+
+**Parameters:**
+- `time_secs` (optional): Number of seconds to grant access. If provided, performs a timed unlock. If omitted, performs a permanent unlock.
+  - Type: Integer
+  - Default: Permanent unlock (no time limit)
+
+**Example:**
+```yaml
+# Permanent unlock
+service: inception.unlock
+target:
+  entity_id: lock.front_door
+
+# Timed unlock for 30 seconds
+service: inception.unlock
+target:
+  entity_id: lock.front_door
+data:
+  time_secs: 30
+```
+
+### inception.area_arm
+
+Arms an area with custom exit delay and seal check settings. This service provides fine-grained control over the arming process beyond the standard alarm panel controls.
+
+**Target:** Alarm control panel entities (`alarm_control_panel` domain)
+
+**Parameters:**
+- `exit_delay` (optional): Enable exit delay when arming. When enabled, provides time to exit the premises before the system fully activates.
+  - Type: Boolean
+  - Default: System default
+
+- `seal_check` (optional): Check if all inputs are sealed (inactive/closed) before arming. When enabled, arming will fail if any inputs are unsealed.
+  - Type: Boolean
+  - Default: System default
+
+- `code` (optional): PIN code for arming the area.
+  - Type: String
+  - Default: None (If omitted, defaults to the user which is associated with the integration's configured API token.)
+
+**Example:**
+```yaml
+# Arm with default system behavior
+service: inception.area_arm
+target:
+  entity_id: alarm_control_panel.main_area
+data:
+  code: "1234"
+
+# Arm without exit delay (instant arm)
+service: inception.area_arm
+target:
+  entity_id: alarm_control_panel.main_area
+data:
+  exit_delay: false
+  code: "1234"
+
+# Force arm without checking if inputs are sealed
+service: inception.area_arm
+target:
+  entity_id: alarm_control_panel.main_area
+data:
+  seal_check: false
+  code: "1234"
+
+# Instant arm and bypass seal check
+service: inception.area_arm
+target:
+  entity_id: alarm_control_panel.main_area
+data:
+  exit_delay: false
+  seal_check: false
+  code: "1234"
+```
+
 ## Events
 
 The integration emits Home Assistant events for real-time security notifications:
