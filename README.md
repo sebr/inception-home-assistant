@@ -16,7 +16,7 @@ Platform | Description
 `alarm_control_panel` | For each Area that can be armed or disarmed.
 `binary_sensor` | For each Input and for Door attributes such as Open or Isolated states.
 `sensor` | Diagnostic sensor for the last received review event.
-`switch` | A switch for each Siren or Strobe, plus switches to control review event monitoring.
+`switch` | A switch for each Siren or Strobe, switches to control custom inputs (activate/deactivate), and switches to control review event monitoring.
 
 ## Supported Inception Entities
 
@@ -41,6 +41,17 @@ For each input that the authenticated user has permission to access, the followi
 
 * A `binary_sensor` entity to indicate the state of the input. Calculated inputs such as forced and held open are disabled by default. The device class is inferred from the input's name.
 * A `switch` entity to control if the input has been Isolated
+
+#### Custom Inputs
+
+Custom inputs created in the Inception system have additional functionality:
+
+* An **Active** switch to control the activation state of the custom input
+  - Allows you to programmatically activate or deactivate custom inputs from Home Assistant
+  - Useful for triggering automation macros configured in the Inception system
+  - The switch state reflects whether the custom input is currently active
+
+Custom inputs can be used to integrate Home Assistant automations with Inception system logic. For example, you could create a custom input in Inception that triggers specific actions (unlocking multiple doors, changing area modes, etc.) and then activate it from Home Assistant based on any trigger or condition.
 
 ### Outputs
 
