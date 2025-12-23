@@ -49,7 +49,7 @@ async def async_setup_entry(
             coordinator=coordinator,
             entity_description=InceptionNumberDescription(
                 key=f"{door.entity_info.id}_timed_unlock_time",
-                name="Timed Unlock Duration",
+                name="Timed unlock duration",
                 entity_category=EntityCategory.CONFIG,
                 translation_key="timed_unlock_duration",
                 device_class=NumberDeviceClass.DURATION,
@@ -119,11 +119,6 @@ class InceptionTimedUnlockNumber(
         self._attr_extra_state_attributes = {
             "type": "timed_unlock_duration",
         }
-
-    @property
-    def name(self) -> str:
-        """Return the name of the entity."""
-        return "Timed Unlock Duration"
 
     async def async_set_native_value(self, value: float) -> None:
         """Update the current value."""

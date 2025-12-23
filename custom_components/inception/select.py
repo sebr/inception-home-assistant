@@ -47,7 +47,7 @@ async def async_setup_entry(
             coordinator=coordinator,
             entity_description=InceptionSelectDescription(
                 key=f"{door.entity_info.id}_unlock_mechanism",
-                name="Unlock Strategy",
+                name="Unlock strategy",
                 options=[UNLOCK, TIMED_UNLOCK],
                 entity_category=EntityCategory.CONFIG,
                 translation_key="unlock_strategy",
@@ -115,11 +115,6 @@ class InceptionUnlockStrategySelect(
         self._attr_extra_state_attributes = {
             "type": "unlock_strategy",
         }
-
-    @property
-    def name(self) -> str:
-        """Return the name of the entity."""
-        return "Unlock Strategy"
 
     async def async_added_to_hass(self) -> None:
         """Restore state."""

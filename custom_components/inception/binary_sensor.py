@@ -158,7 +158,11 @@ async def async_setup_entry(
         # Check if input matches a door pattern
         door_name = extract_door_name_from_input(input_name)
         if door_name and door_dict.get(door_name):
-            # Skip inputs that match doors (handled by switch.py for isolation)
+            # Skip inputs that match doors
+            continue
+
+        if i_input.entity_info.is_custom_input:
+            # Skip custom inputs (they are a switch)
             continue
 
         # Create binary sensor for all other inputs
