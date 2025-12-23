@@ -12,7 +12,7 @@ from homeassistant.components.binary_sensor import (
 )
 from homeassistant.helpers.device_registry import DeviceInfo
 
-from .const import DOMAIN, LOGGER, MANUFACTURER
+from .const import DOMAIN, MANUFACTURER
 from .entity import InceptionEntity
 from .pyinception.schemas.door import DoorPublicState
 from .pyinception.schemas.input import InputPublicState

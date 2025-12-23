@@ -92,7 +92,7 @@ class TestInceptionLogicalInputSwitch:
     """Test InceptionLogicalInputSwitch entity."""
 
     def test_logical_input_switch_with_door(self) -> None:
-        """Test InceptionLogicalInputSwitch groups with a door when provided."""
+        """Test InceptionLogicalInputSwitch groups with a door."""
         # Create mock coordinator
         mock_coordinator = MagicMock()
         mock_coordinator.data = MagicMock()
@@ -132,7 +132,7 @@ class TestInceptionLogicalInputSwitch:
         assert switch._attr_device_info["name"] == "Front Door"  # pyright: ignore[reportTypedDictNotRequiredAccess]
 
     def test_logical_input_switch_without_door(self) -> None:
-        """Test InceptionLogicalInputSwitch creates its own device when no door is provided."""
+        """Test InceptionLogicalInputSwitch creates its own device if no door."""
         # Create mock coordinator
         mock_coordinator = MagicMock()
         mock_coordinator.data = MagicMock()
