@@ -135,7 +135,7 @@ class TestBinarySensorKeys:
         expected_names = {
             "door_456_8": "Forced",
             "door_456_32": "Held open too long",
-            "door_456_2": "Sensor",
+            "door_456_2": "Open",
             "door_456_128": "Reader tamper",
         }
 
