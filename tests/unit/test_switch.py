@@ -2,17 +2,20 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock
+from typing import TYPE_CHECKING
+from unittest.mock import MagicMock, Mock
 
 import pytest
 from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
 
+from custom_components.inception.coordinator import InceptionUpdateCoordinator
 from custom_components.inception.entity import InceptionEntity
 from custom_components.inception.pyinception.schemas.input import (
     InputPublicState,
     InputShortEntity,
     InputSummaryEntry,
 )
+from custom_components.inception.pyinception.schemas.output import OutputPublicState
 from custom_components.inception.switch import (
     InceptionLogicalInputSwitch,
     InceptionSwitch,
@@ -20,6 +23,12 @@ from custom_components.inception.switch import (
     async_setup_entry,
     extract_door_name_from_input,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+    from pathlib import Path
+
+    from homeassistant.helpers.entity import Entity
 
 
 class TestInceptionSwitch:
@@ -380,3 +389,159 @@ class TestExtractDoorNameFromInput:
         door_name, suffix = extract_door_name_from_input("Random Input Name")
         assert door_name is None
         assert suffix is None
+
+
+class TestSwitchEntityKeys:
+    """Test switch entity key generation."""
+
+    @pytest.fixture
+    def mock_coordinator(self, mock_hass: Mock) -> Mock:
+        """Create a mock coordinator."""
+        coordinator = Mock(spec=InceptionUpdateCoordinator)
+        coordinator.config_entry = Mock()
+        coordinator.config_entry.entry_id = "test_entry_id"
+        coordinator.api = Mock()
+        coordinator.api._host = "test.example.com"
+        coordinator.data = Mock()
+        coordinator.hass = mock_hass
+
+        # Initialize all entity collections as empty
+        coordinator.data.doors = Mock()
+        coordinator.data.doors.get_items = Mock(return_value=[])
+        coordinator.data.inputs = Mock()
+        coordinator.data.inputs.get_items = Mock(return_value=[])
+        coordinator.data.outputs = Mock()
+        coordinator.data.outputs.get_items = Mock(return_value=[])
+        coordinator.data.areas = Mock()
+        coordinator.data.areas.get_items = Mock(return_value=[])
+
+        return coordinator
+
+    @pytest.fixture
+    def mock_hass(self, tmp_path: Path) -> Mock:
+        """Create a mock Home Assistant instance."""
+        hass = Mock()
+        hass.data = {}
+        hass.bus = Mock()
+        hass.bus.async_listen = Mock()
+        hass.config = Mock()
+        hass.config.config_dir = str(tmp_path)
+        return hass
+
+    @pytest.fixture
+    def mock_entry(self) -> Mock:
+        """Create a mock config entry."""
+        entry = Mock()
+        entry.entry_id = "test_entry_id"
+        return entry
+
+    def mock_async_add_entities(
+        self,
+        new_entities: Iterable[Entity],
+        update_before_add: bool = False,  # noqa: FBT001, FBT002, ARG002
+    ) -> None:
+        """Mock entity addition callback."""
+        self.added_entities.extend(new_entities)
+
+    @pytest.mark.asyncio
+    async def test_switch_output_keys(
+        self, mock_coordinator: Mock, mock_hass: Mock, mock_entry: Mock
+    ) -> None:
+        """Test that output switch entities have expected keys."""
+        mock_output = Mock()
+        mock_output.entity_info = Mock()
+        mock_output.entity_info.id = "output_1"
+        mock_output.entity_info.name = "Siren"
+        mock_output.public_state = OutputPublicState.ON
+
+        mock_coordinator.data.outputs.get_items = Mock(return_value=[mock_output])
+        mock_coordinator.review_events_global_enabled = False
+
+        self.added_entities = []
+        mock_hass.data = {"inception": {mock_entry.entry_id: mock_coordinator}}
+
+        await async_setup_entry(mock_hass, mock_entry, self.mock_async_add_entities)
+
+        # Find output switch (exclude review event switches)
+        output_switches = [
+            e for e in self.added_entities if hasattr(e, "entity_description")
+        ]
+        output_switch_keys = [
+            e.entity_description.key
+            for e in output_switches
+            if not e.entity_description.key.startswith("review_")
+        ]
+
+        assert "output_1" in output_switch_keys
+
+    @pytest.mark.asyncio
+    async def test_switch_input_isolated_keys(
+        self, mock_coordinator: Mock, mock_hass: Mock, mock_entry: Mock
+    ) -> None:
+        """Test that input isolated switch entities have expected keys."""
+        mock_input = Mock()
+        mock_input.entity_info = Mock()
+        mock_input.entity_info.id = "input_1"
+        mock_input.entity_info.name = "PIR Sensor"
+        mock_input.entity_info.is_custom_input = False
+        mock_input.public_state = InputPublicState.ACTIVE
+
+        mock_coordinator.data.inputs.get_items = Mock(return_value=[mock_input])
+        mock_coordinator.review_events_global_enabled = False
+
+        self.added_entities = []
+        mock_hass.data = {"inception": {mock_entry.entry_id: mock_coordinator}}
+
+        await async_setup_entry(mock_hass, mock_entry, self.mock_async_add_entities)
+
+        # Find isolated switch
+        isolated_switches = [
+            e
+            for e in self.added_entities
+            if hasattr(e, "entity_description")
+            and e.entity_description.key.endswith("_isolated")
+        ]
+
+        assert len(isolated_switches) == 1
+        assert isolated_switches[0].entity_description.key == "input_1_isolated"
+
+    @pytest.mark.asyncio
+    async def test_switch_custom_input_active_keys(
+        self, mock_coordinator: Mock, mock_hass: Mock, mock_entry: Mock
+    ) -> None:
+        """Test that custom input active switch entities have expected keys."""
+        mock_custom_input = Mock()
+        mock_custom_input.entity_info = Mock()
+        mock_custom_input.entity_info.id = "custom_input_1"
+        mock_custom_input.entity_info.name = "Custom Trigger"
+        mock_custom_input.entity_info.is_custom_input = True
+        mock_custom_input.public_state = InputPublicState.ACTIVE
+
+        mock_coordinator.data.inputs.get_items = Mock(return_value=[mock_custom_input])
+        mock_coordinator.review_events_global_enabled = False
+
+        self.added_entities = []
+        mock_hass.data = {"inception": {mock_entry.entry_id: mock_coordinator}}
+
+        await async_setup_entry(mock_hass, mock_entry, self.mock_async_add_entities)
+
+        # Find active switch
+        active_switches = [
+            e
+            for e in self.added_entities
+            if hasattr(e, "entity_description")
+            and e.entity_description.key.endswith("_active")
+        ]
+
+        assert len(active_switches) == 1
+        assert active_switches[0].entity_description.key == "custom_input_1_active"
+
+        # Also verify isolated switch exists
+        isolated_switches = [
+            e
+            for e in self.added_entities
+            if hasattr(e, "entity_description")
+            and e.entity_description.key.endswith("_isolated")
+        ]
+        assert len(isolated_switches) == 1
+        assert isolated_switches[0].entity_description.key == "custom_input_1_isolated"
