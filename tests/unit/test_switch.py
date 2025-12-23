@@ -21,8 +21,8 @@ from custom_components.inception.switch import (
     InceptionSwitch,
     InceptionSwitchDescription,
     async_setup_entry,
-    extract_door_name_from_input,
 )
+from custom_components.inception.util import extract_door_name_from_input
 
 if TYPE_CHECKING:
     from collections.abc import Iterable

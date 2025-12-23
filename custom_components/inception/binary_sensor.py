@@ -16,6 +16,7 @@ from .const import DOMAIN, MANUFACTURER
 from .entity import InceptionEntity
 from .pyinception.schemas.door import DoorPublicState
 from .pyinception.schemas.input import InputPublicState
+from .util import extract_door_name_from_input
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -95,27 +96,6 @@ def is_entity_registry_enabled_default(name: str) -> bool:
     )
 
 
-def extract_door_name_from_input(input_name: str) -> str | None:
-    """
-    Extract door name from input name if it matches a known pattern.
-
-    Patterns:
-    - "{Door Name} - {Event Type}" -> returns "Door Name"
-    - "{Door Name} {Suffix}" where Suffix is a known suffix -> returns "Door Name"
-    """
-    # Check for pattern with dash separator
-    if " - " in input_name:
-        return input_name.split(" - ")[0]
-
-    # Check for known suffix patterns (case-insensitive)
-    door_input_suffixes = [" Reed"]
-    for suffix in door_input_suffixes:
-        if input_name.lower().endswith(suffix.lower()):
-            return input_name[: -len(suffix)]
-
-    return None
-
-
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: InceptionConfigEntry,
@@ -159,7 +139,7 @@ async def async_setup_entry(
         input_name = i_input.entity_info.name
 
         # Check if input matches a door pattern
-        door_name = extract_door_name_from_input(input_name)
+        door_name, _ = extract_door_name_from_input(input_name)
         if door_name and door_dict.get(door_name):
             # Skip inputs that match doors
             continue
