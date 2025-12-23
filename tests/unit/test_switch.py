@@ -14,6 +14,7 @@ from custom_components.inception.pyinception.schemas.input import (
     InputPublicState,
     InputShortEntity,
     InputSummaryEntry,
+    InputType,
 )
 from custom_components.inception.pyinception.schemas.output import OutputPublicState
 from custom_components.inception.switch import (
@@ -21,7 +22,6 @@ from custom_components.inception.switch import (
     InceptionSwitch,
     InceptionSwitchDescription,
     async_setup_entry,
-    extract_door_name_from_input,
 )
 
 if TYPE_CHECKING:
@@ -91,8 +91,8 @@ class TestInceptionSwitch:
 class TestInceptionLogicalInputSwitch:
     """Test InceptionLogicalInputSwitch entity."""
 
-    def test_logical_input_switch_with_door_device_id(self) -> None:
-        """Test InceptionLogicalInputSwitch groups with door when provided."""
+    def test_logical_input_switch_with_door(self) -> None:
+        """Test InceptionLogicalInputSwitch groups with a door."""
         # Create mock coordinator
         mock_coordinator = MagicMock()
         mock_coordinator.data = MagicMock()
@@ -112,12 +112,18 @@ class TestInceptionLogicalInputSwitch:
             value_fn=lambda _data: True,
         )
 
-        # Create the switch WITH door_device_id
+        # Create mock door
+        mock_door = MagicMock()
+        mock_door.entity_info = MagicMock()
+        mock_door.entity_info.id = "door_789"
+        mock_door.entity_info.name = "Front Door"
+
+        # Create the switch WITH a door
         switch = InceptionLogicalInputSwitch(
             coordinator=mock_coordinator,
             entity_description=entity_description,
             data=mock_input_data,
-            door_device_id="door_789",
+            door=mock_door,
         )
 
         # Assert device_info is set to group with door device
@@ -125,8 +131,8 @@ class TestInceptionLogicalInputSwitch:
         assert ("inception", "door_789") in switch._attr_device_info["identifiers"]  # pyright: ignore[reportTypedDictNotRequiredAccess]
         assert switch._attr_device_info["name"] == "Front Door"  # pyright: ignore[reportTypedDictNotRequiredAccess]
 
-    def test_logical_input_switch_without_door_device_id(self) -> None:
-        """Test InceptionLogicalInputSwitch creates own device when None."""
+    def test_logical_input_switch_without_door(self) -> None:
+        """Test InceptionLogicalInputSwitch creates its own device if no door."""
         # Create mock coordinator
         mock_coordinator = MagicMock()
         mock_coordinator.data = MagicMock()
@@ -139,6 +145,7 @@ class TestInceptionLogicalInputSwitch:
         mock_input_data.entity_info.id = "input_999"
         mock_input_data.entity_info.name = "Standalone Input"
         mock_input_data.entity_info.reporting_id = "REP_999"
+        mock_input_data.entity_info.input_type = InputType.LOGICAL
         mock_input_data.extra_fields = {}
 
         entity_description = InceptionSwitchDescription(
@@ -146,12 +153,12 @@ class TestInceptionLogicalInputSwitch:
             value_fn=lambda _data: True,
         )
 
-        # Create the switch WITHOUT door_device_id (None)
+        # Create the switch WITHOUT a door
         switch = InceptionLogicalInputSwitch(
             coordinator=mock_coordinator,
             entity_description=entity_description,
             data=mock_input_data,
-            door_device_id=None,
+            door=None,
         )
 
         # Assert device_info is set to its own device (from parent InceptionInputSwitch)
@@ -183,6 +190,7 @@ class TestAsyncSetupEntry:
         mock_custom_input.entity_info.id = "custom_input_001"
         mock_custom_input.entity_info.name = "Custom Input 1"
         mock_custom_input.entity_info.reporting_id = "CI_001"
+        mock_custom_input.entity_info.input_type = InputType.LOGICAL
         mock_custom_input.entity_info.is_custom_input = True
         mock_custom_input.public_state = InputPublicState.ACTIVE
         mock_custom_input.extra_fields = {}
@@ -259,6 +267,7 @@ class TestAsyncSetupEntry:
         mock_regular_input.entity_info.name = "Regular Input"
         mock_regular_input.entity_info.reporting_id = "RI_001"
         mock_regular_input.entity_info.is_custom_input = False
+        mock_regular_input.entity_info.input_type = InputType.LOGICAL
         mock_regular_input.public_state = InputPublicState.SEALED
         mock_regular_input.extra_fields = {}
 
@@ -327,6 +336,7 @@ class TestAsyncSetupEntry:
         mock_input.entity_info.name = "Test Input"
         mock_input.entity_info.reporting_id = "TI_001"
         mock_input.entity_info.is_custom_input = False
+        mock_input.entity_info.input_type = InputType.LOGICAL
         mock_input.public_state = InputPublicState.SEALED
         mock_input.extra_fields = {}
 
@@ -367,28 +377,6 @@ class TestAsyncSetupEntry:
 
         # Verify it's an instance of InceptionLogicalInputSwitch
         assert isinstance(isolated_switch, InceptionLogicalInputSwitch)
-
-
-class TestExtractDoorNameFromInput:
-    """Test the extract_door_name_from_input helper function."""
-
-    def test_extract_with_dash_separator(self) -> None:
-        """Test extracting door name with dash separator."""
-        door_name, suffix = extract_door_name_from_input("Front Door - Reed Switch")
-        assert door_name == "Front Door"
-        assert suffix == "Reed Switch"
-
-    def test_extract_with_reed_suffix(self) -> None:
-        """Test extracting door name with Reed suffix."""
-        door_name, suffix = extract_door_name_from_input("Back Door Reed")
-        assert door_name == "Back Door"
-        assert suffix == "Reed"
-
-    def test_extract_no_match(self) -> None:
-        """Test extracting when no pattern matches."""
-        door_name, suffix = extract_door_name_from_input("Random Input Name")
-        assert door_name is None
-        assert suffix is None
 
 
 class TestSwitchEntityKeys:

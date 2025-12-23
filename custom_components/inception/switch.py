@@ -18,8 +18,9 @@ from homeassistant.helpers.storage import Store
 
 from .const import DOMAIN, LOGGER
 from .entity import InceptionEntity
-from .pyinception.schemas.input import InputPublicState
+from .pyinception.schemas.input import InputPublicState, InputType
 from .pyinception.schemas.output import OutputPublicState
+from .util import find_matching_door
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -29,6 +30,7 @@ if TYPE_CHECKING:
 
     from .coordinator import InceptionUpdateCoordinator
     from .data import InceptionConfigEntry
+    from .pyinception.schemas.door import DoorSummaryEntry
     from .pyinception.schemas.entities import (
         InceptionSummaryEntry,
     )
@@ -48,34 +50,6 @@ class InceptionSwitchDescription(SwitchEntityDescription):
     value_fn: Callable[[InceptionSummaryEntry], bool]
     turn_on_data: dict[str, str] | None = None
     turn_off_data: dict[str, str] | None = None
-
-
-def extract_door_name_from_input(input_name: str) -> tuple[str | None, str | None]:
-    """
-    Extract door name from input name if it matches a known pattern.
-
-    Patterns:
-    - "{Door Name} - {Event Type}" -> returns ("Door Name", "Event Type")
-    - "{Door Name} {Suffix}" -> returns ("Door Name", "Suffix")
-
-    Returns:
-        Tuple of (door_name, suffix) or (None, None) if no pattern matches
-
-    """
-    # Check for pattern with dash separator
-    if " - " in input_name:
-        parts = input_name.split(" - ", 1)
-        return (parts[0], parts[1])
-
-    # Check for known suffix patterns (case-insensitive)
-    door_input_suffixes = [" Reed"]
-    for suffix in door_input_suffixes:
-        if input_name.lower().endswith(suffix.lower()):
-            door_name = input_name[: -len(suffix)]
-            # Return the actual suffix from the original case (strip leading space)
-            return (door_name, suffix.strip())
-
-    return (None, None)
 
 
 async def async_setup_entry(
@@ -101,48 +75,46 @@ async def async_setup_entry(
     ]
 
     # Handle all input switches, treating door-related inputs specially
-    door_dict = {
-        door.entity_info.name: door for door in coordinator.data.doors.get_items()
-    }
+    doors = coordinator.data.doors.get_items()
 
     for i_input in coordinator.data.inputs.get_items():
-        input_name = i_input.entity_info.name
+        input_entity = i_input.entity_info
+        input_name = input_entity.name
 
-        # Check if input matches a door pattern
-        door_name, suffix = extract_door_name_from_input(input_name)
-        matching_door = door_dict.get(door_name) if door_name else None
+        matching_door, suffix = find_matching_door(input_name, doors)
 
-        entities.append(
-            InceptionLogicalInputSwitch(
-                coordinator=coordinator,
-                entity_description=InceptionSwitchDescription(
-                    key=f"{i_input.entity_info.id}_isolated",
-                    device_class=SwitchDeviceClass.SWITCH,
-                    name=f"{suffix} Isolated" if suffix else "Isolated",
-                    has_entity_name=True,
-                    entity_registry_visible_default=False,
-                    value_fn=lambda data: data.public_state is not None
-                    and bool(data.public_state & InputPublicState.ISOLATED),
-                    turn_on_data={
-                        "Type": "ControlInput",
-                        "InputControlType": "Isolate",
-                    },
-                    turn_off_data={
-                        "Type": "ControlInput",
-                        "InputControlType": "Deisolate",
-                    },
-                ),
-                data=i_input,
-                door_device_id=matching_door.entity_info.id if matching_door else None,
-            )
-        )
-
-        if i_input.entity_info.is_custom_input:
+        if input_entity.input_type != InputType.SWITCH:
             entities.append(
                 InceptionLogicalInputSwitch(
                     coordinator=coordinator,
                     entity_description=InceptionSwitchDescription(
-                        key=f"{i_input.entity_info.id}_active",
+                        key=f"{input_entity.id}_isolated",
+                        device_class=SwitchDeviceClass.SWITCH,
+                        name=f"{suffix} Isolated" if suffix else "Isolated",
+                        has_entity_name=True,
+                        entity_registry_visible_default=False,
+                        value_fn=lambda data: data.public_state is not None
+                        and bool(data.public_state & InputPublicState.ISOLATED),
+                        turn_on_data={
+                            "Type": "ControlInput",
+                            "InputControlType": "Isolate",
+                        },
+                        turn_off_data={
+                            "Type": "ControlInput",
+                            "InputControlType": "Deisolate",
+                        },
+                    ),
+                    data=i_input,
+                    door=matching_door,
+                )
+            )
+
+        if input_entity.is_custom_input:
+            entities.append(
+                InceptionLogicalInputSwitch(
+                    coordinator=coordinator,
+                    entity_description=InceptionSwitchDescription(
+                        key=f"{input_entity.id}_active",
                         device_class=SwitchDeviceClass.SWITCH,
                         name=f"{suffix} Active" if suffix else "Active",
                         has_entity_name=True,
@@ -159,9 +131,7 @@ async def async_setup_entry(
                         },
                     ),
                     data=i_input,
-                    door_device_id=matching_door.entity_info.id
-                    if matching_door
-                    else None,
+                    door=matching_door,
                 )
             )
 
@@ -260,7 +230,7 @@ class InceptionLogicalInputSwitch(InceptionInputSwitch):
         coordinator: InceptionUpdateCoordinator,
         entity_description: InceptionSwitchDescription,
         data: InputSummaryEntry,
-        door_device_id: str | None = None,
+        door: DoorSummaryEntry | None = None,
     ) -> None:
         """Initialize the switch class grouped with a Door device."""
         # Call parent __init__ first
@@ -271,11 +241,10 @@ class InceptionLogicalInputSwitch(InceptionInputSwitch):
         )
 
         # Override device_info to group with door device instead of creating own device
-        if door_device_id is not None:
-            door_name, _ = extract_door_name_from_input(data.entity_info.name)
+        if door is not None:
             self._attr_device_info = DeviceInfo(
-                identifiers={(DOMAIN, door_device_id)},
-                name=door_name or data.entity_info.name,
+                identifiers={(DOMAIN, door.entity_info.id)},
+                name=door.entity_info.name,
             )
 
 

@@ -183,7 +183,7 @@ class TestBinarySensorKeys:
 
         # Verify one binary sensor was created with the input's ID as the key
         assert len(added_entities) == 1
-        assert added_entities[0].entity_description.key == "input_789"
+        assert added_entities[0].entity_description.key == "input_789_sensor"
 
     @pytest.mark.asyncio
     async def test_custom_input_no_binary_sensor(
