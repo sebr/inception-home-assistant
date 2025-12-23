@@ -347,7 +347,7 @@ class TestBinarySensorKeys:
     async def test_input_matching_door_grouped_with_door_device(
         self, mock_coordinator: Mock, mock_hass: Mock, mock_entry: Mock
     ) -> None:
-        """Test that input sensors matching a door are grouped with the door device."""
+        """Test input sensors with space separator are grouped with door device."""
         # Create a mock door
         mock_door = Mock()
         mock_door.entity_info = Mock()
@@ -396,6 +396,11 @@ class TestBinarySensorKeys:
         assert len(input_sensors) == 1
         input_sensor = input_sensors[0]
 
+        # Verify the key uses the lowercased suffix for space separator
+        assert input_sensor.entity_description.key == "input_999_reed"
+        # Verify the name is the suffix
+        assert input_sensor.entity_description.name == "Reed"
+
         # Verify it's grouped with the door device
         assert input_sensor._attr_device_info is not None
         assert ("inception", "door_789") in input_sensor._attr_device_info[
@@ -404,10 +409,10 @@ class TestBinarySensorKeys:
         assert input_sensor._attr_device_info["name"] == "Back Door"  # pyright: ignore[reportTypedDictNotRequiredAccess]
 
     @pytest.mark.asyncio
-    async def test_input_matching_door_with_dash_separator(
+    async def test_input_matching_door_with_multipart_suffix(
         self, mock_coordinator: Mock, mock_hass: Mock, mock_entry: Mock
     ) -> None:
-        """Test input matching door with dash separator creates correct key."""
+        """Test multi-word suffix preserves spaces in name, lowercases key."""
         # Create a mock door
         mock_door = Mock()
         mock_door.entity_info = Mock()
@@ -416,11 +421,11 @@ class TestBinarySensorKeys:
         mock_door.entity_info.reporting_id = "5"
         mock_door.public_state = DoorPublicState.OPEN
 
-        # Create a mock input with " - " separator
+        # Create a mock input with multi-word suffix
         mock_input = Mock()
         mock_input.entity_info = Mock()
         mock_input.entity_info.id = "input_xyz"
-        mock_input.entity_info.name = "Side Door - Contact"
+        mock_input.entity_info.name = "Side Door - Reed Contact Sensor"
         mock_input.entity_info.reporting_id = "6"
         mock_input.entity_info.is_custom_input = False
         mock_input.public_state = InputPublicState.ACTIVE
@@ -454,10 +459,11 @@ class TestBinarySensorKeys:
         ]
 
         assert len(input_sensors) == 1
-        # Verify key format: input_id_suffix
-        assert input_sensors[0].entity_description.key == "input_xyz_contact"
-        # Verify name is the suffix
-        assert input_sensors[0].entity_description.name == "Contact"
+        # Verify key is lowercased (spaces preserved as-is)
+        expected_key = "input_xyz_reed contact sensor"
+        assert input_sensors[0].entity_description.key == expected_key
+        # Verify name preserves original suffix with spaces
+        assert input_sensors[0].entity_description.name == "Reed Contact Sensor"
 
     @pytest.mark.asyncio
     async def test_input_not_matching_door_creates_standalone_sensor(
