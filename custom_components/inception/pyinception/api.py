@@ -214,8 +214,6 @@ class InceptionApiClient:
             except Exception:
                 _LOGGER.exception("Error processing event")
 
-        self._schedule_data_callbacks()
-
     async def _get_latest_review_event(self) -> dict[str, Any] | None:
         """Get the latest review event to establish reference point."""
         try:
