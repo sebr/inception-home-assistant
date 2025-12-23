@@ -2,30 +2,35 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 
-def extract_door_name_from_input(input_name: str) -> tuple[str | None, str | None]:
+if TYPE_CHECKING:
+    from .pyinception.schemas.door import DoorSummaryEntry
+
+
+def find_matching_door(
+    value: str, doors: list[DoorSummaryEntry]
+) -> tuple[DoorSummaryEntry | None, str | None]:
     """
-    Extract door name from input name if it matches a known pattern.
+    Find a matching door for an input based on its name.
 
     Patterns:
-    - "{Door Name} - {Event Type}" -> returns ("Door Name", "Event Type")
-    - "{Door Name} {Suffix}" -> returns ("Door Name", "Suffix")
+    - "{Door Name} - {Suffix}"
+    - "{Door Name} {Suffix}"
 
     Returns:
-        Tuple of (door_name, suffix) or (None, None) if no pattern matches
+        Tuple of (DoorSummaryEntry, suffix) or (None, None) if no match.
 
     """
-    # Check for pattern with dash separator
-    if " - " in input_name:
-        parts = input_name.split(" - ", 1)
-        return (parts[0], parts[1])
-
-    # Check for known suffix patterns (case-insensitive)
-    door_input_suffixes = [" Reed"]
-    for suffix in door_input_suffixes:
-        if input_name.lower().endswith(suffix.lower()):
-            door_name = input_name[: -len(suffix)]
-            # Return the actual suffix from the original case (strip leading space)
-            return (door_name, suffix.strip())
-
-    return (None, None)
+    for door in doors:
+        door_name = door.entity_info.name
+        if value.startswith(door_name):
+            # Check for " - " separator
+            if value.startswith(f"{door_name} - "):
+                suffix = value[len(door_name) + 3 :]
+                return door, suffix
+            # Check for space separator
+            if value.startswith(f"{door_name} "):
+                suffix = value[len(door_name) + 1 :]
+                return door, suffix
+    return None, None

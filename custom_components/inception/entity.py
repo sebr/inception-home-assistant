@@ -1,4 +1,4 @@
-"""Base classes for Hydrawise entities."""
+"""Base classes for Inception entities."""
 
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ class InceptionEntity(CoordinatorEntity[InceptionUpdateCoordinator]):
         *,
         inception_object: InceptionSummaryEntry,
     ) -> None:
-        """Initialize the Hydrawise entity."""
+        """Initialize the Inception entity."""
         super().__init__(coordinator=coordinator)
         self.entity_description = entity_description
         self._attr_attribution = f"Data provided by {coordinator.api._host}"

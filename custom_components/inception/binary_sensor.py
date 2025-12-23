@@ -12,11 +12,11 @@ from homeassistant.components.binary_sensor import (
 )
 from homeassistant.helpers.device_registry import DeviceInfo
 
-from .const import DOMAIN, MANUFACTURER
+from .const import DOMAIN, LOGGER, MANUFACTURER
 from .entity import InceptionEntity
 from .pyinception.schemas.door import DoorPublicState
 from .pyinception.schemas.input import InputPublicState
-from .util import extract_door_name_from_input
+from .util import find_matching_door
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -50,7 +50,8 @@ def get_device_class_for_name(name: str) -> BinarySensorDeviceClass:
         "louvre": BinarySensorDeviceClass.WINDOW,
         "shock": BinarySensorDeviceClass.VIBRATION,
         "button": BinarySensorDeviceClass.CONNECTIVITY,
-        "rex": BinarySensorDeviceClass.DOOR,
+        "rex": BinarySensorDeviceClass.CONNECTIVITY,
+        "exit": BinarySensorDeviceClass.CONNECTIVITY,
         "opening": BinarySensorDeviceClass.OPENING,
         "power": BinarySensorDeviceClass.POWER,
         "smoke": BinarySensorDeviceClass.SMOKE,
@@ -131,17 +132,35 @@ async def async_setup_entry(
     ]
 
     # Create input binary sensors, skipping inputs that match door patterns
-    door_dict = {
-        door.entity_info.name: door for door in coordinator.data.doors.get_items()
-    }
+    doors = coordinator.data.doors.get_items()
 
     for i_input in coordinator.data.inputs.get_items():
         input_name = i_input.entity_info.name
 
-        # Check if input matches a door pattern
-        door_name, _ = extract_door_name_from_input(input_name)
-        if door_name and door_dict.get(door_name):
-            # Skip inputs that match doors
+        matching_door, suffix = find_matching_door(input_name, doors)
+
+        if matching_door is not None:
+            if suffix is None:
+                # No suffix found, skip this input
+                continue
+
+            entities.append(
+                InceptionInputBinarySensor(
+                    coordinator=coordinator,
+                    entity_description=InceptionBinarySensorDescription(
+                        key=f"{i_input.entity_info.id}_{suffix}",
+                        device_class=get_device_class_for_name(suffix),
+                        name=suffix,
+                        value_fn=lambda data: data.public_state is not None
+                        and bool(data.public_state & InputPublicState.ACTIVE),
+                        entity_registry_enabled_default=is_entity_registry_enabled_default(
+                            i_input.entity_info.name
+                        ),
+                    ),
+                    data=i_input,
+                    door=matching_door,
+                )
+            )
             continue
 
         if i_input.entity_info.is_custom_input:
@@ -153,7 +172,7 @@ async def async_setup_entry(
             InceptionInputBinarySensor(
                 coordinator=coordinator,
                 entity_description=InceptionBinarySensorDescription(
-                    key=i_input.entity_info.id,
+                    key=f"{i_input.entity_info.id}_sensor",
                     device_class=get_device_class_for_name(i_input.entity_info.name),
                     name="Sensor",
                     value_fn=lambda data: data.public_state is not None
@@ -213,6 +232,7 @@ class InceptionInputBinarySensor(
         coordinator: InceptionUpdateCoordinator,
         entity_description: InceptionBinarySensorDescription,
         data: InputSummaryEntry,
+        door: DoorSummaryEntry | None = None,
     ) -> None:
         """Initialize the binary_sensor class."""
         super().__init__(coordinator, entity_description=entity_description, data=data)
@@ -221,11 +241,19 @@ class InceptionInputBinarySensor(
         self.entity_description = entity_description
         self.reporting_id = data.entity_info.reporting_id
         self._device_id = data.entity_info.id
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, self._device_id)},
-            name=data.entity_info.name,
-            manufacturer=MANUFACTURER,
-        )
+
+        # Override device_info to group with door device instead of creating own device
+        if door is not None:
+            self._attr_device_info = DeviceInfo(
+                identifiers={(DOMAIN, door.entity_info.id)},
+                name=door.entity_info.name,
+            )
+        else:
+            self._attr_device_info = DeviceInfo(
+                identifiers={(DOMAIN, self._device_id)},
+                name=data.entity_info.name,
+                manufacturer=MANUFACTURER,
+            )
 
 
 class InceptionDoorBinarySensor(
