@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
@@ -18,9 +19,17 @@ from homeassistant.components.alarm_control_panel.const import (
 from custom_components.inception.alarm_control_panel import (
     InceptionAlarm,
     InceptionAlarmDescription,
+    async_setup_entry,
 )
+from custom_components.inception.coordinator import InceptionUpdateCoordinator
 from custom_components.inception.entity import InceptionEntity
 from custom_components.inception.pyinception.schemas.area import AreaPublicState
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+    from pathlib import Path
+
+    from homeassistant.helpers.entity import Entity
 
 
 class TestInceptionAlarm:
@@ -463,3 +472,93 @@ class TestInceptionAlarmAreaArmService:
             mock_control.assert_called_once_with(
                 "Arm", code, exit_delay=exit_delay, seal_check=seal_check
             )
+
+
+class TestAlarmEntityKeys:
+    """Test alarm entity key generation."""
+
+    @pytest.fixture
+    def mock_coordinator(self, mock_hass: Mock) -> Mock:
+        """Create a mock coordinator."""
+        coordinator = Mock(spec=InceptionUpdateCoordinator)
+        coordinator.config_entry = Mock()
+        coordinator.config_entry.entry_id = "test_entry_id"
+        coordinator.api = Mock()
+        coordinator.api._host = "test.example.com"
+        coordinator.data = Mock()
+        coordinator.hass = mock_hass
+
+        # Initialize all entity collections as empty
+        coordinator.data.doors = Mock()
+        coordinator.data.doors.get_items = Mock(return_value=[])
+        coordinator.data.inputs = Mock()
+        coordinator.data.inputs.get_items = Mock(return_value=[])
+        coordinator.data.outputs = Mock()
+        coordinator.data.outputs.get_items = Mock(return_value=[])
+        coordinator.data.areas = Mock()
+        coordinator.data.areas.get_items = Mock(return_value=[])
+
+        return coordinator
+
+    @pytest.fixture
+    def mock_hass(self, tmp_path: Path) -> Mock:
+        """Create a mock Home Assistant instance."""
+        hass = Mock()
+        hass.data = {}
+        hass.bus = Mock()
+        hass.bus.async_listen = Mock()
+        hass.config = Mock()
+        hass.config.config_dir = str(tmp_path)
+        return hass
+
+    @pytest.fixture
+    def mock_entry(self) -> Mock:
+        """Create a mock config entry."""
+        entry = Mock()
+        entry.entry_id = "test_entry_id"
+        return entry
+
+    def mock_async_add_entities(
+        self,
+        new_entities: Iterable[Entity],
+        update_before_add: bool = False,  # noqa: FBT001, FBT002, ARG002
+    ) -> None:
+        """Mock entity addition callback."""
+        self.added_entities.extend(new_entities)
+
+    @pytest.mark.asyncio
+    async def test_alarm_entity_keys(
+        self, mock_coordinator: Mock, mock_hass: Mock, mock_entry: Mock
+    ) -> None:
+        """Test that alarm entities have expected keys."""
+        mock_area1 = Mock()
+        mock_area1.entity_info = Mock()
+        mock_area1.entity_info.id = "area_1"
+        mock_area1.entity_info.name = "Ground Floor"
+        mock_area1.public_state = AreaPublicState.DISARMED
+
+        mock_area2 = Mock()
+        mock_area2.entity_info = Mock()
+        mock_area2.entity_info.id = "area_2"
+        mock_area2.entity_info.name = "Upper Floor"
+        mock_area2.public_state = AreaPublicState.ARMED
+
+        mock_coordinator.data.areas.get_items = Mock(
+            return_value=[mock_area1, mock_area2]
+        )
+
+        self.added_entities = []
+        mock_hass.data = {"inception": {mock_entry.entry_id: mock_coordinator}}
+
+        # Mock the entity_platform module
+        with patch(
+            "custom_components.inception.alarm_control_panel.entity_platform.async_get_current_platform"
+        ) as mock_get_platform:
+            mock_platform = Mock()
+            mock_get_platform.return_value = mock_platform
+            await async_setup_entry(mock_hass, mock_entry, self.mock_async_add_entities)
+
+        # Verify alarm keys
+        assert len(self.added_entities) == 2
+        keys = [entity.entity_description.key for entity in self.added_entities]
+        assert sorted(keys) == ["area_1", "area_2"]

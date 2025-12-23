@@ -87,10 +87,10 @@ class TestBinarySensorKeys:
 
         # Keys are formatted as {door_id}_{key_suffix}
         expected_keys = [
-            "door_123_8",  # FORCED = 0x008
-            "door_123_32",  # Door Open Too Long
-            "door_123_2",
-            "door_123_128",
+            "door_123_forced",
+            "door_123_dotl",
+            "door_123_open",
+            "door_123_tamper",
         ]
 
         actual_keys = [entity.entity_description.key for entity in added_entities]
@@ -133,10 +133,10 @@ class TestBinarySensorKeys:
 
         # Create a mapping of keys to expected names
         expected_names = {
-            "door_456_8": "Forced",
-            "door_456_32": "Held open too long",
-            "door_456_2": "Open",
-            "door_456_128": "Reader tamper",
+            "door_456_forced": "Forced",
+            "door_456_dotl": "Held open too long",
+            "door_456_open": "Sensor",
+            "door_456_tamper": "Reader tamper",
         }
 
         for entity in added_entities:
