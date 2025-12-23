@@ -76,11 +76,12 @@ class InceptionNumber(InceptionEntity, NumberEntity):
     """inception number class."""
 
     data: InceptionSummaryEntry
+    entity_description: InceptionNumberDescription
 
     def __init__(
         self,
         coordinator: InceptionUpdateCoordinator,
-        entity_description: NumberEntityDescription,
+        entity_description: InceptionNumberDescription,
         data: InceptionSummaryEntry,
     ) -> None:
         """Initialize the number class."""
@@ -88,6 +89,7 @@ class InceptionNumber(InceptionEntity, NumberEntity):
             coordinator, entity_description=entity_description, inception_object=data
         )
         self.data = data
+        self.entity_description = entity_description
         self.unique_id = entity_description.key
         self._device_id = data.entity_info.id
 
@@ -100,7 +102,6 @@ class InceptionTimedUnlockNumber(
 
     _attr_has_entity_name = True
     _attr_should_poll = False
-    entity_description: InceptionNumberDescription
 
     def __init__(
         self,
@@ -115,7 +116,6 @@ class InceptionTimedUnlockNumber(
             identifiers={(DOMAIN, data.entity_info.id)},
             manufacturer=MANUFACTURER,
         )
-        self.entity_description = entity_description
         self._attr_current_option = None
         self._attr_native_min_value = 1
         self._attr_extra_state_attributes = {
