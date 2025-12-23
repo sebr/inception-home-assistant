@@ -135,9 +135,9 @@ async def async_setup_entry(
     doors = coordinator.data.doors.get_items()
 
     for i_input in coordinator.data.inputs.get_items():
-        input_name = i_input.entity_info.name
+        input_entity = i_input.entity_info
 
-        matching_door, suffix = find_matching_door(input_name, doors)
+        matching_door, suffix = find_matching_door(input_entity.name, doors)
 
         if matching_door is not None:
             if suffix is None:
@@ -148,13 +148,13 @@ async def async_setup_entry(
                 InceptionInputBinarySensor(
                     coordinator=coordinator,
                     entity_description=InceptionBinarySensorDescription(
-                        key=f"{i_input.entity_info.id}_{suffix}",
+                        key=f"{input_entity.id}_{suffix.lower()}",
                         device_class=get_device_class_for_name(suffix),
                         name=suffix,
                         value_fn=lambda data: data.public_state is not None
                         and bool(data.public_state & InputPublicState.ACTIVE),
                         entity_registry_enabled_default=is_entity_registry_enabled_default(
-                            i_input.entity_info.name
+                            input_entity.name
                         ),
                     ),
                     data=i_input,
@@ -163,7 +163,7 @@ async def async_setup_entry(
             )
             continue
 
-        if i_input.entity_info.is_custom_input:
+        if input_entity.is_custom_input:
             # Skip custom inputs (they are a switch)
             continue
 
@@ -172,13 +172,13 @@ async def async_setup_entry(
             InceptionInputBinarySensor(
                 coordinator=coordinator,
                 entity_description=InceptionBinarySensorDescription(
-                    key=f"{i_input.entity_info.id}_sensor",
-                    device_class=get_device_class_for_name(i_input.entity_info.name),
+                    key=f"{input_entity.id}_sensor",
+                    device_class=get_device_class_for_name(input_entity.name),
                     name="Sensor",
                     value_fn=lambda data: data.public_state is not None
                     and bool(data.public_state & InputPublicState.ACTIVE),
                     entity_registry_enabled_default=is_entity_registry_enabled_default(
-                        i_input.entity_info.name
+                        input_entity.name
                     ),
                 ),
                 data=i_input,
