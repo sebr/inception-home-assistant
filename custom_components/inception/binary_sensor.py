@@ -125,25 +125,28 @@ async def async_setup_entry(
     coordinator: InceptionUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
 
     # Create door binary sensors
+    # Define states with human-readable names and key suffixes
+    door_states = [
+        (DoorPublicState.FORCED, "Forced", "forced"),
+        (DoorPublicState.HELD_OPEN_TOO_LONG, "Held open too long", "dotl"),
+        (DoorPublicState.OPEN, "Sensor", "open"),
+        (DoorPublicState.READER_TAMPER, "Reader tamper", "tamper"),
+    ]
+
     entities: list[InceptionBinarySensor] = [
         InceptionDoorBinarySensor(
             coordinator=coordinator,
             entity_description=InceptionBinarySensorDescription(
-                key=f"{door.entity_info.id}_{state.value}",
+                key=f"{door.entity_info.id}_{key_suffix}",
                 device_class=get_device_class_for_state(state),
-                name=f"{state}",
+                name=name,
                 has_entity_name=True,
                 value_fn=lambda data, state=state: data.public_state is not None
                 and bool(data.public_state & state),
             ),
             data=door,
         )
-        for state in [
-            DoorPublicState.FORCED,
-            DoorPublicState.HELD_OPEN_TOO_LONG,
-            DoorPublicState.OPEN,
-            DoorPublicState.READER_TAMPER,
-        ]
+        for state, name, key_suffix in door_states
         for door in coordinator.data.doors.get_items()
     ]
 
