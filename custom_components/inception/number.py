@@ -69,6 +69,8 @@ async def async_setup_entry(
 class InceptionNumberDescription(NumberEntityDescription):
     """Describes Inception number entity."""
 
+    name: str = ""
+
 
 class InceptionNumber(InceptionEntity, NumberEntity):
     """inception number class."""
@@ -119,6 +121,11 @@ class InceptionTimedUnlockNumber(
         self._attr_extra_state_attributes = {
             "type": "timed_unlock_duration",
         }
+
+    @property
+    def name(self) -> str:
+        """Return the name of the entity."""
+        return self.entity_description.name
 
     async def async_set_native_value(self, value: float) -> None:
         """Update the current value."""

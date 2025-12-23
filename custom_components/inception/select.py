@@ -65,17 +65,19 @@ class InceptionSelectDescription(SelectEntityDescription):
     """Describes Inception select entity."""
 
     options: list[str] = field(default_factory=list)
+    name: str = ""
 
 
 class InceptionSelect(InceptionEntity, SelectEntity):
     """inception binary_sensor class."""
 
     data: InceptionSummaryEntry
+    entity_description: InceptionSelectDescription
 
     def __init__(
         self,
         coordinator: InceptionUpdateCoordinator,
-        entity_description: SelectEntityDescription,
+        entity_description: InceptionSelectDescription,
         data: InceptionSummaryEntry,
     ) -> None:
         """Initialize the binary_sensor class."""
@@ -84,7 +86,13 @@ class InceptionSelect(InceptionEntity, SelectEntity):
         )
         self.data = data
         self.unique_id = entity_description.key
+        self._attr_name = entity_description.name
         self._device_id = data.entity_info.id
+
+    @property
+    def name(self) -> str:
+        """Return the name of the entity."""
+        return self.entity_description.name
 
 
 class InceptionUnlockStrategySelect(
