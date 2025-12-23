@@ -47,7 +47,7 @@ async def async_setup_entry(
             coordinator=coordinator,
             entity_description=InceptionSelectDescription(
                 key=f"{door.entity_info.id}_unlock_mechanism",
-                name="Unlock Strategy",
+                name="Unlock strategy",
                 options=[UNLOCK, TIMED_UNLOCK],
                 entity_category=EntityCategory.CONFIG,
                 translation_key="unlock_strategy",
@@ -65,17 +65,19 @@ class InceptionSelectDescription(SelectEntityDescription):
     """Describes Inception select entity."""
 
     options: list[str] = field(default_factory=list)
+    name: str = ""
 
 
 class InceptionSelect(InceptionEntity, SelectEntity):
     """inception binary_sensor class."""
 
     data: InceptionSummaryEntry
+    entity_description: InceptionSelectDescription
 
     def __init__(
         self,
         coordinator: InceptionUpdateCoordinator,
-        entity_description: SelectEntityDescription,
+        entity_description: InceptionSelectDescription,
         data: InceptionSummaryEntry,
     ) -> None:
         """Initialize the binary_sensor class."""
@@ -85,6 +87,11 @@ class InceptionSelect(InceptionEntity, SelectEntity):
         self.data = data
         self.unique_id = entity_description.key
         self._device_id = data.entity_info.id
+
+    @property
+    def name(self) -> str:
+        """Return the name of the entity."""
+        return self.entity_description.name
 
 
 class InceptionUnlockStrategySelect(
@@ -115,11 +122,6 @@ class InceptionUnlockStrategySelect(
         self._attr_extra_state_attributes = {
             "type": "unlock_strategy",
         }
-
-    @property
-    def name(self) -> str:
-        """Return the name of the entity."""
-        return "Unlock Strategy"
 
     async def async_added_to_hass(self) -> None:
         """Restore state."""
