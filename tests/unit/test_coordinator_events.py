@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import inspect
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
@@ -200,3 +200,100 @@ def test_review_event_callback_handles_missing_fields() -> None:
         event_type=EVENT_REVIEW_EVENT,
         event_data=expected_event_data,
     )
+
+
+@pytest.mark.asyncio
+async def test_callbacks_registered_only_once() -> None:
+    """Test that callbacks are only registered once even with multiple update calls."""
+    # Create mock objects
+    mock_entry = Mock()
+    mock_entry.data = {"token": "test_token", "host": "http://test.com"}
+
+    mock_hass = Mock()
+
+    # Create a mock API client
+    mock_api = Mock()
+    mock_api.get_data = AsyncMock(return_value=Mock())
+    mock_api.connect = AsyncMock()
+    mock_api.register_data_callback = Mock()
+    mock_api.register_review_event_callback = Mock()
+
+    # Create coordinator by mocking the parent class initialization
+    with (
+        patch(
+            "custom_components.inception.coordinator.DataUpdateCoordinator.__init__",
+            Mock(return_value=None),
+        ),
+        patch(
+            "custom_components.inception.coordinator.InceptionApiClient",
+            return_value=mock_api,
+        ),
+        patch(
+            "custom_components.inception.coordinator.async_get_clientsession",
+            return_value=Mock(),
+        ),
+    ):
+        # Create coordinator and set required attributes
+        coordinator = InceptionUpdateCoordinator(mock_hass, mock_entry)
+        coordinator.hass = mock_hass
+        coordinator.logger = Mock()
+
+        # Call _async_update_data multiple times
+        await coordinator._async_update_data()
+        await coordinator._async_update_data()
+        await coordinator._async_update_data()
+
+    # Verify callbacks were only registered once
+    assert mock_api.register_data_callback.call_count == 1
+    assert mock_api.register_review_event_callback.call_count == 1
+    assert coordinator._callbacks_registered is True
+
+
+@pytest.mark.asyncio
+async def test_callbacks_reset_on_unload() -> None:
+    """Test that callback registration flag is reset on unload."""
+    # Create mock objects
+    mock_entry = Mock()
+    mock_entry.data = {"token": "test_token", "host": "http://test.com"}
+
+    mock_hass = Mock()
+
+    # Create a mock API client
+    mock_api = Mock()
+    mock_api.get_data = AsyncMock(return_value=Mock())
+    mock_api.connect = AsyncMock()
+    mock_api.close = AsyncMock()
+    mock_api.register_data_callback = Mock()
+    mock_api.register_review_event_callback = Mock()
+
+    # Create coordinator by mocking the parent class initialization
+    with (
+        patch(
+            "custom_components.inception.coordinator.DataUpdateCoordinator.__init__",
+            Mock(return_value=None),
+        ),
+        patch(
+            "custom_components.inception.coordinator.InceptionApiClient",
+            return_value=mock_api,
+        ),
+        patch(
+            "custom_components.inception.coordinator.async_get_clientsession",
+            return_value=Mock(),
+        ),
+    ):
+        # Create coordinator and set required attributes
+        coordinator = InceptionUpdateCoordinator(mock_hass, mock_entry)
+        coordinator.hass = mock_hass
+        coordinator.logger = Mock()
+        coordinator._shutdown_remove_listener = None
+
+        # Connect and register callbacks
+        await coordinator._async_update_data()
+        assert coordinator._callbacks_registered is True
+
+        # Unload the coordinator
+        await coordinator.async_unload()
+
+        # Verify flag was reset
+        assert coordinator._callbacks_registered is False
+        assert coordinator.monitor_connected is False
