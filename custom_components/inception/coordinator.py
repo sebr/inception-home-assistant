@@ -48,6 +48,7 @@ class InceptionUpdateCoordinator(DataUpdateCoordinator[InceptionApiData]):
 
         self.monitor_connected: bool = False
         self._review_events_global_enabled: bool = False
+        self._callbacks_registered: bool = False
 
     async def _async_setup(self) -> None:
         self._shutdown_remove_listener = self.hass.bus.async_listen_once(
@@ -69,6 +70,7 @@ class InceptionUpdateCoordinator(DataUpdateCoordinator[InceptionApiData]):
 
         await self.api.close()
         self.monitor_connected = False
+        self._callbacks_registered = False
 
     async def _async_update_data(self) -> InceptionApiData:
         """Fetch data from the API."""
@@ -84,8 +86,13 @@ class InceptionUpdateCoordinator(DataUpdateCoordinator[InceptionApiData]):
                 "Connecting to Inception Monitor",
             )
             await self.api.connect()
-            self.api.register_data_callback(self.data_callback)
-            self.api.register_review_event_callback(self.review_event_callback)
+
+            # Only register callbacks once to prevent duplicates
+            if not self._callbacks_registered:
+                self.api.register_data_callback(self.data_callback)
+                self.api.register_review_event_callback(self.review_event_callback)
+                self._callbacks_registered = True
+
             self.monitor_connected = True
 
         return data

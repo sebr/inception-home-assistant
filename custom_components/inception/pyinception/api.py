@@ -466,6 +466,14 @@ class InceptionApiClient:
             with contextlib.suppress(asyncio.CancelledError):
                 await asyncio.gather(self.rest_task)
 
+        # Clear callback lists to prevent memory leaks
+        self.data_update_cbs.clear()
+        self.review_event_cbs.clear()
+
+        # Reset task references
+        self.rest_task = None
+        self._review_events_task = None
+
     async def _monitor_events_request(self, payload: Any) -> Any | None:
         """Monitor updates from the API."""
         try:

@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from homeassistant.const import Platform
+from homeassistant.helpers.storage import Store
 
 from .const import DOMAIN
 from .coordinator import InceptionUpdateCoordinator
@@ -54,7 +55,32 @@ async def async_unload_entry(
     entry: InceptionConfigEntry,
 ) -> bool:
     """Handle removal of an entry."""
-    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    # Unload platforms first
+    if not await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
+        return False
+
+    # Clean up the coordinator
+    coordinator: InceptionUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
+    await coordinator.async_unload()
+
+    # Remove the coordinator from hass.data
+    hass.data[DOMAIN].pop(entry.entry_id)
+
+    return True
+
+
+async def async_remove_entry(
+    hass: HomeAssistant,
+    entry: InceptionConfigEntry,
+) -> None:
+    """Handle removal of an entry (when deleted by user)."""
+    # Clean up stored review events settings
+    store = Store(
+        hass,
+        version=1,
+        key=f"{DOMAIN}.{entry.entry_id}.review_events",
+    )
+    await store.async_remove()
 
 
 async def async_reload_entry(
