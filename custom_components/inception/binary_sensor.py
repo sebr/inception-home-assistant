@@ -139,7 +139,7 @@ async def async_setup_entry(
     for i_input in coordinator.data.inputs.get_items():
         input_entity = i_input.entity_info
 
-        matching_door = find_matching_door(input_entity.name, all_doors)
+        matching_door, _ = find_matching_door(input_entity.name, all_doors)
 
         if matching_door is not None:
             # Skip inputs that are associated with a door (they are handled above)
