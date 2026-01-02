@@ -114,6 +114,8 @@ async def async_setup_entry(
         (DoorPublicState.READER_TAMPER, "Reader tamper", "tamper"),
     ]
 
+    all_doors = coordinator.data.doors.get_items()
+
     entities: list[InceptionBinarySensor] = [
         InceptionDoorBinarySensor(
             coordinator=coordinator,
@@ -124,43 +126,23 @@ async def async_setup_entry(
                 has_entity_name=True,
                 value_fn=lambda data, state=state: data.public_state is not None
                 and bool(data.public_state & state),
+                entity_registry_enabled_default=key_suffix not in ["forced", "dotl"],
             ),
             data=door,
         )
         for state, name, key_suffix in door_states
-        for door in coordinator.data.doors.get_items()
+        for door in all_doors
     ]
 
     # Create input binary sensors, skipping inputs that match door patterns
-    doors = coordinator.data.doors.get_items()
 
     for i_input in coordinator.data.inputs.get_items():
         input_entity = i_input.entity_info
 
-        matching_door, suffix = find_matching_door(input_entity.name, doors)
+        matching_door = find_matching_door(input_entity.name, all_doors)
 
         if matching_door is not None:
-            if suffix is None:
-                # No suffix found, skip this input
-                continue
-
-            entities.append(
-                InceptionInputBinarySensor(
-                    coordinator=coordinator,
-                    entity_description=InceptionBinarySensorDescription(
-                        key=f"input_{suffix.lower()}",
-                        device_class=get_device_class_for_name(suffix),
-                        name=suffix,
-                        value_fn=lambda data: data.public_state is not None
-                        and bool(data.public_state & InputPublicState.ACTIVE),
-                        entity_registry_enabled_default=is_entity_registry_enabled_default(
-                            input_entity.name
-                        ),
-                    ),
-                    data=i_input,
-                    door=matching_door,
-                )
-            )
+            # Skip inputs that are associated with a door (they are handled above)
             continue
 
         if input_entity.is_custom_input:
@@ -177,9 +159,6 @@ async def async_setup_entry(
                     name="Sensor",
                     value_fn=lambda data: data.public_state is not None
                     and bool(data.public_state & InputPublicState.ACTIVE),
-                    entity_registry_enabled_default=is_entity_registry_enabled_default(
-                        input_entity.name
-                    ),
                 ),
                 data=i_input,
             )
