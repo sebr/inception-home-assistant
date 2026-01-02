@@ -87,13 +87,13 @@ class TestBinarySensorKeys:
 
         # Keys are formatted as {door_id}_{key_suffix}
         expected_keys = [
-            "door_123_forced",
-            "door_123_dotl",
-            "door_123_open",
-            "door_123_tamper",
+            "door_123_door_forced",
+            "door_123_door_dotl",
+            "door_123_door_open",
+            "door_123_door_tamper",
         ]
 
-        actual_keys = [entity.entity_description.key for entity in added_entities]
+        actual_keys = [entity._attr_unique_id for entity in added_entities]
         assert sorted(actual_keys) == sorted(expected_keys)
 
     @pytest.mark.asyncio
@@ -133,14 +133,14 @@ class TestBinarySensorKeys:
 
         # Create a mapping of keys to expected names
         expected_names = {
-            "door_456_forced": "Forced",
-            "door_456_dotl": "Held open too long",
-            "door_456_open": "Sensor",
-            "door_456_tamper": "Reader tamper",
+            "door_456_door_forced": "Forced",
+            "door_456_door_dotl": "Held open too long",
+            "door_456_door_open": "Sensor",
+            "door_456_door_tamper": "Reader tamper",
         }
 
         for entity in added_entities:
-            key = entity.entity_description.key
+            key = entity._attr_unique_id
             expected_name = expected_names[key]
             actual_name = entity.entity_description.name
             assert actual_name == expected_name, (
@@ -183,7 +183,7 @@ class TestBinarySensorKeys:
 
         # Verify one binary sensor was created with the input's ID as the key
         assert len(added_entities) == 1
-        assert added_entities[0].entity_description.key == "input_789_sensor"
+        assert added_entities[0]._attr_unique_id == "input_789_input_789_sensor"
 
     @pytest.mark.asyncio
     async def test_custom_input_no_binary_sensor(
@@ -268,17 +268,13 @@ class TestBinarySensorKeys:
 
         # Verify keys for door 1
         door1_keys = [
-            e.entity_description.key
-            for e in added_entities
-            if "door_1_" in e.entity_description.key
+            e._attr_unique_id for e in added_entities if "door_1_" in e._attr_unique_id
         ]
         assert len(door1_keys) == 4
 
         # Verify keys for door 2
         door2_keys = [
-            e.entity_description.key
-            for e in added_entities
-            if "door_2_" in e.entity_description.key
+            e._attr_unique_id for e in added_entities if "door_2_" in e._attr_unique_id
         ]
         assert len(door2_keys) == 4
 
@@ -331,15 +327,14 @@ class TestBinarySensorKeys:
         input_sensors = [
             e
             for e in added_entities
-            if hasattr(e, "entity_description")
-            and e.entity_description.key.startswith("input_")
+            if hasattr(e, "_attr_unique_id") and e._attr_unique_id.startswith("input_")
         ]
 
         assert len(input_sensors) == 1
         input_sensor = input_sensors[0]
 
         # Verify the key uses the suffix
-        assert input_sensor.entity_description.key == "input_456_reed"
+        assert input_sensor._attr_unique_id == "input_456_input_reed"
         # Verify the name is the suffix
         assert input_sensor.entity_description.name == "Reed"
 
@@ -389,15 +384,14 @@ class TestBinarySensorKeys:
         input_sensors = [
             e
             for e in added_entities
-            if hasattr(e, "entity_description")
-            and e.entity_description.key.startswith("input_")
+            if hasattr(e, "_attr_unique_id") and e._attr_unique_id.startswith("input_")
         ]
 
         assert len(input_sensors) == 1
         input_sensor = input_sensors[0]
 
         # Verify the key uses the lowercased suffix for space separator
-        assert input_sensor.entity_description.key == "input_999_reed"
+        assert input_sensor._attr_unique_id == "input_999_input_reed"
         # Verify the name is the suffix
         assert input_sensor.entity_description.name == "Reed"
 
@@ -454,14 +448,13 @@ class TestBinarySensorKeys:
         input_sensors = [
             e
             for e in added_entities
-            if hasattr(e, "entity_description")
-            and e.entity_description.key.startswith("input_")
+            if hasattr(e, "_attr_unique_id") and e._attr_unique_id.startswith("input_")
         ]
 
         assert len(input_sensors) == 1
         # Verify key is lowercased (spaces preserved as-is)
-        expected_key = "input_xyz_reed contact sensor"
-        assert input_sensors[0].entity_description.key == expected_key
+        expected_key = "input_xyz_input_reed contact sensor"
+        assert input_sensors[0]._attr_unique_id == expected_key
         # Verify name preserves original suffix with spaces
         assert input_sensors[0].entity_description.name == "Reed Contact Sensor"
 
@@ -511,15 +504,14 @@ class TestBinarySensorKeys:
         input_sensors = [
             e
             for e in added_entities
-            if hasattr(e, "entity_description")
-            and e.entity_description.key.startswith("input_")
+            if hasattr(e, "_attr_unique_id") and e._attr_unique_id.startswith("input_")
         ]
 
         assert len(input_sensors) == 1
         input_sensor = input_sensors[0]
 
         # Verify key format for standalone sensor: input_id_sensor
-        assert input_sensor.entity_description.key == "input_222_sensor"
+        assert input_sensor._attr_unique_id == "input_222_input_222_sensor"
         # Verify name is "Sensor" for standalone
         assert input_sensor.entity_description.name == "Sensor"
 

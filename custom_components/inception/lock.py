@@ -59,7 +59,7 @@ async def async_setup_entry(
         InceptionLock(
             coordinator=coordinator,
             entity_description=InceptionDoorEntityDescription(
-                key=door.entity_info.id, name="Lock"
+                key="door_lock", name="Lock"
             ),
             data=door,
         )

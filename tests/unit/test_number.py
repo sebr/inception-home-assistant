@@ -91,8 +91,7 @@ class TestNumberEntityKeys:
         # Verify number entity key (timed unlock duration)
         assert len(self.added_entities) == 1
         assert (
-            self.added_entities[0].entity_description.key
-            == "door_123_timed_unlock_time"
+            self.added_entities[0]._attr_unique_id == "door_123_timed_unlock_duration"
         )
 
     @pytest.mark.asyncio
@@ -112,11 +111,11 @@ class TestNumberEntityKeys:
         # Test number
         self.added_entities = []
         await number_setup(mock_hass, mock_entry, self.mock_async_add_entities)
-        assert self.added_entities[0].entity_description.key.startswith("door_test")
-        assert "timed_unlock_time" in self.added_entities[0].entity_description.key
+        assert self.added_entities[0]._attr_unique_id.startswith("door_test")
+        assert "timed_unlock_duration" in self.added_entities[0]._attr_unique_id
 
         # Test select
         self.added_entities = []
         await select_setup(mock_hass, mock_entry, self.mock_async_add_entities)
-        assert self.added_entities[0].entity_description.key.startswith("door_test")
-        assert "unlock_mechanism" in self.added_entities[0].entity_description.key
+        assert self.added_entities[0]._attr_unique_id.startswith("door_test")
+        assert "unlock_mechanism" in self.added_entities[0]._attr_unique_id

@@ -100,7 +100,7 @@ class TestInceptionAlarm:
     ) -> InceptionAlarm:
         """Create an alarm entity for testing."""
         description = InceptionAlarmDescription(
-            key="area_123",
+            key="area_alarm",
             name="Test Area",
         )
         return InceptionAlarm(
@@ -111,7 +111,7 @@ class TestInceptionAlarm:
 
     def test_alarm_init(self, alarm_entity: InceptionAlarm) -> None:
         """Test alarm entity initialization."""
-        assert alarm_entity.entity_description.key == "area_123"
+        assert alarm_entity._attr_unique_id == "area_123_area_alarm"
         assert alarm_entity.entity_description.name == "Test Area"
         assert alarm_entity.data.entity_info.id == "area_123"
 
@@ -560,5 +560,5 @@ class TestAlarmEntityKeys:
 
         # Verify alarm keys
         assert len(self.added_entities) == 2
-        keys = [entity.entity_description.key for entity in self.added_entities]
-        assert sorted(keys) == ["area_1", "area_2"]
+        keys = [entity._attr_unique_id for entity in self.added_entities]
+        assert sorted(keys) == ["area_1_area_alarm", "area_2_area_alarm"]

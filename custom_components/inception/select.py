@@ -46,7 +46,7 @@ async def async_setup_entry(
         InceptionUnlockStrategySelect(
             coordinator=coordinator,
             entity_description=InceptionSelectDescription(
-                key=f"{door.entity_info.id}_unlock_mechanism",
+                key="door_unlock_mechanism",
                 name="Unlock strategy",
                 options=[UNLOCK, TIMED_UNLOCK],
                 entity_category=EntityCategory.CONFIG,

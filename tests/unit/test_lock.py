@@ -137,5 +137,5 @@ class TestLockEntityKeys:
 
         # Verify lock keys
         assert len(self.added_entities) == 2
-        keys = [entity.entity_description.key for entity in self.added_entities]
-        assert sorted(keys) == ["door_1", "door_2"]
+        keys = [entity._attr_unique_id for entity in self.added_entities]
+        assert sorted(keys) == ["door_1_door_lock", "door_2_door_lock"]

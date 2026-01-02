@@ -48,7 +48,7 @@ async def async_setup_entry(
         InceptionTimedUnlockNumber(
             coordinator=coordinator,
             entity_description=InceptionNumberDescription(
-                key=f"{door.entity_info.id}_timed_unlock_time",
+                key="timed_unlock_duration",
                 name="Timed unlock duration",
                 entity_category=EntityCategory.CONFIG,
                 translation_key="timed_unlock_duration",

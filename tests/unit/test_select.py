@@ -89,5 +89,5 @@ class TestSelectEntityKeys:
         # Verify select entity key (unlock strategy)
         assert len(self.added_entities) == 1
         assert (
-            self.added_entities[0].entity_description.key == "door_456_unlock_mechanism"
+            self.added_entities[0]._attr_unique_id == "door_456_door_unlock_mechanism"
         )

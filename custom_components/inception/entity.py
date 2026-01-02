@@ -32,7 +32,9 @@ class InceptionEntity(CoordinatorEntity[InceptionUpdateCoordinator]):
         super().__init__(coordinator=coordinator)
         self.entity_description = entity_description
         self._attr_attribution = f"Data provided by {coordinator.api._host}"
-        self._attr_unique_id = inception_object.entity_info.id
+        self._attr_unique_id = (
+            f"{inception_object.entity_info.id}_{entity_description.key}"
+        )
         self._inception_object = inception_object
         self._attr_extra_state_attributes = inception_object.extra_fields
         self._update_attrs()
