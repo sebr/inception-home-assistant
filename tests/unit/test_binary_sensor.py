@@ -332,7 +332,6 @@ class TestBinarySensorKeys:
 
         assert len(input_sensors) == 0
 
-
     @pytest.mark.asyncio
     async def test_input_not_matching_door_creates_standalone_sensor(
         self, mock_coordinator: Mock, mock_hass: Mock, mock_entry: Mock
