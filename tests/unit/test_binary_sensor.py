@@ -181,9 +181,8 @@ class TestBinarySensorKeys:
         # Call async_setup_entry
         await async_setup_entry(mock_hass, mock_entry, mock_async_add_entities)
 
-        # Verify one binary sensor was created with the input's ID as the key
         assert len(added_entities) == 1
-        assert added_entities[0]._attr_unique_id == "input_789_input_789_sensor"
+        assert added_entities[0]._attr_unique_id == "input_789_sensor"
 
     @pytest.mark.asyncio
     async def test_custom_input_no_binary_sensor(
@@ -279,10 +278,10 @@ class TestBinarySensorKeys:
         assert len(door2_keys) == 4
 
     @pytest.mark.asyncio
-    async def test_input_matching_door_skipped(
+    async def test_input_matching_door_standard_suffix_skipped(
         self, mock_coordinator: Mock, mock_hass: Mock, mock_entry: Mock
     ) -> None:
-        """Test that inputs matching a door are skipped (door sensors handle this)."""
+        """Test that inputs matching standard door states are skipped."""
         # Create a mock door
         mock_door = Mock()
         mock_door.entity_info = Mock()
@@ -292,6 +291,7 @@ class TestBinarySensorKeys:
         mock_door.public_state = DoorPublicState.OPEN
 
         # Create a mock input that matches the door with " - " separator
+        # and standard suffix
         mock_input = Mock()
         mock_input.entity_info = Mock()
         mock_input.entity_info.id = "input_456"
@@ -320,7 +320,146 @@ class TestBinarySensorKeys:
         # Call async_setup_entry
         await async_setup_entry(mock_hass, mock_entry, mock_async_add_entities)
 
-        # Should have 4 door sensors only (input matching door is skipped)
+        # Should have 4 door sensors only (standard input is skipped)
+        assert len(added_entities) == 4
+
+        # Verify no input sensors were created
+        input_sensors = [
+            e
+            for e in added_entities
+            if hasattr(e, "_attr_unique_id") and e._attr_unique_id.startswith("input_")
+        ]
+
+        assert len(input_sensors) == 0
+
+    @pytest.mark.asyncio
+    async def test_input_matching_door_non_standard_suffix_creates_sensor(
+        self, mock_coordinator: Mock, mock_hass: Mock, mock_entry: Mock
+    ) -> None:
+        """Test that inputs matching a door with non-standard suffix create sensors."""
+        # Create a mock door
+        mock_door = Mock()
+        mock_door.entity_info = Mock()
+        mock_door.entity_info.id = "door_123"
+        mock_door.entity_info.name = "Front Door"
+        mock_door.entity_info.reporting_id = "1"
+        mock_door.public_state = DoorPublicState.OPEN
+
+        # Create a mock input that matches the door with non-standard suffix (REX)
+        mock_input = Mock()
+        mock_input.entity_info = Mock()
+        mock_input.entity_info.id = "input_456"
+        mock_input.entity_info.name = "Front Door - REX"
+        mock_input.entity_info.reporting_id = "2"
+        mock_input.entity_info.is_custom_input = False
+        mock_input.public_state = InputPublicState.ACTIVE
+
+        # Set up coordinator data
+        mock_coordinator.data.doors = Mock()
+        mock_coordinator.data.doors.get_items = Mock(return_value=[mock_door])
+        mock_coordinator.data.inputs.get_items = Mock(return_value=[mock_input])
+
+        # Mock async_add_entities
+        added_entities = []
+
+        def mock_async_add_entities(
+            new_entities: Iterable[Entity],
+            update_before_add: bool = False,  # noqa: FBT001, FBT002, ARG001
+        ) -> None:
+            added_entities.extend(new_entities)
+
+        # Set up HASS data
+        mock_hass.data = {"inception": {mock_entry.entry_id: mock_coordinator}}
+
+        # Call async_setup_entry
+        await async_setup_entry(mock_hass, mock_entry, mock_async_add_entities)
+
+        # Should have 4 door sensors + 1 REX input sensor
+        assert len(added_entities) == 5
+
+        # Find the input sensor
+        input_sensors = [
+            e
+            for e in added_entities
+            if hasattr(e, "_attr_unique_id") and e._attr_unique_id.startswith("input_")
+        ]
+
+        assert len(input_sensors) == 1
+        input_sensor = input_sensors[0]
+
+        # Verify the key uses the suffix
+        assert input_sensor._attr_unique_id == "input_456_input_rex"
+        # Verify the name is the suffix
+        assert input_sensor.entity_description.name == "REX"
+
+        # Verify it's grouped with the door device
+        assert input_sensor._attr_device_info is not None
+        assert ("inception", "door_123") in input_sensor._attr_device_info[
+            "identifiers"
+        ]  # pyright: ignore[reportTypedDictNotRequiredAccess]
+        assert input_sensor._attr_device_info["name"] == "Front Door"  # pyright: ignore[reportTypedDictNotRequiredAccess]
+
+    @pytest.mark.asyncio
+    async def test_input_matching_door_standard_suffix_variations_skipped(
+        self, mock_coordinator: Mock, mock_hass: Mock, mock_entry: Mock
+    ) -> None:
+        """Test that various standard suffix formats are recognized and skipped."""
+        # Create a mock door
+        mock_door = Mock()
+        mock_door.entity_info = Mock()
+        mock_door.entity_info.id = "door_123"
+        mock_door.entity_info.name = "Front Door"
+        mock_door.entity_info.reporting_id = "1"
+        mock_door.public_state = DoorPublicState.OPEN
+
+        # Create inputs with various standard suffixes
+        standard_suffixes = [
+            "Reed",
+            "REED",
+            "Reed Contact",
+            "Reed Contact Sensor",
+            "Sensor",
+            "Forced",
+            "Tamper",
+            "Reader Tamper",
+            "Held Open",
+            "Held Open Too Long",
+            "DOTL",
+            "Open",
+        ]
+
+        mock_inputs = []
+        for i, suffix in enumerate(standard_suffixes):
+            mock_input = Mock()
+            mock_input.entity_info = Mock()
+            mock_input.entity_info.id = f"input_{i}"
+            mock_input.entity_info.name = f"Front Door - {suffix}"
+            mock_input.entity_info.reporting_id = str(i)
+            mock_input.entity_info.is_custom_input = False
+            mock_input.public_state = InputPublicState.ACTIVE
+            mock_inputs.append(mock_input)
+
+        # Set up coordinator data
+        mock_coordinator.data.doors = Mock()
+        mock_coordinator.data.doors.get_items = Mock(return_value=[mock_door])
+        mock_coordinator.data.inputs.get_items = Mock(return_value=mock_inputs)
+
+        # Mock async_add_entities
+        added_entities = []
+
+        def mock_async_add_entities(
+            new_entities: Iterable[Entity],
+            update_before_add: bool = False,  # noqa: FBT001, FBT002, ARG001
+        ) -> None:
+            added_entities.extend(new_entities)
+
+        # Set up HASS data
+        mock_hass.data = {"inception": {mock_entry.entry_id: mock_coordinator}}
+
+        # Call async_setup_entry
+        await async_setup_entry(mock_hass, mock_entry, mock_async_add_entities)
+
+        # Should have 4 door sensors only (all standard inputs are skipped)
         assert len(added_entities) == 4
 
         # Verify no input sensors were created
@@ -385,8 +524,7 @@ class TestBinarySensorKeys:
         input_sensor = input_sensors[0]
 
         # Verify key format for standalone sensor: input_id_sensor
-        assert input_sensor._attr_unique_id == "input_222_input_222_sensor"
-        # Verify name is "Sensor" for standalone
+        assert input_sensor._attr_unique_id == "input_222_sensor"
         assert input_sensor.entity_description.name == "Sensor"
 
         # Verify it has its own device (not grouped with door)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -90,13 +91,6 @@ def get_device_class_for_state(state: DoorPublicState) -> BinarySensorDeviceClas
     return device_classes.get(state, BinarySensorDeviceClass.OPENING)
 
 
-def is_entity_registry_enabled_default(name: str) -> bool:
-    """Disables these sensors by default."""
-    return not name.lower().endswith("- forced") and not name.lower().endswith(
-        "- held open"
-    )
-
-
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: InceptionConfigEntry,
@@ -134,35 +128,67 @@ async def async_setup_entry(
         for door in all_doors
     ]
 
-    # Create input binary sensors, skipping inputs that match door patterns
+    # Create input binary sensors
+    # Skip inputs that match door standard states (forced, held, open, tamper)
+    # But create sensors for other door-related inputs (REX, button, etc.)
+
+    # Define regex pattern for standard door state suffixes that are already handled
+    # This matches: forced, held open, dotl, open, sensor, contact,
+    # reed (contact/sensor), tamper, reader tamper
+    standard_door_suffix_pattern = re.compile(
+        r"^(forced|held\s+open(\s+too\s+long)?|dotl|open|sensor|contact|"
+        r"reed(\s+contact)?(\s+sensor)?|reader\s+tamper|tamper)$",
+        re.IGNORECASE,
+    )
 
     for i_input in coordinator.data.inputs.get_items():
         input_entity = i_input.entity_info
-
-        matching_door, _ = find_matching_door(input_entity.name, all_doors)
-
-        if matching_door is not None:
-            # Skip inputs that are associated with a door (they are handled above)
-            continue
 
         if input_entity.is_custom_input:
             # Skip custom inputs (they are a switch)
             continue
 
-        # Create binary sensor for all other inputs
-        entities.append(
-            InceptionInputBinarySensor(
-                coordinator=coordinator,
-                entity_description=InceptionBinarySensorDescription(
-                    key=f"{input_entity.id}_sensor",
-                    device_class=get_device_class_for_name(input_entity.name),
-                    name="Sensor",
-                    value_fn=lambda data: data.public_state is not None
-                    and bool(data.public_state & InputPublicState.ACTIVE),
-                ),
-                data=i_input,
+        matching_door, suffix = find_matching_door(input_entity.name, all_doors)
+
+        if matching_door is not None and suffix:
+            # Input matches a door - check if it's a standard state or additional input
+            if standard_door_suffix_pattern.match(suffix):
+                # Skip - this is already handled by door binary sensors
+                continue
+
+            # Create sensor for non-standard door input (REX, button, etc.)
+            # Group it with the door device
+            key_suffix = suffix.lower()
+            entities.append(
+                InceptionInputBinarySensor(
+                    coordinator=coordinator,
+                    entity_description=InceptionBinarySensorDescription(
+                        key=f"input_{key_suffix}",
+                        device_class=get_device_class_for_name(input_entity.name),
+                        name=suffix,
+                        has_entity_name=True,
+                        value_fn=lambda data: data.public_state is not None
+                        and bool(data.public_state & InputPublicState.ACTIVE),
+                    ),
+                    data=i_input,
+                    door=matching_door,
+                )
             )
-        )
+        else:
+            # Create standalone binary sensor for inputs that don't match any door
+            entities.append(
+                InceptionInputBinarySensor(
+                    coordinator=coordinator,
+                    entity_description=InceptionBinarySensorDescription(
+                        key="sensor",
+                        device_class=get_device_class_for_name(input_entity.name),
+                        name="Sensor",
+                        value_fn=lambda data: data.public_state is not None
+                        and bool(data.public_state & InputPublicState.ACTIVE),
+                    ),
+                    data=i_input,
+                )
+            )
 
     async_add_entities(entities)
 
