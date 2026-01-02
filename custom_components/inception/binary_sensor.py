@@ -201,13 +201,13 @@ class InceptionBinarySensor(InceptionEntity, BinarySensorEntity):
         data: InceptionSummaryEntry,
     ) -> None:
         """Initialize the binary_sensor class."""
+        self.entity_description = entity_description
+        self.data = data
+        self.unique_id = entity_description.key
+        self.reporting_id = data.entity_info.reporting_id
         super().__init__(
             coordinator, entity_description=entity_description, inception_object=data
         )
-        self.data = data
-        self.entity_description = entity_description
-        self.unique_id = entity_description.key
-        self.reporting_id = data.entity_info.reporting_id
 
     @property
     def is_on(self) -> bool:
@@ -235,10 +235,10 @@ class InceptionInputBinarySensor(
         door: DoorSummaryEntry | None = None,
     ) -> None:
         """Initialize the binary_sensor class."""
+        self.entity_description = entity_description
         super().__init__(coordinator, entity_description=entity_description, data=data)
 
         self.data = data
-        self.entity_description = entity_description
         self.reporting_id = data.entity_info.reporting_id
         self._device_id = data.entity_info.id
 

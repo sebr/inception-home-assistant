@@ -90,8 +90,6 @@ class InceptionNumber(InceptionEntity, NumberEntity):
         )
         self.data = data
         self.entity_description = entity_description
-        self.unique_id = entity_description.key
-        self._device_id = data.entity_info.id
 
 
 class InceptionTimedUnlockNumber(

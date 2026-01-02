@@ -85,7 +85,6 @@ class InceptionSelect(InceptionEntity, SelectEntity):
             coordinator, entity_description=entity_description, inception_object=data
         )
         self.data = data
-        self.unique_id = entity_description.key
         self._device_id = data.entity_info.id
 
     @property

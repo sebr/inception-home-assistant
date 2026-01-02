@@ -29,7 +29,6 @@ class InceptionEntity(CoordinatorEntity[InceptionUpdateCoordinator]):
         inception_object: InceptionSummaryEntry,
     ) -> None:
         """Initialize the Inception entity."""
-        super().__init__(coordinator=coordinator)
         self.entity_description = entity_description
         self._attr_attribution = f"Data provided by {coordinator.api._host}"
         self._attr_unique_id = (
@@ -37,6 +36,7 @@ class InceptionEntity(CoordinatorEntity[InceptionUpdateCoordinator]):
         )
         self._inception_object = inception_object
         self._attr_extra_state_attributes = inception_object.extra_fields
+        super().__init__(coordinator=coordinator)
         self._update_attrs()
 
         LOGGER.debug(
