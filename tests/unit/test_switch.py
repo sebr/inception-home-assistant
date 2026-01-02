@@ -85,7 +85,7 @@ class TestInceptionSwitch:
         )
 
         # Assert that unique_id is set from entity_description.key
-        assert switch.unique_id == "test_unique_key_456"
+        assert switch.unique_id == "input_123_test_unique_key_456"
 
 
 class TestInceptionLogicalInputSwitch:
@@ -223,8 +223,8 @@ class TestAsyncSetupEntry:
         active_switches = [
             e
             for e in entities
-            if hasattr(e, "entity_description")
-            and e.entity_description.key == "custom_input_001_active"
+            if hasattr(e, "_attr_unique_id")
+            and e._attr_unique_id == "custom_input_001_input_active"
         ]
 
         # Assert the Active switch was created
@@ -299,8 +299,8 @@ class TestAsyncSetupEntry:
         active_switches = [
             e
             for e in entities
-            if hasattr(e, "entity_description")
-            and e.entity_description.key == "regular_input_001_active"
+            if hasattr(e, "_attr_unique_id")
+            and e._attr_unique_id == "regular_input_001_input_active"
         ]
 
         # Assert the Active switch was NOT created for regular inputs
@@ -310,8 +310,8 @@ class TestAsyncSetupEntry:
         isolated_switches = [
             e
             for e in entities
-            if hasattr(e, "entity_description")
-            and e.entity_description.key == "regular_input_001_isolated"
+            if hasattr(e, "_attr_unique_id")
+            and e._attr_unique_id == "regular_input_001_input_isolated"
         ]
         assert len(isolated_switches) == 1
 
@@ -368,8 +368,8 @@ class TestAsyncSetupEntry:
         isolated_switches = [
             e
             for e in entities
-            if hasattr(e, "entity_description")
-            and e.entity_description.key == "input_test_isolated"
+            if hasattr(e, "_attr_unique_id")
+            and e._attr_unique_id == "input_test_input_isolated"
         ]
 
         assert len(isolated_switches) == 1
@@ -452,15 +452,15 @@ class TestSwitchEntityKeys:
 
         # Find output switch (exclude review event switches)
         output_switches = [
-            e for e in self.added_entities if hasattr(e, "entity_description")
+            e for e in self.added_entities if hasattr(e, "_attr_unique_id")
         ]
         output_switch_keys = [
-            e.entity_description.key
+            e._attr_unique_id
             for e in output_switches
-            if not e.entity_description.key.startswith("review_")
+            if not e._attr_unique_id.startswith("test_entry_id_review_")
         ]
 
-        assert "output_1" in output_switch_keys
+        assert "output_1_output" in output_switch_keys
 
     @pytest.mark.asyncio
     async def test_switch_input_isolated_keys(
@@ -486,12 +486,11 @@ class TestSwitchEntityKeys:
         isolated_switches = [
             e
             for e in self.added_entities
-            if hasattr(e, "entity_description")
-            and e.entity_description.key.endswith("_isolated")
+            if hasattr(e, "_attr_unique_id") and e._attr_unique_id.endswith("_isolated")
         ]
 
         assert len(isolated_switches) == 1
-        assert isolated_switches[0].entity_description.key == "input_1_isolated"
+        assert isolated_switches[0]._attr_unique_id == "input_1_input_isolated"
 
     @pytest.mark.asyncio
     async def test_switch_custom_input_active_keys(
@@ -517,19 +516,17 @@ class TestSwitchEntityKeys:
         active_switches = [
             e
             for e in self.added_entities
-            if hasattr(e, "entity_description")
-            and e.entity_description.key.endswith("_active")
+            if hasattr(e, "_attr_unique_id") and e._attr_unique_id.endswith("_active")
         ]
 
         assert len(active_switches) == 1
-        assert active_switches[0].entity_description.key == "custom_input_1_active"
+        assert active_switches[0]._attr_unique_id == "custom_input_1_input_active"
 
         # Also verify isolated switch exists
         isolated_switches = [
             e
             for e in self.added_entities
-            if hasattr(e, "entity_description")
-            and e.entity_description.key.endswith("_isolated")
+            if hasattr(e, "_attr_unique_id") and e._attr_unique_id.endswith("_isolated")
         ]
         assert len(isolated_switches) == 1
-        assert isolated_switches[0].entity_description.key == "custom_input_1_isolated"
+        assert isolated_switches[0]._attr_unique_id == "custom_input_1_input_isolated"

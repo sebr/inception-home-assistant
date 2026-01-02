@@ -215,4 +215,6 @@ class TestSensorEntityKeys:
 
         # Verify sensor key (last review event)
         assert len(self.added_entities) == 1
-        assert self.added_entities[0].entity_description.key == "last_review_event"
+        assert (
+            self.added_entities[0]._attr_unique_id == "test_entry_id_last_review_event"
+        )

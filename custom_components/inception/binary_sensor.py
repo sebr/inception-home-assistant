@@ -118,7 +118,7 @@ async def async_setup_entry(
         InceptionDoorBinarySensor(
             coordinator=coordinator,
             entity_description=InceptionBinarySensorDescription(
-                key=f"{door.entity_info.id}_{key_suffix}",
+                key=f"door_{key_suffix}",
                 device_class=get_device_class_for_state(state),
                 name=name,
                 has_entity_name=True,
@@ -148,7 +148,7 @@ async def async_setup_entry(
                 InceptionInputBinarySensor(
                     coordinator=coordinator,
                     entity_description=InceptionBinarySensorDescription(
-                        key=f"{input_entity.id}_{suffix.lower()}",
+                        key=f"input_{suffix.lower()}",
                         device_class=get_device_class_for_name(suffix),
                         name=suffix,
                         value_fn=lambda data: data.public_state is not None

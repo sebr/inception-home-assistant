@@ -64,7 +64,7 @@ async def async_setup_entry(
         InceptionOutputSwitch(
             coordinator=coordinator,
             entity_description=InceptionSwitchDescription(
-                key=output.entity_info.id,
+                key="output",
                 device_class=SwitchDeviceClass.SWITCH,
                 value_fn=lambda data: data.public_state is not None
                 and bool(data.public_state & OutputPublicState.ON),
@@ -88,7 +88,7 @@ async def async_setup_entry(
                 InceptionLogicalInputSwitch(
                     coordinator=coordinator,
                     entity_description=InceptionSwitchDescription(
-                        key=f"{input_entity.id}_isolated",
+                        key="input_isolated",
                         device_class=SwitchDeviceClass.SWITCH,
                         name=f"{suffix} Isolated" if suffix else "Isolated",
                         has_entity_name=True,
@@ -114,7 +114,7 @@ async def async_setup_entry(
                 InceptionLogicalInputSwitch(
                     coordinator=coordinator,
                     entity_description=InceptionSwitchDescription(
-                        key=f"{input_entity.id}_active",
+                        key="input_active",
                         device_class=SwitchDeviceClass.SWITCH,
                         name=f"{suffix} Active" if suffix else "Active",
                         has_entity_name=True,
@@ -164,7 +164,6 @@ class InceptionSwitch(InceptionEntity, SwitchEntity):
         super().__init__(
             coordinator, entity_description=entity_description, inception_object=data
         )
-        self._attr_unique_id = entity_description.key
         self.data = data
         self.entity_description = entity_description
         self.reporting_id = data.entity_info.reporting_id
