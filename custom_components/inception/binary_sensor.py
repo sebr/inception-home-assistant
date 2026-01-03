@@ -67,7 +67,7 @@ def get_device_class_for_name(name: str) -> BinarySensorDeviceClass:
         ("panic", BinarySensorDeviceClass.SAFETY),
         ("tamper", BinarySensorDeviceClass.TAMPER),
         # Glass and window detection
-        ("glass break", BinarySensorDeviceClass.VIBRATION),
+        ("glass break", BinarySensorDeviceClass.TAMPER),
         ("glass", BinarySensorDeviceClass.WINDOW),
         ("louvre", BinarySensorDeviceClass.WINDOW),
         ("window", BinarySensorDeviceClass.WINDOW),
@@ -78,12 +78,14 @@ def get_device_class_for_name(name: str) -> BinarySensorDeviceClass:
         ("cold", BinarySensorDeviceClass.COLD),
         ("moisture", BinarySensorDeviceClass.MOISTURE),
         # Vibration and shock
-        ("shock", BinarySensorDeviceClass.VIBRATION),
-        ("vibration", BinarySensorDeviceClass.VIBRATION),
-        ("break", BinarySensorDeviceClass.VIBRATION),
+        ("shock", BinarySensorDeviceClass.TAMPER),
+        ("vibration", BinarySensorDeviceClass.TAMPER),
+        ("break", BinarySensorDeviceClass.TAMPER),
         # Access control
         ("rex", BinarySensorDeviceClass.CONNECTIVITY),
+        ("ren", BinarySensorDeviceClass.CONNECTIVITY),
         ("exit", BinarySensorDeviceClass.CONNECTIVITY),
+        ("entry", BinarySensorDeviceClass.CONNECTIVITY),
         ("button", BinarySensorDeviceClass.CONNECTIVITY),
         # Generic types
         ("contact", BinarySensorDeviceClass.OPENING),
