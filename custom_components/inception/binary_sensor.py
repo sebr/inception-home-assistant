@@ -43,39 +43,65 @@ class InceptionBinarySensorDescription(BinarySensorEntityDescription):
 
 
 def get_device_class_for_name(name: str) -> BinarySensorDeviceClass:
-    """Define device class from device name."""
-    device_classes = {
-        "motion": BinarySensorDeviceClass.MOTION,
-        "pir": BinarySensorDeviceClass.MOTION,
-        "pe beam": BinarySensorDeviceClass.MOTION,
-        "louvre": BinarySensorDeviceClass.WINDOW,
-        "shock": BinarySensorDeviceClass.VIBRATION,
-        "button": BinarySensorDeviceClass.CONNECTIVITY,
-        "rex": BinarySensorDeviceClass.CONNECTIVITY,
-        "exit": BinarySensorDeviceClass.CONNECTIVITY,
-        "opening": BinarySensorDeviceClass.OPENING,
-        "power": BinarySensorDeviceClass.POWER,
-        "smoke": BinarySensorDeviceClass.SMOKE,
-        "vibration": BinarySensorDeviceClass.VIBRATION,
-        "cold": BinarySensorDeviceClass.COLD,
-        "light": BinarySensorDeviceClass.LIGHT,
-        "moisture": BinarySensorDeviceClass.MOISTURE,
-        "break": BinarySensorDeviceClass.VIBRATION,
-        "glass": BinarySensorDeviceClass.WINDOW,
-        "side door": BinarySensorDeviceClass.DOOR,
-        "hallway door": BinarySensorDeviceClass.DOOR,
-        "garage": BinarySensorDeviceClass.GARAGE_DOOR,
-        "gate": BinarySensorDeviceClass.DOOR,
-        "window": BinarySensorDeviceClass.WINDOW,
-        "door": BinarySensorDeviceClass.DOOR,
-        "heat": BinarySensorDeviceClass.HEAT,
-    }
+    """
+    Define device class from device name.
+
+    Device classes are ordered from most specific to least specific to ensure
+    accurate matching. For example, "garage door" should match before "door".
+    """
+    # Ordered list of (keyword, device_class) tuples
+    # More specific patterns first to avoid false positives
+    device_class_patterns = [
+        # Specific door types (must come before generic "door")
+        ("side door", BinarySensorDeviceClass.DOOR),
+        ("hallway door", BinarySensorDeviceClass.DOOR),
+        ("garage door", BinarySensorDeviceClass.GARAGE_DOOR),
+        ("garage", BinarySensorDeviceClass.GARAGE_DOOR),
+        # Motion and presence detection
+        ("pe beam", BinarySensorDeviceClass.MOTION),
+        ("pir", BinarySensorDeviceClass.MOTION),
+        ("motion", BinarySensorDeviceClass.MOTION),
+        ("beam", BinarySensorDeviceClass.MOTION),
+        # Safety and security
+        ("duress", BinarySensorDeviceClass.SAFETY),
+        ("panic", BinarySensorDeviceClass.SAFETY),
+        ("tamper", BinarySensorDeviceClass.TAMPER),
+        # Glass and window detection
+        ("glass break", BinarySensorDeviceClass.VIBRATION),
+        ("glass", BinarySensorDeviceClass.WINDOW),
+        ("louvre", BinarySensorDeviceClass.WINDOW),
+        ("window", BinarySensorDeviceClass.WINDOW),
+        # Environmental sensors
+        ("smoke", BinarySensorDeviceClass.SMOKE),
+        ("gas", BinarySensorDeviceClass.GAS),
+        ("heat", BinarySensorDeviceClass.HEAT),
+        ("cold", BinarySensorDeviceClass.COLD),
+        ("moisture", BinarySensorDeviceClass.MOISTURE),
+        # Vibration and shock
+        ("shock", BinarySensorDeviceClass.VIBRATION),
+        ("vibration", BinarySensorDeviceClass.VIBRATION),
+        ("break", BinarySensorDeviceClass.VIBRATION),
+        # Access control
+        ("rex", BinarySensorDeviceClass.CONNECTIVITY),
+        ("exit", BinarySensorDeviceClass.CONNECTIVITY),
+        ("button", BinarySensorDeviceClass.CONNECTIVITY),
+        # Generic types
+        ("contact", BinarySensorDeviceClass.OPENING),
+        ("door", BinarySensorDeviceClass.DOOR),
+        ("gate", BinarySensorDeviceClass.DOOR),
+        ("opening", BinarySensorDeviceClass.OPENING),
+        ("power", BinarySensorDeviceClass.POWER),
+        ("light", BinarySensorDeviceClass.LIGHT),
+    ]
+
+    name_lower = name.lower()
 
     # Find the first matching device class or default to 'opening'
-    return next(
-        (device_classes[device] for device in device_classes if device in name.lower()),
-        BinarySensorDeviceClass.OPENING,
-    )
+    for keyword, device_class in device_class_patterns:
+        if keyword in name_lower:
+            return device_class
+
+    return BinarySensorDeviceClass.OPENING
 
 
 def get_device_class_for_state(state: DoorPublicState) -> BinarySensorDeviceClass:
@@ -110,23 +136,34 @@ async def async_setup_entry(
 
     all_doors = coordinator.data.doors.get_items()
 
-    entities: list[InceptionBinarySensor] = [
-        InceptionDoorBinarySensor(
-            coordinator=coordinator,
-            entity_description=InceptionBinarySensorDescription(
-                key=f"door_{key_suffix}",
-                device_class=get_device_class_for_state(state),
-                name=name,
-                has_entity_name=True,
-                value_fn=lambda data, state=state: data.public_state is not None
-                and bool(data.public_state & state),
-                entity_registry_enabled_default=key_suffix not in ["forced", "dotl"],
-            ),
-            data=door,
-        )
-        for state, name, key_suffix in door_states
-        for door in all_doors
-    ]
+    entities: list[InceptionBinarySensor] = []
+
+    for door in all_doors:
+        for state, name, key_suffix in door_states:
+            # For the "open" sensor, use door name to determine device class
+            # (e.g., garage door vs regular door)
+            # For other states, use the state-based device class
+            if state == DoorPublicState.OPEN:
+                device_class = get_device_class_for_name(door.entity_info.name)
+            else:
+                device_class = get_device_class_for_state(state)
+
+            entities.append(
+                InceptionDoorBinarySensor(
+                    coordinator=coordinator,
+                    entity_description=InceptionBinarySensorDescription(
+                        key=f"door_{key_suffix}",
+                        device_class=device_class,
+                        name=name,
+                        has_entity_name=True,
+                        value_fn=lambda data, state=state: data.public_state is not None
+                        and bool(data.public_state & state),
+                        entity_registry_enabled_default=key_suffix
+                        not in ["forced", "dotl"],
+                    ),
+                    data=door,
+                )
+            )
 
     # Create input binary sensors
     # Skip inputs that match door standard states (forced, held, open, tamper)
