@@ -79,7 +79,7 @@ class InceptionAlarm(InceptionEntity, AlarmControlPanelEntity):
     entity_description: InceptionAlarmDescription
     data: AreaSummaryEntry
 
-    _attr_code_arm_required: bool = True
+    _attr_code_arm_required: bool = False
     _attr_code_format = CodeFormat.NUMBER
     _attr_supported_features = (
         AlarmControlPanelEntityFeature.ARM_HOME
@@ -157,8 +157,8 @@ class InceptionAlarm(InceptionEntity, AlarmControlPanelEntity):
             "AreaControlType": control_type,
         }
 
-        data["ExecuteAsOtherUser"] = "true"
         if code:
+            data["ExecuteAsOtherUser"] = "true"
             data["OtherUserPIN"] = code
         else:
             LOGGER.warning("No alarm code provided")
