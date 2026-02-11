@@ -73,7 +73,7 @@ class TestInceptionAlarm:
         )
 
         # Check that the code format and arm requirement are properly set
-        assert alarm._attr_code_arm_required is True
+        assert alarm._attr_code_arm_required is False
         assert alarm._attr_code_format == CodeFormat.NUMBER
 
     @pytest.fixture
@@ -207,23 +207,24 @@ class TestInceptionAlarm:
         )
 
     @pytest.mark.asyncio
-    async def test_alarm_control_without_code_logs_warning(
+    async def test_alarm_control_without_code(
         self, alarm_entity: InceptionAlarm
     ) -> None:
-        """Test _alarm_control method without code logs warning."""
+        """
+        Test _alarm_control without code omits ExecuteAsOtherUser.
+
+        When no code is provided, ExecuteAsOtherUser should NOT be included in the
+        request data. This allows users without a PIN configured in their Inception
+        system to arm/disarm without being rejected by the API (issue #141).
+        """
         control_type = "Arm"
 
-        with patch(
-            "custom_components.inception.alarm_control_panel.LOGGER"
-        ) as mock_logger:
-            await alarm_entity._alarm_control(control_type, None)
+        await alarm_entity._alarm_control(control_type, None)
 
-            mock_logger.warning.assert_called_once_with("No alarm code provided")
-
+        # ExecuteAsOtherUser should NOT be present when no code is provided
         expected_data = {
             "Type": "ControlArea",
             "AreaControlType": control_type,
-            "ExecuteAsOtherUser": "true",
         }
 
         alarm_entity.coordinator.api.request.assert_called_once_with(  # type: ignore[attr-defined]
@@ -429,23 +430,24 @@ class TestInceptionAlarmAreaArmService:
     async def test_area_arm_service_without_code(
         self, alarm_entity: InceptionAlarm
     ) -> None:
-        """Test area_arm service without code (should log warning)."""
+        """
+        Test area_arm service without code omits ExecuteAsOtherUser.
+
+        When no code is provided, ExecuteAsOtherUser should NOT be included in the
+        request data. This allows users without a PIN configured in their Inception
+        system to arm/disarm without being rejected by the API.
+        """
         exit_delay = True
         seal_check = False
 
-        with patch(
-            "custom_components.inception.alarm_control_panel.LOGGER"
-        ) as mock_logger:
-            await alarm_entity.area_arm_service(
-                exit_delay=exit_delay, seal_check=seal_check
-            )
+        await alarm_entity.area_arm_service(
+            exit_delay=exit_delay, seal_check=seal_check
+        )
 
-            mock_logger.warning.assert_called_once_with("No alarm code provided")
-
+        # ExecuteAsOtherUser should NOT be present when no code is provided
         expected_data = {
             "Type": "ControlArea",
             "AreaControlType": "Arm",
-            "ExecuteAsOtherUser": "true",
             "ExitDelay": "true",
             "SealCheck": "false",
         }
@@ -562,3 +564,178 @@ class TestAlarmEntityKeys:
         assert len(self.added_entities) == 2
         keys = [entity._attr_unique_id for entity in self.added_entities]
         assert sorted(keys) == ["area_1_area_alarm", "area_2_area_alarm"]
+
+
+class TestOptionalAlarmCode:
+    """
+    Test optional alarm code functionality.
+
+    These tests verify that the alarm control panel works correctly both with
+    and without a PIN code, allowing users who have not configured a PIN in
+    their Inception system to arm/disarm without errors.
+    """
+
+    @pytest.fixture
+    def mock_coordinator(self) -> Mock:
+        """Create a mock coordinator."""
+        coordinator = Mock()
+        coordinator.api = Mock()
+        coordinator.api.request = AsyncMock()
+        return coordinator
+
+    @pytest.fixture
+    def mock_area_data(self) -> Mock:
+        """Create mock area data."""
+        area_data = Mock()
+        area_data.entity_info.id = "area_123"
+        area_data.entity_info.name = "Test Area"
+        area_data.arm_info.multi_mode_arm_enabled = True
+        area_data.public_state = AreaPublicState.DISARMED
+        return area_data
+
+    @pytest.fixture
+    def alarm_entity(
+        self, mock_coordinator: Mock, mock_area_data: Mock
+    ) -> InceptionAlarm:
+        """Create an alarm entity for testing."""
+        description = InceptionAlarmDescription(
+            key="area_alarm",
+            name="Test Area",
+        )
+        return InceptionAlarm(
+            coordinator=mock_coordinator,
+            entity_description=description,
+            data=mock_area_data,
+        )
+
+    def test_code_arm_required_is_false(self, alarm_entity: InceptionAlarm) -> None:
+        """
+        Test that code_arm_required is False to allow optional PIN entry.
+
+        This is the core fix for issue #141 - users should not be required to
+        enter a code if their Inception system doesn't have one configured.
+        """
+        assert alarm_entity._attr_code_arm_required is False
+
+    def test_code_format_is_number(self, alarm_entity: InceptionAlarm) -> None:
+        """Test that code format is still NUMBER for users who do have a PIN."""
+        assert alarm_entity._attr_code_format == CodeFormat.NUMBER
+
+    @pytest.mark.asyncio
+    async def test_arm_away_without_code_omits_execute_as_other_user(
+        self, alarm_entity: InceptionAlarm
+    ) -> None:
+        """
+        Test that arming without code does not send ExecuteAsOtherUser.
+
+        When ExecuteAsOtherUser is sent without a PIN, the Inception API returns
+        a 500 error. By omitting this field when no code is provided, users
+        without a PIN configured can successfully arm/disarm.
+        """
+        await alarm_entity.async_alarm_arm_away(code=None)
+
+        call_args = alarm_entity.coordinator.api.request.call_args  # type: ignore[attr-defined]
+        data = call_args.kwargs["data"]
+
+        assert "ExecuteAsOtherUser" not in data
+        assert "OtherUserPIN" not in data
+        assert data["Type"] == "ControlArea"
+        assert data["AreaControlType"] == "Arm"
+
+    @pytest.mark.asyncio
+    async def test_arm_away_with_code_includes_execute_as_other_user(
+        self, alarm_entity: InceptionAlarm
+    ) -> None:
+        """Test that arming with code sends ExecuteAsOtherUser and PIN."""
+        await alarm_entity.async_alarm_arm_away(code="1234")
+
+        call_args = alarm_entity.coordinator.api.request.call_args  # type: ignore[attr-defined]
+        data = call_args.kwargs["data"]
+
+        assert data["ExecuteAsOtherUser"] == "true"
+        assert data["OtherUserPIN"] == "1234"
+
+    @pytest.mark.asyncio
+    async def test_disarm_without_code_omits_execute_as_other_user(
+        self, alarm_entity: InceptionAlarm
+    ) -> None:
+        """Test that disarming without code does not send ExecuteAsOtherUser."""
+        await alarm_entity.async_alarm_disarm(code=None)
+
+        call_args = alarm_entity.coordinator.api.request.call_args  # type: ignore[attr-defined]
+        data = call_args.kwargs["data"]
+
+        assert "ExecuteAsOtherUser" not in data
+        assert "OtherUserPIN" not in data
+        assert data["AreaControlType"] == "Disarm"
+
+    @pytest.mark.asyncio
+    async def test_disarm_with_code_includes_execute_as_other_user(
+        self, alarm_entity: InceptionAlarm
+    ) -> None:
+        """Test that disarming with code sends ExecuteAsOtherUser and PIN."""
+        await alarm_entity.async_alarm_disarm(code="5678")
+
+        call_args = alarm_entity.coordinator.api.request.call_args  # type: ignore[attr-defined]
+        data = call_args.kwargs["data"]
+
+        assert data["ExecuteAsOtherUser"] == "true"
+        assert data["OtherUserPIN"] == "5678"
+
+    @pytest.mark.asyncio
+    async def test_arm_home_without_code_omits_execute_as_other_user(
+        self, alarm_entity: InceptionAlarm
+    ) -> None:
+        """Test that arm home without code does not send ExecuteAsOtherUser."""
+        await alarm_entity.async_alarm_arm_home(code=None)
+
+        call_args = alarm_entity.coordinator.api.request.call_args  # type: ignore[attr-defined]
+        data = call_args.kwargs["data"]
+
+        assert "ExecuteAsOtherUser" not in data
+        assert data["AreaControlType"] == "ArmStay"
+
+    @pytest.mark.asyncio
+    async def test_arm_night_without_code_omits_execute_as_other_user(
+        self, alarm_entity: InceptionAlarm
+    ) -> None:
+        """Test that arm night without code does not send ExecuteAsOtherUser."""
+        await alarm_entity.async_alarm_arm_night(code=None)
+
+        call_args = alarm_entity.coordinator.api.request.call_args  # type: ignore[attr-defined]
+        data = call_args.kwargs["data"]
+
+        assert "ExecuteAsOtherUser" not in data
+        assert data["AreaControlType"] == "ArmSleep"
+
+    @pytest.mark.asyncio
+    async def test_area_arm_service_without_code_omits_execute_as_other_user(
+        self, alarm_entity: InceptionAlarm
+    ) -> None:
+        """Test that area_arm service without code does not send ExecuteAsOtherUser."""
+        await alarm_entity.area_arm_service(exit_delay=True, seal_check=False)
+
+        call_args = alarm_entity.coordinator.api.request.call_args  # type: ignore[attr-defined]
+        data = call_args.kwargs["data"]
+
+        assert "ExecuteAsOtherUser" not in data
+        assert "OtherUserPIN" not in data
+        assert data["ExitDelay"] == "true"
+        assert data["SealCheck"] == "false"
+
+    @pytest.mark.asyncio
+    async def test_area_arm_service_with_code_includes_execute_as_other_user(
+        self, alarm_entity: InceptionAlarm
+    ) -> None:
+        """Test that area_arm service with code sends ExecuteAsOtherUser and PIN."""
+        await alarm_entity.area_arm_service(
+            exit_delay=True, seal_check=False, code="9999"
+        )
+
+        call_args = alarm_entity.coordinator.api.request.call_args  # type: ignore[attr-defined]
+        data = call_args.kwargs["data"]
+
+        assert data["ExecuteAsOtherUser"] == "true"
+        assert data["OtherUserPIN"] == "9999"
+        assert data["ExitDelay"] == "true"
+        assert data["SealCheck"] == "false"
