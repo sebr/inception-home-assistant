@@ -18,7 +18,7 @@ from homeassistant.components.alarm_control_panel.const import (
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import entity_platform
 
-from .const import DOMAIN, LOGGER
+from .const import DOMAIN
 from .entity import InceptionEntity
 from .pyinception.schemas.area import AreaPublicState
 
@@ -160,8 +160,6 @@ class InceptionAlarm(InceptionEntity, AlarmControlPanelEntity):
         if code:
             data["ExecuteAsOtherUser"] = "true"
             data["OtherUserPIN"] = code
-        else:
-            LOGGER.warning("No alarm code provided")
 
         # Only add optional parameters if explicitly provided
         if exit_delay is not None:

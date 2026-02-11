@@ -207,11 +207,11 @@ class TestInceptionAlarm:
         )
 
     @pytest.mark.asyncio
-    async def test_alarm_control_without_code_logs_warning(
+    async def test_alarm_control_without_code(
         self, alarm_entity: InceptionAlarm
     ) -> None:
         """
-        Test _alarm_control without code logs warning, omits ExecuteAsOtherUser.
+        Test _alarm_control without code omits ExecuteAsOtherUser.
 
         When no code is provided, ExecuteAsOtherUser should NOT be included in the
         request data. This allows users without a PIN configured in their Inception
@@ -219,12 +219,7 @@ class TestInceptionAlarm:
         """
         control_type = "Arm"
 
-        with patch(
-            "custom_components.inception.alarm_control_panel.LOGGER"
-        ) as mock_logger:
-            await alarm_entity._alarm_control(control_type, None)
-
-            mock_logger.warning.assert_called_once_with("No alarm code provided")
+        await alarm_entity._alarm_control(control_type, None)
 
         # ExecuteAsOtherUser should NOT be present when no code is provided
         expected_data = {
@@ -436,7 +431,7 @@ class TestInceptionAlarmAreaArmService:
         self, alarm_entity: InceptionAlarm
     ) -> None:
         """
-        Test area_arm service without code logs warning and omits ExecuteAsOtherUser.
+        Test area_arm service without code omits ExecuteAsOtherUser.
 
         When no code is provided, ExecuteAsOtherUser should NOT be included in the
         request data. This allows users without a PIN configured in their Inception
@@ -445,14 +440,9 @@ class TestInceptionAlarmAreaArmService:
         exit_delay = True
         seal_check = False
 
-        with patch(
-            "custom_components.inception.alarm_control_panel.LOGGER"
-        ) as mock_logger:
-            await alarm_entity.area_arm_service(
-                exit_delay=exit_delay, seal_check=seal_check
-            )
-
-            mock_logger.warning.assert_called_once_with("No alarm code provided")
+        await alarm_entity.area_arm_service(
+            exit_delay=exit_delay, seal_check=seal_check
+        )
 
         # ExecuteAsOtherUser should NOT be present when no code is provided
         expected_data = {
