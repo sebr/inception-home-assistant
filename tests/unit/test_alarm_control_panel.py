@@ -59,6 +59,7 @@ class TestInceptionAlarm:
         """Test alarm entity attributes."""
         # Create a dummy instance to check attributes that are set in __init__
         mock_coordinator = Mock()
+        mock_coordinator.config_entry.options = {}
         mock_area_data = Mock()
         mock_area_data.entity_info.id = "test_id"
         mock_area_data.entity_info.name = "Test"
@@ -72,7 +73,7 @@ class TestInceptionAlarm:
             data=mock_area_data,
         )
 
-        # Check that the code format and arm requirement are properly set
+        # Default options: code format is NUMBER, code not required to arm
         assert alarm._attr_code_arm_required is False
         assert alarm._attr_code_format == CodeFormat.NUMBER
 
@@ -82,6 +83,7 @@ class TestInceptionAlarm:
         coordinator = Mock()
         coordinator.api = Mock()
         coordinator.api.request = AsyncMock()
+        coordinator.config_entry.options = {}
         return coordinator
 
     @pytest.fixture
@@ -301,6 +303,7 @@ class TestInceptionAlarmAreaArmService:
         coordinator = Mock()
         coordinator.api = Mock()
         coordinator.api.request = AsyncMock()
+        coordinator.config_entry.options = {}
         return coordinator
 
     @pytest.fixture
@@ -485,6 +488,7 @@ class TestAlarmEntityKeys:
         coordinator = Mock(spec=InceptionUpdateCoordinator)
         coordinator.config_entry = Mock()
         coordinator.config_entry.entry_id = "test_entry_id"
+        coordinator.config_entry.options = {}
         coordinator.api = Mock()
         coordinator.api._host = "test.example.com"
         coordinator.data = Mock()
@@ -581,6 +585,7 @@ class TestOptionalAlarmCode:
         coordinator = Mock()
         coordinator.api = Mock()
         coordinator.api.request = AsyncMock()
+        coordinator.config_entry.options = {}
         return coordinator
 
     @pytest.fixture
@@ -739,3 +744,82 @@ class TestOptionalAlarmCode:
         assert data["OtherUserPIN"] == "9999"
         assert data["ExitDelay"] == "true"
         assert data["SealCheck"] == "false"
+
+
+class TestAlarmOptionsConfiguration:
+    """Test alarm entity behavior with different options configurations."""
+
+    @pytest.fixture
+    def mock_area_data(self) -> Mock:
+        """Create mock area data."""
+        area_data = Mock()
+        area_data.entity_info.id = "area_123"
+        area_data.entity_info.name = "Test Area"
+        area_data.arm_info.multi_mode_arm_enabled = True
+        area_data.public_state = AreaPublicState.DISARMED
+        return area_data
+
+    def _make_alarm(self, mock_area_data: Mock, options: dict) -> InceptionAlarm:
+        """Create an alarm entity with the given options."""
+        coordinator = Mock()
+        coordinator.api = Mock()
+        coordinator.api.request = AsyncMock()
+        coordinator.config_entry.options = options
+        description = InceptionAlarmDescription(key="area_alarm", name="Test Area")
+        return InceptionAlarm(
+            coordinator=coordinator,
+            entity_description=description,
+            data=mock_area_data,
+        )
+
+    def test_default_options(self, mock_area_data: Mock) -> None:
+        """With empty options, defaults match current behavior."""
+        alarm = self._make_alarm(mock_area_data, {})
+        assert alarm._attr_code_format == CodeFormat.NUMBER
+        assert alarm._attr_code_arm_required is False
+
+    def test_explicit_defaults(self, mock_area_data: Mock) -> None:
+        """Explicit default values match current behavior."""
+        alarm = self._make_alarm(
+            mock_area_data,
+            {
+                "require_pin_code": True,
+                "require_code_to_arm": False,
+            },
+        )
+        assert alarm._attr_code_format == CodeFormat.NUMBER
+        assert alarm._attr_code_arm_required is False
+
+    def test_pin_code_disabled(self, mock_area_data: Mock) -> None:
+        """When require_pin_code is False, code_format is None."""
+        alarm = self._make_alarm(
+            mock_area_data,
+            {
+                "require_pin_code": False,
+            },
+        )
+        assert alarm._attr_code_format is None
+        assert alarm._attr_code_arm_required is False
+
+    def test_code_to_arm_enabled(self, mock_area_data: Mock) -> None:
+        """When require_code_to_arm is True, code_arm_required is True."""
+        alarm = self._make_alarm(
+            mock_area_data,
+            {
+                "require_code_to_arm": True,
+            },
+        )
+        assert alarm._attr_code_format == CodeFormat.NUMBER
+        assert alarm._attr_code_arm_required is True
+
+    def test_pin_disabled_and_code_to_arm_enabled(self, mock_area_data: Mock) -> None:
+        """No pin keypad shown but code still required to arm."""
+        alarm = self._make_alarm(
+            mock_area_data,
+            {
+                "require_pin_code": False,
+                "require_code_to_arm": True,
+            },
+        )
+        assert alarm._attr_code_format is None
+        assert alarm._attr_code_arm_required is False
