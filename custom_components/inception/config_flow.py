@@ -39,10 +39,10 @@ class InceptionFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
     @staticmethod
     @callback
     def async_get_options_flow(
-        config_entry: config_entries.ConfigEntry,  # noqa: ARG004
+        config_entry: config_entries.ConfigEntry,
     ) -> InceptionOptionsFlowHandler:
         """Get the options flow for this handler."""
-        return InceptionOptionsFlowHandler()
+        return InceptionOptionsFlowHandler(config_entry)
 
     async def async_step_user(
         self,
