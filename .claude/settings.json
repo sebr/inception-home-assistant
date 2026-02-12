@@ -3,7 +3,8 @@
     "allow": [
       "Bash(python:*)",
       "Bash(find:*)",
-      "Bash(git:*)"
+      "Bash(git:*)",
+      "Read(*)"
     ],
     "deny": [],
     "ask": []
