@@ -18,7 +18,13 @@ from homeassistant.components.alarm_control_panel.const import (
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import entity_platform
 
-from .const import DOMAIN
+from .const import (
+    CONF_REQUIRE_CODE_TO_ARM,
+    CONF_REQUIRE_PIN_CODE,
+    DEFAULT_REQUIRE_CODE_TO_ARM,
+    DEFAULT_REQUIRE_PIN_CODE,
+    DOMAIN,
+)
 from .entity import InceptionEntity
 from .pyinception.schemas.area import AreaPublicState
 
@@ -79,15 +85,6 @@ class InceptionAlarm(InceptionEntity, AlarmControlPanelEntity):
     entity_description: InceptionAlarmDescription
     data: AreaSummaryEntry
 
-    _attr_code_arm_required: bool = False
-    _attr_code_format = CodeFormat.NUMBER
-    _attr_supported_features = (
-        AlarmControlPanelEntityFeature.ARM_HOME
-        | AlarmControlPanelEntityFeature.ARM_AWAY
-        | AlarmControlPanelEntityFeature.ARM_NIGHT
-        | AlarmControlPanelEntityFeature.TRIGGER
-    )
-
     def __init__(
         self,
         coordinator: InceptionUpdateCoordinator,
@@ -100,6 +97,13 @@ class InceptionAlarm(InceptionEntity, AlarmControlPanelEntity):
         )
         self.data = data
         self.entity_description = entity_description
+
+        options = coordinator.config_entry.options
+        require_pin = options.get(CONF_REQUIRE_PIN_CODE, DEFAULT_REQUIRE_PIN_CODE)
+        self._attr_code_format = CodeFormat.NUMBER if require_pin else None
+        self._attr_code_arm_required = options.get(
+            CONF_REQUIRE_CODE_TO_ARM, DEFAULT_REQUIRE_CODE_TO_ARM
+        )
 
         self._attr_supported_features = (
             AlarmControlPanelEntityFeature.ARM_AWAY

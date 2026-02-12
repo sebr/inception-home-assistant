@@ -21,6 +21,21 @@
             "unknown": "Unknown error occurred."
         }
     },
+    "options": {
+        "step": {
+            "init": {
+                "description": "Configure alarm code settings for your Inception alarm panels.",
+                "data": {
+                    "require_pin_code": "Require pin code",
+                    "require_code_to_arm": "Require code to arm"
+                },
+                "data_description": {
+                    "require_pin_code": "When enabled, a code is required for area arming/disarming. If disabled, area operations will be performed as the user which is associated with the configured API token.",
+                    "require_code_to_arm": "When enabled, a valid code must be entered to arm the alarm. When disabled, a code is only required for disarming."
+                }
+            }
+        }
+    },
     "services": {
         "unlock": {
             "name": "Unlock",
