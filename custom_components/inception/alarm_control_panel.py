@@ -100,11 +100,17 @@ class InceptionAlarm(InceptionEntity, AlarmControlPanelEntity):
 
         options = coordinator.config_entry.options
         require_pin = options.get(CONF_REQUIRE_PIN_CODE, DEFAULT_REQUIRE_PIN_CODE)
-        self._attr_code_format = CodeFormat.NUMBER if require_pin else None
-        self._attr_code_arm_required = options.get(
+        require_code_to_arm = options.get(
             CONF_REQUIRE_CODE_TO_ARM, DEFAULT_REQUIRE_CODE_TO_ARM
         )
 
+        # If PIN entry is disabled, do not require a code to arm to avoid
+        # an inconsistent configuration where the UI cannot supply a code.
+        if not require_pin:
+            require_code_to_arm = False
+
+        self._attr_code_format = CodeFormat.NUMBER if require_pin else None
+        self._attr_code_arm_required = require_code_to_arm
         self._attr_supported_features = (
             AlarmControlPanelEntityFeature.ARM_AWAY
             | AlarmControlPanelEntityFeature.TRIGGER
