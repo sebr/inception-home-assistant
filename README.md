@@ -33,7 +33,7 @@ For each door that the authenticated user has permission to access, the followin
 
 For each area that the authenticated user has permission to access, the following entities are created:
 
-* An `alarm_control_panel` entity to arm and disarm the area. If multi-mode area arming is enabled, Night and Perimiter modes are also available. PIN code requirements can be configured in the integration options (see [Configure alarm code options](#3-configure-alarm-code-options-optional)).
+* An `alarm_control_panel` entity to arm and disarm the area. If multi-mode area arming is enabled, Night and Perimeter modes are also available. PIN code requirements can be configured in the integration options (see [Configure alarm code options](#3-configure-alarm-code-options-optional)).
 
 ### Inputs
 
