@@ -822,4 +822,4 @@ class TestAlarmOptionsConfiguration:
             },
         )
         assert alarm._attr_code_format is None
-        assert alarm._attr_code_arm_required is True
+        assert alarm._attr_code_arm_required is False
