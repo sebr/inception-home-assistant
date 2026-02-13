@@ -33,7 +33,7 @@ For each door that the authenticated user has permission to access, the followin
 
 For each area that the authenticated user has permission to access, the following entities are created:
 
-* An `alarm_control_panel` entity to arm and disarm the area. If multi-mode area arming is enabled, Night and Perimiter modes are also available.
+* An `alarm_control_panel` entity to arm and disarm the area. If multi-mode area arming is enabled, Night and Perimeter modes are also available. PIN code requirements can be configured in the integration options (see [Configure alarm code options](#3-configure-alarm-code-options-optional)).
 
 ### Inputs
 
@@ -261,6 +261,19 @@ If you do not wish to use HACS, then please download the latest version from the
 2. Click `+ Add Integration`
 3. Search for `Inception`
 4. Complete the guided configuration
+
+### 3. Configure alarm code options (optional)
+
+After adding the integration, you can configure how the alarm control panel handles PIN codes:
+
+1. Navigate to Home Assistant Settings > Devices & Services
+2. Find the Inception integration and click `Configure`
+3. Adjust the following options:
+
+Option | Description | Default
+-- | -- | --
+**Require pin code** | When enabled, a code is required for area arming/disarming. If disabled, area operations will be performed as the user which is associated with the configured API token. | Enabled
+**Require code to arm** | When enabled, a valid code must be entered to arm the alarm. When disabled, a code is only required for disarming. | Disabled
 
 ### Create a user in Inception
 

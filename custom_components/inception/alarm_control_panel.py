@@ -18,7 +18,13 @@ from homeassistant.components.alarm_control_panel.const import (
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import entity_platform
 
-from .const import DOMAIN, LOGGER
+from .const import (
+    CONF_REQUIRE_CODE_TO_ARM,
+    CONF_REQUIRE_PIN_CODE,
+    DEFAULT_REQUIRE_CODE_TO_ARM,
+    DEFAULT_REQUIRE_PIN_CODE,
+    DOMAIN,
+)
 from .entity import InceptionEntity
 from .pyinception.schemas.area import AreaPublicState
 
@@ -79,15 +85,6 @@ class InceptionAlarm(InceptionEntity, AlarmControlPanelEntity):
     entity_description: InceptionAlarmDescription
     data: AreaSummaryEntry
 
-    _attr_code_arm_required: bool = True
-    _attr_code_format = CodeFormat.NUMBER
-    _attr_supported_features = (
-        AlarmControlPanelEntityFeature.ARM_HOME
-        | AlarmControlPanelEntityFeature.ARM_AWAY
-        | AlarmControlPanelEntityFeature.ARM_NIGHT
-        | AlarmControlPanelEntityFeature.TRIGGER
-    )
-
     def __init__(
         self,
         coordinator: InceptionUpdateCoordinator,
@@ -101,6 +98,19 @@ class InceptionAlarm(InceptionEntity, AlarmControlPanelEntity):
         self.data = data
         self.entity_description = entity_description
 
+        options = coordinator.config_entry.options
+        require_pin = options.get(CONF_REQUIRE_PIN_CODE, DEFAULT_REQUIRE_PIN_CODE)
+        require_code_to_arm = options.get(
+            CONF_REQUIRE_CODE_TO_ARM, DEFAULT_REQUIRE_CODE_TO_ARM
+        )
+
+        # If PIN entry is disabled, do not require a code to arm to avoid
+        # an inconsistent configuration where the UI cannot supply a code.
+        if not require_pin:
+            require_code_to_arm = False
+
+        self._attr_code_format = CodeFormat.NUMBER if require_pin else None
+        self._attr_code_arm_required = require_code_to_arm
         self._attr_supported_features = (
             AlarmControlPanelEntityFeature.ARM_AWAY
             | AlarmControlPanelEntityFeature.TRIGGER
@@ -157,11 +167,9 @@ class InceptionAlarm(InceptionEntity, AlarmControlPanelEntity):
             "AreaControlType": control_type,
         }
 
-        data["ExecuteAsOtherUser"] = "true"
         if code:
+            data["ExecuteAsOtherUser"] = "true"
             data["OtherUserPIN"] = code
-        else:
-            LOGGER.warning("No alarm code provided")
 
         # Only add optional parameters if explicitly provided
         if exit_delay is not None:

@@ -6,11 +6,20 @@ from typing import TYPE_CHECKING
 
 import voluptuous as vol
 from homeassistant import config_entries
+from homeassistant.config_entries import OptionsFlow
 from homeassistant.const import CONF_HOST, CONF_NAME, CONF_TOKEN
+from homeassistant.core import callback
 from homeassistant.helpers import selector
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 
-from .const import DOMAIN, LOGGER
+from .const import (
+    CONF_REQUIRE_CODE_TO_ARM,
+    CONF_REQUIRE_PIN_CODE,
+    DEFAULT_REQUIRE_CODE_TO_ARM,
+    DEFAULT_REQUIRE_PIN_CODE,
+    DOMAIN,
+    LOGGER,
+)
 from .pyinception.api import (
     InceptionApiClient,
     InceptionApiClientAuthenticationError,
@@ -26,6 +35,14 @@ class InceptionFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
     """Config flow for Inception."""
 
     VERSION = 1
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(
+        _config_entry: config_entries.ConfigEntry,
+    ) -> InceptionOptionsFlowHandler:
+        """Get the options flow for this handler."""
+        return InceptionOptionsFlowHandler()
 
     async def async_step_user(
         self,
@@ -101,3 +118,41 @@ class InceptionFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             session=async_create_clientsession(self.hass),
         )
         await client.authenticate()
+
+
+class InceptionOptionsFlowHandler(OptionsFlow):
+    """Handle options flow for Inception."""
+
+    async def async_step_init(
+        self,
+        user_input: dict | None = None,
+    ) -> ConfigFlowResult:
+        """Manage the options."""
+        if user_input is not None:
+            return self.async_create_entry(title="", data=user_input)
+
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        CONF_REQUIRE_PIN_CODE,
+                        default=self.config_entry.options.get(
+                            CONF_REQUIRE_PIN_CODE,
+                            DEFAULT_REQUIRE_PIN_CODE,
+                        ),
+                    ): selector.BooleanSelector(
+                        selector.BooleanSelectorConfig(),
+                    ),
+                    vol.Required(
+                        CONF_REQUIRE_CODE_TO_ARM,
+                        default=self.config_entry.options.get(
+                            CONF_REQUIRE_CODE_TO_ARM,
+                            DEFAULT_REQUIRE_CODE_TO_ARM,
+                        ),
+                    ): selector.BooleanSelector(
+                        selector.BooleanSelectorConfig(),
+                    ),
+                },
+            ),
+        )

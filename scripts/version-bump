@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+
+set -e
+
+cd "$(dirname "$0")/.."
+
+MANIFEST="custom_components/inception/manifest.json"
+CURRENT=$(python3 -c "import json; print(json.load(open('$MANIFEST'))['version'])")
+
+# Parse current version
+if [[ "$CURRENT" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)(-beta\.([0-9]+))?$ ]]; then
+  MAJOR="${BASH_REMATCH[1]}"
+  MINOR="${BASH_REMATCH[2]}"
+  PATCH="${BASH_REMATCH[3]}"
+  BETA="${BASH_REMATCH[5]}"
+else
+  echo "Error: '$CURRENT' is not a valid semver version."
+  exit 1
+fi
+
+# Compute preview versions
+MAJOR_NEW="$((MAJOR + 1)).0.0"
+MINOR_NEW="${MAJOR}.$((MINOR + 1)).0"
+PATCH_NEW="${MAJOR}.${MINOR}.$((PATCH + 1))"
+if [ -n "$BETA" ]; then
+  BETA_NEW="${MAJOR}.${MINOR}.${PATCH}-beta.$((BETA + 1))"
+else
+  BETA_NEW="${MAJOR}.${MINOR}.${PATCH}-beta.1"
+fi
+
+echo "Current version: ${CURRENT}"
+echo ""
+echo "What would you like to bump?"
+echo "  1) major  → ${MAJOR_NEW}"
+echo "  2) minor  → ${MINOR_NEW}"
+echo "  3) patch  → ${PATCH_NEW}"
+echo "  4) beta   → ${BETA_NEW}"
+echo ""
+read -rp "Enter choice [1-4]: " CHOICE
+
+case "$CHOICE" in
+  1) NEW_VERSION="$MAJOR_NEW" ;;
+  2) NEW_VERSION="$MINOR_NEW" ;;
+  3) NEW_VERSION="$PATCH_NEW" ;;
+  4) NEW_VERSION="$BETA_NEW" ;;
+  *)
+    echo "Invalid choice."
+    exit 1
+    ;;
+esac
+
+# Update manifest.json using python for clean JSON writing
+python3 -c "
+import json
+with open('$MANIFEST', 'r') as f:
+    data = json.load(f)
+data['version'] = '$NEW_VERSION'
+with open('$MANIFEST', 'w') as f:
+    json.dump(data, f, indent=2)
+    f.write('\n')
+"
+
+echo ""
+echo "Bumped version: ${CURRENT} → ${NEW_VERSION}"
