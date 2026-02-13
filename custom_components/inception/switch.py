@@ -66,8 +66,10 @@ async def async_setup_entry(
             entity_description=InceptionSwitchDescription(
                 key="output",
                 device_class=SwitchDeviceClass.SWITCH,
-                value_fn=lambda data: data.public_state is not None
-                and bool(data.public_state & OutputPublicState.ON),
+                value_fn=lambda data: (
+                    data.public_state is not None
+                    and bool(data.public_state & OutputPublicState.ON)
+                ),
             ),
             data=output,
         )
@@ -93,8 +95,10 @@ async def async_setup_entry(
                         name=f"{suffix} Isolated" if suffix else "Isolated",
                         has_entity_name=True,
                         entity_registry_visible_default=False,
-                        value_fn=lambda data: data.public_state is not None
-                        and bool(data.public_state & InputPublicState.ISOLATED),
+                        value_fn=lambda data: (
+                            data.public_state is not None
+                            and bool(data.public_state & InputPublicState.ISOLATED)
+                        ),
                         turn_on_data={
                             "Type": "ControlInput",
                             "InputControlType": "Isolate",
@@ -119,8 +123,10 @@ async def async_setup_entry(
                         name=f"{suffix} Active" if suffix else "Active",
                         has_entity_name=True,
                         entity_registry_visible_default=True,
-                        value_fn=lambda data: data.public_state is not None
-                        and bool(data.public_state & InputPublicState.ACTIVE),
+                        value_fn=lambda data: (
+                            data.public_state is not None
+                            and bool(data.public_state & InputPublicState.ACTIVE)
+                        ),
                         turn_on_data={
                             "Type": "ControlCustomInput",
                             "CustomInputControlType": "Activate",

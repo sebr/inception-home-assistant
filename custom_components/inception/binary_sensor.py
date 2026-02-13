@@ -158,8 +158,10 @@ async def async_setup_entry(
                         device_class=device_class,
                         name=name,
                         has_entity_name=True,
-                        value_fn=lambda data, state=state: data.public_state is not None
-                        and bool(data.public_state & state),
+                        value_fn=lambda data, state=state: (
+                            data.public_state is not None
+                            and bool(data.public_state & state)
+                        ),
                         entity_registry_enabled_default=key_suffix
                         not in ["forced", "dotl"],
                     ),
@@ -206,8 +208,10 @@ async def async_setup_entry(
                         device_class=get_device_class_for_name(input_entity.name),
                         name=suffix,
                         has_entity_name=True,
-                        value_fn=lambda data: data.public_state is not None
-                        and bool(data.public_state & InputPublicState.ACTIVE),
+                        value_fn=lambda data: (
+                            data.public_state is not None
+                            and bool(data.public_state & InputPublicState.ACTIVE)
+                        ),
                     ),
                     data=i_input,
                     door=matching_door,
@@ -222,8 +226,10 @@ async def async_setup_entry(
                         key="sensor",
                         device_class=get_device_class_for_name(input_entity.name),
                         name="Sensor",
-                        value_fn=lambda data: data.public_state is not None
-                        and bool(data.public_state & InputPublicState.ACTIVE),
+                        value_fn=lambda data: (
+                            data.public_state is not None
+                            and bool(data.public_state & InputPublicState.ACTIVE)
+                        ),
                     ),
                     data=i_input,
                 )
