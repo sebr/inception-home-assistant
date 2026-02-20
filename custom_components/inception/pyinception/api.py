@@ -88,6 +88,8 @@ class InceptionApiClient:
         self._last_review_log_time: float = 0
         self._review_events_retry_count: int = 0
         self._review_events_max_retry_delay: int = 300  # 5 minutes max
+        self._rest_task_retry_count: int = 0
+        self._rest_task_max_retry_delay: int = 300  # 5 minutes max
 
     T = TypeVar("T", DoorSummary, InputSummary, OutputSummary, AreaSummary)
 
@@ -143,7 +145,7 @@ class InceptionApiClient:
 
     async def monitor_entity_states(self) -> None:
         """Monitor updates from the API."""
-        _LOGGER.info("Starting long-poll monitor")
+        _LOGGER.debug("Starting long-poll monitor")
         if self.data is None:
             _LOGGER.warning("state monitor: no data to update")
             return
@@ -370,11 +372,25 @@ class InceptionApiClient:
         """Poll data periodically via Rest."""
         while True:
             try:
-                # Run entity state monitoring only
-                # Review events are now managed separately with their own task
                 await self.monitor_entity_states()
+                self._reset_retry_count("rest_task")
+            except InceptionApiClientAuthenticationError:
+                _LOGGER.exception(
+                    "rest_task: Authentication error, stopping monitoring"
+                )
+                break
+            except (
+                InceptionApiClientCommunicationError,
+                InceptionApiClientError,
+                TimeoutError,
+            ) as err:
+                _LOGGER.warning("rest_task: Connection error: %s", err)
+                delay = self._increment_retry_count("rest_task")
+                await asyncio.sleep(delay)
             except Exception:
-                _LOGGER.exception("_rest_task: Error in monitoring tasks")
+                _LOGGER.exception("rest_task: Unexpected error in monitoring")
+                delay = self._increment_retry_count("rest_task")
+                await asyncio.sleep(delay)
             self._schedule_data_callbacks()
 
     async def _review_events_monitor(self) -> None:
@@ -395,7 +411,7 @@ class InceptionApiClient:
 
                     await self.monitor_review_events(self._review_events_categories)
                     # Reset retry count on successful monitoring
-                    self._reset_retry_count()
+                    self._reset_retry_count("review_events")
                     # No sleep needed - long polling will wait for events
                 except InceptionApiClientAuthenticationError:
                     # Authentication errors always stop the task
@@ -411,46 +427,51 @@ class InceptionApiClient:
                         # 4xx errors stop the task
                         raise
                     # For 5xx errors (network issues), use exponential backoff
-                    self._increment_retry_count()
-                    delay = self._get_retry_delay()
                     _LOGGER.warning("Communication error in review events: %s", e)
+                    delay = self._increment_retry_count("review_events")
                     await asyncio.sleep(delay)
                 except Exception:
                     _LOGGER.exception("Unexpected error in review events task")
                     # For unexpected errors, use exponential backoff
-                    self._increment_retry_count()
-                    delay = self._get_retry_delay()
+                    delay = self._increment_retry_count("review_events")
                     await asyncio.sleep(delay)
 
         finally:
             _LOGGER.debug("Review events task stopped")
 
-    def _get_retry_delay(self) -> int:
+    @staticmethod
+    def _get_retry_delay(retry_count: int, max_delay: int = 300) -> int:
         """Calculate exponential backoff delay for retries."""
-        if self._review_events_retry_count == 0:
+        if retry_count == 0:
             return 5  # First retry after 5 seconds
 
         # Exponential backoff: 5, 10, 20, 40, 80, 160, 300 (capped)
         return min(
-            5 * (2 ** (self._review_events_retry_count - 1)),
-            self._review_events_max_retry_delay,
+            5 * (2 ** (retry_count - 1)),
+            max_delay,
         )
 
-    def _reset_retry_count(self) -> None:
+    def _reset_retry_count(self, task_name: str) -> None:
         """Reset retry count after successful operation."""
-        if self._review_events_retry_count > 0:
-            _LOGGER.debug("Review events monitoring recovered, resetting retry count")
-            self._review_events_retry_count = 0
+        count_attr = f"_{task_name}_retry_count"
+        if getattr(self, count_attr) > 0:
+            _LOGGER.debug("%s: Connection recovered, resetting retry count", task_name)
+            setattr(self, count_attr, 0)
 
-    def _increment_retry_count(self) -> None:
-        """Increment retry count and log the backoff strategy."""
-        self._review_events_retry_count += 1
-        delay = self._get_retry_delay()
+    def _increment_retry_count(self, task_name: str) -> int:
+        """Increment retry count, log the backoff strategy, and return the delay."""
+        count_attr = f"_{task_name}_retry_count"
+        max_attr = f"_{task_name}_max_retry_delay"
+        count = getattr(self, count_attr) + 1
+        setattr(self, count_attr, count)
+        delay = self._get_retry_delay(count, getattr(self, max_attr))
         _LOGGER.warning(
-            "Review events error #%d, retrying in %d seconds",
-            self._review_events_retry_count,
+            "%s: error #%d, retrying in %d seconds",
+            task_name,
+            count,
             delay,
         )
+        return delay
 
     async def close(self) -> None:
         """Close the session."""
@@ -546,17 +567,17 @@ class InceptionApiClient:
             _verify_response_or_raise(response)
             return await response.json(content_type=None)
         except TimeoutError as exception:
-            _LOGGER.exception("TimeoutError")
+            _LOGGER.debug("Timeout fetching %s", path)
             raise TimeoutError from exception
         except (aiohttp.ClientError, socket.gaierror) as exception:
             msg = f"Error fetching information - {exception}"
-            _LOGGER.exception(msg)
+            _LOGGER.debug(msg)
             raise InceptionApiClientCommunicationError(
                 msg,
             ) from exception
         except Exception as exception:  # pylint: disable=broad-except
             msg = f"Something really wrong happened! - {exception}"
-            _LOGGER.exception(msg)
+            _LOGGER.debug(msg)
             raise InceptionApiClientError(
                 msg,
             ) from exception
