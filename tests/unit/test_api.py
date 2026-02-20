@@ -253,45 +253,25 @@ class TestReviewEventsPermissions:
                 "Communication error in review events:" in msg for msg in log_messages
             ), f"Expected communication error not found in: {log_messages}"
             assert any(
-                "Review events error #1, retrying in 5 seconds" in msg
+                "review_events: error #1, retrying in 5 seconds" in msg
                 for msg in log_messages
             ), f"Expected retry backoff message not found in: {log_messages}"
 
     @pytest.mark.asyncio
-    async def test_review_events_exponential_backoff(self, mock_session: Mock) -> None:
+    async def test_review_events_exponential_backoff(self) -> None:
         """Test that exponential backoff works correctly for retries."""
-        api_client = InceptionApiClient(
-            token="test_token",
-            host="http://test.com",
-            session=mock_session,
-        )
-
-        # Test the backoff calculation directly
-        assert api_client._get_retry_delay() == 5  # First retry
-
-        api_client._review_events_retry_count = 1
-        assert api_client._get_retry_delay() == 5  # 5 * 2^0 = 5
-
-        api_client._review_events_retry_count = 2
-        assert api_client._get_retry_delay() == 10  # 5 * 2^1 = 10
-
-        api_client._review_events_retry_count = 3
-        assert api_client._get_retry_delay() == 20  # 5 * 2^2 = 20
-
-        api_client._review_events_retry_count = 4
-        assert api_client._get_retry_delay() == 40  # 5 * 2^3 = 40
-
-        api_client._review_events_retry_count = 5
-        assert api_client._get_retry_delay() == 80  # 5 * 2^4 = 80
-
-        api_client._review_events_retry_count = 6
-        assert api_client._get_retry_delay() == 160  # 5 * 2^5 = 160
-
-        api_client._review_events_retry_count = 7
-        assert api_client._get_retry_delay() == 300  # Capped at max (5 minutes)
-
-        api_client._review_events_retry_count = 10
-        assert api_client._get_retry_delay() == 300  # Still capped at max
+        # Test the backoff calculation directly via the static method
+        assert InceptionApiClient._get_retry_delay(0) == 5  # First retry
+        assert InceptionApiClient._get_retry_delay(1) == 5  # 5 * 2^0 = 5
+        assert InceptionApiClient._get_retry_delay(2) == 10  # 5 * 2^1 = 10
+        assert InceptionApiClient._get_retry_delay(3) == 20  # 5 * 2^2 = 20
+        assert InceptionApiClient._get_retry_delay(4) == 40  # 5 * 2^3 = 40
+        assert InceptionApiClient._get_retry_delay(5) == 80  # 5 * 2^4 = 80
+        assert InceptionApiClient._get_retry_delay(6) == 160  # 5 * 2^5 = 160
+        assert (
+            InceptionApiClient._get_retry_delay(7) == 300
+        )  # Capped at max (5 minutes)
+        assert InceptionApiClient._get_retry_delay(10) == 300  # Still capped at max
 
 
 class TestReviewEventCallbacks:
@@ -498,3 +478,133 @@ class TestReviewEventsInitialLoad:
 
         # Verify callback WAS called for new events
         assert callback.call_count == 1
+
+
+class TestRestTaskBackoff:
+    """Test _rest_task exponential backoff behavior."""
+
+    @pytest.fixture
+    def mock_session(self) -> Mock:
+        """Create a mock session."""
+        return Mock(spec=aiohttp.ClientSession)
+
+    @pytest.mark.asyncio
+    async def test_rest_task_backoff_on_communication_error(
+        self, mock_session: Mock, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Test that _rest_task uses backoff on communication errors."""
+        api_client = InceptionApiClient(
+            token="test_token",
+            host="http://test.com",
+            session=mock_session,
+        )
+        api_client.data = Mock()
+
+        call_count = 0
+
+        async def failing_monitor() -> None:
+            nonlocal call_count
+            call_count += 1
+            msg = "Connection refused"
+            raise InceptionApiClientCommunicationError(msg)
+
+        with patch.object(
+            api_client, "monitor_entity_states", side_effect=failing_monitor
+        ):
+            task = asyncio.create_task(api_client._rest_task())
+            # Let it attempt once and start sleeping on backoff
+            await asyncio.sleep(0.2)
+            task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
+
+        assert call_count == 1
+        assert api_client._rest_task_retry_count == 1
+        log_messages = [record.message for record in caplog.records]
+        assert any("rest_task: Connection error:" in msg for msg in log_messages), (
+            f"Expected connection error not found in: {log_messages}"
+        )
+
+    @pytest.mark.asyncio
+    async def test_rest_task_auth_error_stops_loop(
+        self, mock_session: Mock, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Test that authentication errors stop the _rest_task loop."""
+        api_client = InceptionApiClient(
+            token="test_token",
+            host="http://test.com",
+            session=mock_session,
+        )
+        api_client.data = Mock()
+
+        with patch.object(api_client, "monitor_entity_states") as mock_monitor:
+            mock_monitor.side_effect = InceptionApiClientAuthenticationError(
+                "Invalid credentials"
+            )
+            # _rest_task should exit (break) on auth error
+            await api_client._rest_task()
+
+        assert mock_monitor.call_count == 1
+        log_messages = [record.message for record in caplog.records]
+        assert any(
+            "Authentication error, stopping monitoring" in msg for msg in log_messages
+        ), f"Expected auth error not found in: {log_messages}"
+
+    @pytest.mark.asyncio
+    async def test_rest_task_retry_resets_on_success(self, mock_session: Mock) -> None:
+        """Test that retry count resets after successful monitoring."""
+        api_client = InceptionApiClient(
+            token="test_token",
+            host="http://test.com",
+            session=mock_session,
+        )
+        api_client.data = Mock()
+        api_client._rest_task_retry_count = 5  # Simulate previous errors
+
+        call_count = 0
+
+        async def succeed_then_stop() -> None:
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return  # Success
+            raise asyncio.CancelledError  # Stop the loop
+
+        with (
+            patch.object(
+                api_client, "monitor_entity_states", side_effect=succeed_then_stop
+            ),
+            contextlib.suppress(asyncio.CancelledError),
+        ):
+            await api_client._rest_task()
+
+        assert api_client._rest_task_retry_count == 0
+
+    @pytest.mark.asyncio
+    async def test_rest_task_backoff_on_timeout(self, mock_session: Mock) -> None:
+        """Test that _rest_task uses backoff on timeout errors."""
+        api_client = InceptionApiClient(
+            token="test_token",
+            host="http://test.com",
+            session=mock_session,
+        )
+        api_client.data = Mock()
+
+        call_count = 0
+
+        async def timeout_monitor() -> None:
+            nonlocal call_count
+            call_count += 1
+            raise TimeoutError
+
+        with patch.object(
+            api_client, "monitor_entity_states", side_effect=timeout_monitor
+        ):
+            task = asyncio.create_task(api_client._rest_task())
+            await asyncio.sleep(0.2)
+            task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
+
+        assert call_count == 1
+        assert api_client._rest_task_retry_count == 1
