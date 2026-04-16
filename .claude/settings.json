@@ -4,7 +4,10 @@
       "Bash(python:*)",
       "Bash(find:*)",
       "Bash(git:*)",
-      "Read(*)"
+      "Bash(npm ls *)",
+      "Read(*)",
+      "mcp__linear__get_issue",
+      "mcp__linear__list_teams"
     ],
     "deny": [],
     "ask": []
