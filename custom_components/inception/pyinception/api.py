@@ -79,6 +79,7 @@ class InceptionApiClient:
         self.data: InceptionApiData | None = None
         self.data_update_cbs: list = []
         self.review_event_cbs: list = []
+        self.auth_error_cbs: list = []
         self.loop: asyncio.AbstractEventLoop = asyncio.get_running_loop()
         self.rest_task: asyncio.Task | None = None
         self._review_events_task: asyncio.Task | None = None
@@ -368,6 +369,16 @@ class InceptionApiClient:
         if callback not in self.review_event_cbs:
             self.review_event_cbs.append(callback)
 
+    def register_auth_error_callback(self, callback: Callable) -> None:
+        """Register a callback invoked when the controller rejects auth."""
+        if callback not in self.auth_error_cbs:
+            self.auth_error_cbs.append(callback)
+
+    def _schedule_auth_error_callbacks(self) -> None:
+        """Fan out auth-error notifications on the main loop."""
+        for cb in self.auth_error_cbs:
+            self.loop.call_soon_threadsafe(cb)
+
     async def _rest_task(self) -> None:
         """Poll data periodically via Rest."""
         while True:
@@ -378,6 +389,7 @@ class InceptionApiClient:
                 _LOGGER.exception(
                     "rest_task: Authentication error, stopping monitoring"
                 )
+                self._schedule_auth_error_callbacks()
                 break
             except (
                 InceptionApiClientCommunicationError,
@@ -415,6 +427,7 @@ class InceptionApiClient:
                     # No sleep needed - long polling will wait for events
                 except InceptionApiClientAuthenticationError:
                     # Authentication errors always stop the task
+                    self._schedule_auth_error_callbacks()
                     raise
                 except InceptionApiClientCommunicationError as e:
                     # Check if it's a 4xx client error (irrecoverable)

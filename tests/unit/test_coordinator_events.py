@@ -215,8 +215,10 @@ async def test_callbacks_registered_only_once() -> None:
     mock_api = Mock()
     mock_api.get_data = AsyncMock(return_value=Mock())
     mock_api.connect = AsyncMock()
+    mock_api.close = AsyncMock()
     mock_api.register_data_callback = Mock()
     mock_api.register_review_event_callback = Mock()
+    mock_api.register_auth_error_callback = Mock()
 
     # Create coordinator by mocking the parent class initialization
     with (
@@ -232,6 +234,8 @@ async def test_callbacks_registered_only_once() -> None:
             "custom_components.inception.coordinator.async_get_clientsession",
             return_value=Mock(),
         ),
+        patch("custom_components.inception.coordinator.ir.async_create_issue"),
+        patch("custom_components.inception.coordinator.ir.async_delete_issue"),
     ):
         # Create coordinator and set required attributes
         coordinator = InceptionUpdateCoordinator(mock_hass, mock_entry)
@@ -265,6 +269,7 @@ async def test_callbacks_reset_on_unload() -> None:
     mock_api.close = AsyncMock()
     mock_api.register_data_callback = Mock()
     mock_api.register_review_event_callback = Mock()
+    mock_api.register_auth_error_callback = Mock()
 
     # Create coordinator by mocking the parent class initialization
     with (
@@ -280,6 +285,8 @@ async def test_callbacks_reset_on_unload() -> None:
             "custom_components.inception.coordinator.async_get_clientsession",
             return_value=Mock(),
         ),
+        patch("custom_components.inception.coordinator.ir.async_create_issue"),
+        patch("custom_components.inception.coordinator.ir.async_delete_issue"),
     ):
         # Create coordinator and set required attributes
         coordinator = InceptionUpdateCoordinator(mock_hass, mock_entry)

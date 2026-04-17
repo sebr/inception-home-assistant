@@ -76,5 +76,11 @@
                 }
             }
         }
+    },
+    "issues": {
+        "auth_failure": {
+            "title": "Inception authentication failed",
+            "description": "Home Assistant could not authenticate to the Inception controller configured as **{entry_title}**. The API token may have been revoked or the controller may have locked the account after repeated failures. Check the token under Users \u2192 Remote / Web Access in the Inception web interface, then reconfigure the integration with a valid token."
+        }
     }
 }
