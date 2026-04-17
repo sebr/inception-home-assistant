@@ -48,6 +48,7 @@ class TestLiveReviewEventsRequest:
         payload = request.get_request_payload()
 
         expected_payload = {
+            "ID": "LiveReviewEventsRequest",
             "RequestType": "LiveReviewEvents",
             "InputData": {
                 "referenceId": "ref123",
@@ -68,6 +69,7 @@ class TestLiveReviewEventsRequest:
         payload = request.get_request_payload()
 
         expected_payload = {
+            "ID": "LiveReviewEventsRequest",
             "RequestType": "LiveReviewEvents",
             "InputData": {
                 "referenceId": "ref456",

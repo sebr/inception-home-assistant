@@ -6,7 +6,6 @@ import asyncio
 import contextlib
 import logging
 import socket
-import time
 from typing import TYPE_CHECKING, Any, ClassVar, TypeVar
 from urllib.parse import urlencode
 
@@ -72,13 +71,9 @@ class InceptionApiClient:
         self.auth_error_cbs: list = []
         self.loop: asyncio.AbstractEventLoop = asyncio.get_running_loop()
         self.rest_task: asyncio.Task | None = None
-        self._review_events_task: asyncio.Task | None = None
         self._last_update: int | None = None
         self._review_events_enabled: bool = False
         self._review_events_categories: list[str] = []
-        self._last_review_log_time: float = 0
-        self._review_events_retry_count: int = 0
-        self._review_events_max_retry_delay: int = 300  # 5 minutes max
         self._rest_task_retry_count: int = 0
         self._rest_task_max_retry_delay: int = 300  # 5 minutes max
         self.protocol_version: int | None = None
@@ -170,8 +165,18 @@ class InceptionApiClient:
 
         return self.data
 
+    REVIEW_EVENTS_REQUEST_ID: ClassVar[str] = "LiveReviewEventsRequest"
+
     async def monitor_entity_states(self) -> None:
-        """Monitor updates from the API."""
+        """
+        Run a single long-poll iteration against `/monitor-updates`.
+
+        The payload bundles state-change sub-requests for all four entity
+        types (Input, Door, Output, Area), plus the LiveReviewEvents
+        sub-request when review events are enabled. The server returns a
+        response for exactly one sub-request per call (matched by `ID`),
+        so the dispatch here simply routes on the response `ID`.
+        """
         _LOGGER.debug("Starting long-poll monitor")
         if self.data is None:
             _LOGGER.warning("state monitor: no data to update")
@@ -195,8 +200,12 @@ class InceptionApiClient:
 
         payload = [
             request_type.get_request_payload()
-            for request_id, request_type in request_types.items()
+            for request_type in request_types.values()
         ]
+
+        review_request = await self._build_review_events_subrequest()
+        if review_request is not None:
+            payload.append(review_request.get_request_payload())
 
         response = await self._monitor_events_request(payload)
 
@@ -206,17 +215,33 @@ class InceptionApiClient:
 
         response_id = response["ID"]
 
+        if response_id == self.REVIEW_EVENTS_REQUEST_ID and self._review_events_enabled:
+            self._handle_review_events_response(response)
+            return
+
         update_request = request_types.get(response_id)
         if update_request is None:
             _LOGGER.error("Unknown response ID: %s", response_id)
             return
 
+        self._handle_entity_state_response(response, update_request)
+
+    def _handle_entity_state_response(
+        self,
+        response: dict[str, Any],
+        update_request: MonitorEntityStatesRequest,
+    ) -> None:
+        """Apply a MonitorEntityStates sub-request response to cached data."""
         result_response = UpdateMonitorResponse[update_request.public_state_type](
             **response["Result"]
         )
 
-        self._monitor_update_times[response_id] = result_response.update_time
+        self._monitor_update_times[update_request.request_id] = (
+            result_response.update_time
+        )
 
+        if self.data is None:
+            return
         entity_data: InceptionSummary = getattr(self.data, update_request.api_data)
         if entity_data is None:
             _LOGGER.error("No entity data for %s", update_request.api_data)
@@ -243,6 +268,48 @@ class InceptionApiClient:
             except Exception:
                 _LOGGER.exception("Error processing event")
 
+    def _handle_review_events_response(self, response: dict[str, Any]) -> None:
+        """Route a LiveReviewEvents sub-request response to the processor."""
+        result = response.get("Result", [])
+        if isinstance(result, list) and result:
+            self._process_review_events_data(result)
+
+    async def _build_review_events_subrequest(
+        self,
+    ) -> LiveReviewEventsRequest | None:
+        """
+        Construct the LiveReviewEvents sub-request payload if enabled.
+
+        On first use it establishes the reference point via
+        `_get_latest_review_event`; if that fails we skip adding the
+        sub-request this iteration rather than crashing the whole bundle.
+        """
+        if not self._review_events_enabled:
+            return None
+
+        if not self._review_events_reference_id:
+            latest = await self._get_latest_review_event()
+            if latest is None:
+                _LOGGER.warning(
+                    "Failed to establish review events reference point; "
+                    "skipping review events this iteration"
+                )
+                return None
+            InceptionApiClient._review_events_update_time = latest.get("WhenTicks", 0)
+            InceptionApiClient._review_events_reference_id = latest.get("ID")
+            _LOGGER.info(
+                "Established review events reference point: ID=%s, Time=%d",
+                self._review_events_reference_id,
+                self._review_events_update_time,
+            )
+
+        return LiveReviewEventsRequest(
+            request_id=self.REVIEW_EVENTS_REQUEST_ID,
+            reference_id=self._review_events_reference_id,
+            reference_time=self._review_events_update_time,
+            category_filter=self._review_events_categories or None,
+        )
+
     async def _get_latest_review_event(self) -> dict[str, Any] | None:
         """Get the latest review event to establish reference point."""
         try:
@@ -266,63 +333,6 @@ class InceptionApiClient:
         except Exception:
             _LOGGER.exception("Error getting latest review event")
             return None
-
-    async def monitor_review_events(self, categories: list[str] | None = None) -> None:
-        """Monitor review events from the API using long polling."""
-        try:
-            # If we don't have a reference point, get the latest event first
-            if (
-                self._review_events_update_time == 0
-                or not self._review_events_reference_id
-            ):
-                latest_event = await self._get_latest_review_event()
-                if latest_event:
-                    InceptionApiClient._review_events_update_time = latest_event.get(
-                        "WhenTicks", 0
-                    )
-                    InceptionApiClient._review_events_reference_id = latest_event.get(
-                        "ID"
-                    )
-                    _LOGGER.info(
-                        "Established review events reference point: ID=%s, Time=%d",
-                        self._review_events_reference_id,
-                        self._review_events_update_time,
-                    )
-                else:
-                    _LOGGER.warning("Failed to establish review events reference point")
-                    return
-
-            # Create the live review events request
-            # Ensure we have a valid reference_id (should never be None at this point)
-            if not self._review_events_reference_id:
-                _LOGGER.error("No reference ID available for live review events")
-                return
-
-            request = LiveReviewEventsRequest(
-                request_id="LiveReviewEventsRequest",
-                reference_id=self._review_events_reference_id,
-                reference_time=self._review_events_update_time,
-                category_filter=categories,
-            )
-
-            payload = [request.get_request_payload()]
-            response = await self._monitor_events_request(payload)
-
-            if not response:
-                return
-
-            result = response.get("Result", [])
-            if len(result) > 0:
-                self._process_review_events_data(result)
-
-        except (
-            InceptionApiClientAuthenticationError,
-            InceptionApiClientCommunicationError,
-        ):
-            # Let these errors propagate to _review_events_task for proper handling
-            raise
-        except Exception:
-            _LOGGER.exception("Error monitoring review events")
 
     def _process_review_events_data(self, events_data: Any) -> None:
         """Process review events data and trigger callbacks."""
@@ -431,53 +441,6 @@ class InceptionApiClient:
                 await asyncio.sleep(delay)
             self._schedule_data_callbacks()
 
-    async def _review_events_monitor(self) -> None:
-        """Monitor review events using long polling while enabled."""
-        _LOGGER.debug("Review events task started with long polling")
-
-        try:
-            while self._review_events_enabled:
-                try:
-                    # Only log debug message every 60 seconds to reduce spam
-                    current_time = time.time()
-                    if current_time - self._last_review_log_time > 60:
-                        _LOGGER.debug(
-                            "Review events monitoring categories: %s",
-                            self._review_events_categories,
-                        )
-                        self._last_review_log_time = current_time
-
-                    await self.monitor_review_events(self._review_events_categories)
-                    # Reset retry count on successful monitoring
-                    self._reset_retry_count("review_events")
-                    # No sleep needed - long polling will wait for events
-                except InceptionApiClientAuthenticationError:
-                    # Authentication errors always stop the task
-                    self._schedule_auth_error_callbacks()
-                    raise
-                except InceptionApiClientCommunicationError as e:
-                    # Check if it's a 4xx client error (irrecoverable)
-                    if (
-                        "404" in str(e)
-                        or "400" in str(e)
-                        or "403" in str(e)
-                        or "401" in str(e)
-                    ):
-                        # 4xx errors stop the task
-                        raise
-                    # For 5xx errors (network issues), use exponential backoff
-                    _LOGGER.warning("Communication error in review events: %s", e)
-                    delay = self._increment_retry_count("review_events")
-                    await asyncio.sleep(delay)
-                except Exception:
-                    _LOGGER.exception("Unexpected error in review events task")
-                    # For unexpected errors, use exponential backoff
-                    delay = self._increment_retry_count("review_events")
-                    await asyncio.sleep(delay)
-
-        finally:
-            _LOGGER.debug("Review events task stopped")
-
     @staticmethod
     def _get_retry_delay(retry_count: int, max_delay: int = 300) -> int:
         """Calculate exponential backoff delay for retries."""
@@ -516,10 +479,11 @@ class InceptionApiClient:
         """Close the session."""
         _LOGGER.debug("Closing session")
 
-        # Stop review events task
-        await self.stop_review_listener()
+        # Disable review-event bundling so a partial restart doesn't inherit it.
+        self._review_events_enabled = False
+        self._review_events_categories = []
 
-        # Stop main rest task
+        # Stop main rest task (which owns the single long-poll connection).
         if self.rest_task:
             if not self.rest_task.cancelled():
                 self.rest_task.cancel()
@@ -529,10 +493,10 @@ class InceptionApiClient:
         # Clear callback lists to prevent memory leaks
         self.data_update_cbs.clear()
         self.review_event_cbs.clear()
+        self.auth_error_cbs.clear()
 
         # Reset task references
         self.rest_task = None
-        self._review_events_task = None
 
     async def _monitor_events_request(self, payload: Any) -> Any | None:
         """Monitor updates from the API."""
@@ -649,39 +613,28 @@ class InceptionApiClient:
         return await self._control_item(item=f"input/{input_id}", data=data)
 
     async def start_review_listener(self, categories: list[str]) -> None:
-        """Start the review event listener with specific categories."""
+        """
+        Enable bundled review-event polling on the next long-poll iteration.
+
+        No separate task is spawned: the main `_rest_task` long-poll picks
+        up the flag on its next iteration and adds a LiveReviewEvents
+        sub-request to the same HTTP request.
+        """
         _LOGGER.debug(
-            "Starting review events listener for categories: %s (was enabled: %s)",
+            "Enabling review events listener for categories: %s (was enabled: %s)",
             categories,
             self._review_events_enabled,
         )
-
-        # Stop existing task if running
-        await self.stop_review_listener()
-
-        # Start new task
         self._review_events_enabled = True
         self._review_events_categories = categories[:]
-        self._review_events_retry_count = 0  # Reset retry count on start
-        self._review_events_task = asyncio.create_task(self._review_events_monitor())
-        _LOGGER.info("Review events listener started for categories: %s", categories)
+        _LOGGER.info("Review events listener enabled for categories: %s", categories)
 
     async def stop_review_listener(self) -> None:
-        """Stop the review event listener."""
+        """Disable bundled review-event polling from the next iteration."""
         _LOGGER.debug(
-            "Stopping review events listener (was enabled: %s)",
+            "Disabling review events listener (was enabled: %s)",
             self._review_events_enabled,
         )
-
-        # Set disabled first to stop the loop
         self._review_events_enabled = False
         self._review_events_categories = []
-
-        # Cancel and wait for the task to finish
-        if self._review_events_task and not self._review_events_task.done():
-            self._review_events_task.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await self._review_events_task
-
-        self._review_events_task = None
-        _LOGGER.info("Review events listener stopped")
+        _LOGGER.info("Review events listener disabled")
