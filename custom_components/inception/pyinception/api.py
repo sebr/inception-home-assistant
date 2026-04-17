@@ -90,6 +90,7 @@ class InceptionApiClient:
         self._review_events_max_retry_delay: int = 300  # 5 minutes max
         self._rest_task_retry_count: int = 0
         self._rest_task_max_retry_delay: int = 300  # 5 minutes max
+        self.protocol_version: int | None = None
 
     T = TypeVar("T", DoorSummary, InputSummary, OutputSummary, AreaSummary)
 
@@ -118,6 +119,41 @@ class InceptionApiClient:
             path="/control/input",
         )
         return True
+
+    async def get_protocol_version(self) -> int | None:
+        """
+        Fetch the Inception API protocol version.
+
+        Returns the `ProtocolVersion` integer reported by the controller, or
+        `None` if the endpoint returns 404 (firmware too old to expose it).
+        Authentication is not required by the API for this endpoint, but the
+        auth header is sent anyway for simplicity — the server ignores it.
+        """
+        try:
+            response = await self.request(
+                method="get",
+                path="/protocol-version",
+                api_prefix="api",
+            )
+        except InceptionApiClientCommunicationError as err:
+            if "404" in str(err):
+                _LOGGER.warning(
+                    "Inception firmware does not expose /api/protocol-version; "
+                    "the firmware is likely older than v4.0"
+                )
+                self.protocol_version = None
+                return None
+            raise
+
+        if not isinstance(response, dict):
+            return None
+
+        version = response.get("ProtocolVersion")
+        if isinstance(version, int):
+            self.protocol_version = version
+            _LOGGER.info("Inception API protocol version: %d", version)
+            return version
+        return None
 
     async def connect(self) -> None:
         """Connect to the API."""
@@ -543,6 +579,7 @@ class InceptionApiClient:
         path: str,
         data: Any | None = None,
         api_timeout: aiohttp.ClientTimeout | None = None,
+        api_prefix: str = "api/v1",
     ) -> Any:
         """Get information from the API."""
         try:
@@ -556,10 +593,11 @@ class InceptionApiClient:
 
             # If path begins with a slash, remove it
             path = path.removeprefix("/")
+            prefix = api_prefix.strip("/")
 
             response = await self._session.request(
                 method=method,
-                url=f"{self._host}/api/v1/{path}",
+                url=f"{self._host}/{prefix}/{path}",
                 headers=headers,
                 json=data,
                 timeout=api_timeout,
