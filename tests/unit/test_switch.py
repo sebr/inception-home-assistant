@@ -627,3 +627,49 @@ class TestReviewEventGlobalSwitchToggle:
 async def _async_noop(*_args: object, **_kwargs: object) -> None:
     """Async no-op used as a side_effect for stubbed coroutines."""
     return
+
+
+class TestReviewEventGlobalSwitchSaveState:
+    """_save_state must merge into the store, not replace it."""
+
+    @pytest.mark.asyncio
+    async def test_save_state_preserves_category_flags(self) -> None:
+        """
+        Toggling the global switch must not wipe category flags.
+
+        The same Store holds both `global_enabled` and per-category
+        `{category}_enabled` keys written by `ReviewEventCategorySwitch`.
+        A replacing save clobbers those — leading to
+        `update_review_listener_from_switches` later warning
+        "no categories are selected" when the global is toggled back on.
+        """
+        store = MagicMock()
+        existing = {
+            "global_enabled": True,
+            "security_enabled": True,
+            "system_enabled": False,
+        }
+
+        async def _load() -> dict:
+            return existing
+
+        saved: list[dict] = []
+
+        async def _save(data: dict) -> None:
+            saved.append(data)
+
+        store.async_load = Mock(side_effect=_load)
+        store.async_save = Mock(side_effect=_save)
+
+        switch = ReviewEventGlobalSwitch.__new__(ReviewEventGlobalSwitch)
+        switch._store = store
+        switch._attr_is_on = False
+
+        await switch._save_state()
+
+        assert len(saved) == 1
+        assert saved[0] == {
+            "global_enabled": False,
+            "security_enabled": True,
+            "system_enabled": False,
+        }

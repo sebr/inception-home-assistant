@@ -390,8 +390,19 @@ class ReviewEventGlobalSwitch(SwitchEntity):
         await self.coordinator.stop_review_listener()
 
     async def _save_state(self) -> None:
-        """Save the current state to storage."""
-        await self._store.async_save({"global_enabled": self._attr_is_on})
+        """
+        Save the current state to storage.
+
+        Merge rather than replace: the same store also holds per-category
+        flags (`security_enabled`, `system_enabled`, …) written by
+        `ReviewEventCategorySwitch`, and replacing the whole document on
+        every global toggle would wipe them — leading to
+        `update_review_listener_from_switches` warning
+        "no categories are selected" the next time the global is enabled.
+        """
+        stored_data = await self._store.async_load() or {}
+        stored_data["global_enabled"] = self._attr_is_on
+        await self._store.async_save(stored_data)
 
     async def _update_category_switches_availability(self) -> None:
         """Update the availability of all category switches."""
