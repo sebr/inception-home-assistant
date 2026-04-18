@@ -215,8 +215,10 @@ async def test_callbacks_registered_only_once() -> None:
     mock_api = Mock()
     mock_api.get_data = AsyncMock(return_value=Mock())
     mock_api.connect = AsyncMock()
+    mock_api.close = AsyncMock()
     mock_api.register_data_callback = Mock()
     mock_api.register_review_event_callback = Mock()
+    mock_api.register_auth_error_callback = Mock()
 
     # Create coordinator by mocking the parent class initialization
     with (
@@ -265,6 +267,7 @@ async def test_callbacks_reset_on_unload() -> None:
     mock_api.close = AsyncMock()
     mock_api.register_data_callback = Mock()
     mock_api.register_review_event_callback = Mock()
+    mock_api.register_auth_error_callback = Mock()
 
     # Create coordinator by mocking the parent class initialization
     with (

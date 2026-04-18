@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import voluptuous as vol
 from homeassistant import config_entries
@@ -28,6 +28,8 @@ from .pyinception.api import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from homeassistant.config_entries import ConfigFlowResult
 
 
@@ -118,6 +120,57 @@ class InceptionFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             session=async_create_clientsession(self.hass),
         )
         await client.authenticate()
+
+    async def async_step_reauth(
+        self,
+        _entry_data: Mapping[str, Any],
+    ) -> ConfigFlowResult:
+        """Triggered when HA requests re-authentication."""
+        return await self.async_step_reauth_confirm()
+
+    async def async_step_reauth_confirm(
+        self,
+        user_input: dict | None = None,
+    ) -> ConfigFlowResult:
+        """Prompt the user to supply a new API token for the existing entry."""
+        errors: dict[str, str] = {}
+        entry = self._get_reauth_entry()
+
+        if user_input is not None:
+            try:
+                await self._test_credentials(
+                    token=user_input[CONF_TOKEN],
+                    host=entry.data[CONF_HOST],
+                )
+            except InceptionApiClientAuthenticationError as exception:
+                LOGGER.warning(exception)
+                errors["base"] = "auth"
+            except InceptionApiClientCommunicationError as exception:
+                LOGGER.error(exception)
+                errors["base"] = "connection"
+            except InceptionApiClientError as exception:
+                LOGGER.exception(exception)
+                errors["base"] = "unknown"
+            else:
+                return self.async_update_reload_and_abort(
+                    entry,
+                    data_updates={CONF_TOKEN: user_input[CONF_TOKEN]},
+                )
+
+        return self.async_show_form(
+            step_id="reauth_confirm",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_TOKEN): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            type=selector.TextSelectorType.PASSWORD,
+                        ),
+                    ),
+                },
+            ),
+            description_placeholders={"name": entry.title},
+            errors=errors,
+        )
 
 
 class InceptionOptionsFlowHandler(OptionsFlow):
