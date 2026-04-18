@@ -10,7 +10,6 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.const import EntityCategory
 from homeassistant.core import callback
-from homeassistant.helpers.entity_registry import RegistryEntryDisabler, async_get
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN, EVENT_REVIEW_EVENT
@@ -68,102 +67,39 @@ class InceptionLastReviewEventSensor(
         self._event_listener_remove: Callable[[], None] | None = None
 
     async def async_added_to_hass(self) -> None:
-        """Run when entity is added to Home Assistant."""
+        """Subscribe to review events when the entity is added to HA."""
         await super().async_added_to_hass()
-
-        # Start event listener
-        self._start_event_listener()
-
-        # Update enabled state based on current switch state
-        await self._update_entity_enabled_state()
-
-        # Listen for entity registry updates to handle manual enable/disable
-        self.async_on_remove(
-            self.hass.bus.async_listen(
-                "entity_registry_updated",
-                self._handle_entity_registry_update,
-            )
+        self._event_listener_remove = self.hass.bus.async_listen(
+            EVENT_REVIEW_EVENT,
+            self._handle_review_event,
         )
 
     async def async_will_remove_from_hass(self) -> None:
-        """Run when entity will be removed from Home Assistant."""
-        # Clean up event listener
-        self._stop_event_listener()
-
-        await super().async_will_remove_from_hass()
-
-    async def _update_entity_enabled_state(self) -> None:
-        """Update the entity's enabled state based on review events switch."""
-        coordinator = cast("InceptionUpdateCoordinator", self.coordinator)
-        entity_registry = async_get(self.hass)
-
-        if entity_entry := entity_registry.async_get(self.entity_id):
-            should_be_enabled = coordinator.review_events_global_enabled
-            if entity_entry.disabled_by is None and not should_be_enabled:
-                # Stop the event listener before disabling
-                self._stop_event_listener()
-                # Disable the entity
-                entity_registry.async_update_entity(
-                    self.entity_id, disabled_by=RegistryEntryDisabler.INTEGRATION
-                )
-            elif (
-                entity_entry.disabled_by == RegistryEntryDisabler.INTEGRATION
-                and should_be_enabled
-            ):
-                # Enable the entity
-                entity_registry.async_update_entity(self.entity_id, disabled_by=None)
-                # Start the event listener after enabling
-                self._start_event_listener()
-
-    def _start_event_listener(self) -> None:
-        """Start the event listener if not already running and entity is enabled."""
-        if (
-            self._event_listener_remove is None
-            and self.hass is not None
-            and self._is_entity_enabled()
-        ):
-            self._event_listener_remove = self.hass.bus.async_listen(
-                EVENT_REVIEW_EVENT,
-                self._handle_review_event,
-            )
-
-    def _stop_event_listener(self) -> None:
-        """Stop the event listener if running."""
+        """Unsubscribe from review events when the entity is removed."""
         if self._event_listener_remove is not None:
             self._event_listener_remove()
             self._event_listener_remove = None
-
-    def _is_entity_enabled(self) -> bool:
-        """Check if the entity is currently enabled."""
-        if self.entity_id is None or self.hass is None:
-            return False
-
-        entity_registry = async_get(self.hass)
-        if entity_entry := entity_registry.async_get(self.entity_id):
-            return entity_entry.disabled_by is None
-        return True  # If not in registry yet, assume enabled
-
-    @callback
-    def _handle_entity_registry_update(self, event: Any) -> None:
-        """Handle entity registry updates to manage event listener state."""
-        # Check if this update is for our entity and disabled_by changed
-        if (
-            event.data.get("action") == "update"
-            and event.data.get("entity_id") == self.entity_id
-            and "disabled_by" in event.data.get("changes", {})
-        ):
-            if self._is_entity_enabled():
-                # Entity was enabled, start listener
-                self._start_event_listener()
-            else:
-                # Entity was disabled, stop listener
-                self._stop_event_listener()
+        await super().async_will_remove_from_hass()
 
     @callback
     def _handle_review_event(self, event: Any) -> None:
         """Handle incoming review events."""
         self._last_event_data = event.data
         self.async_write_ha_state()
+
+    @property
+    def available(self) -> bool:
+        """
+        Reflect the global review-events switch.
+
+        We previously toggled `disabled_by` on the registry entry to hide the
+        sensor when review events were off, but that re-added the entity to
+        the platform and triggered a "duplicate unique IDs" error. Using
+        `available` is the idiomatic HA pattern for "exists, but no data
+        right now" and avoids touching the registry at runtime.
+        """
+        coordinator = cast("InceptionUpdateCoordinator", self.coordinator)
+        return coordinator.review_events_global_enabled
 
     @property
     def native_value(self) -> str | None:
@@ -192,12 +128,6 @@ class InceptionLastReviewEventSensor(
             "where": self._last_event_data.get("where"),
             "where_id": self._last_event_data.get("where_id"),
         }
-
-    @property
-    def entity_registry_enabled_default(self) -> bool:
-        """Return if entity should be enabled when first added to registry."""
-        coordinator = cast("InceptionUpdateCoordinator", self.coordinator)
-        return coordinator.review_events_global_enabled
 
     @property
     def device_info(self) -> dict[str, Any]:
