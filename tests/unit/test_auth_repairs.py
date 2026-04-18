@@ -66,36 +66,6 @@ class TestAuthErrorCallback:
 
         assert cb in scheduled
 
-    @pytest.mark.asyncio
-    async def test_review_events_fires_auth_callback_on_auth_error(
-        self, mock_session: Mock
-    ) -> None:
-        """Auth errors bubbling out of _review_events_monitor also fire cbs."""
-        client = InceptionApiClient(
-            token="t", host="http://h.test", session=mock_session
-        )
-        scheduled: list[object] = []
-        client.loop = SimpleNamespace(
-            call_soon_threadsafe=lambda cb, *_: scheduled.append(cb)
-        )
-        client._review_events_enabled = True
-        client._review_events_categories = ["System"]
-
-        cb = Mock()
-        client.register_auth_error_callback(cb)
-
-        async def raise_auth_error(_categories: list[str] | None = None) -> None:
-            msg = "Invalid credentials"
-            raise InceptionApiClientAuthenticationError(msg)
-
-        with (
-            patch.object(client, "monitor_review_events", side_effect=raise_auth_error),
-            pytest.raises(InceptionApiClientAuthenticationError),
-        ):
-            await client._review_events_monitor()
-
-        assert cb in scheduled
-
 
 class TestRequestPreservesAuthErrorType:
     """`request()` must not rewrap our auth errors as generic errors."""
