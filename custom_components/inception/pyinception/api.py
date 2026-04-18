@@ -579,6 +579,12 @@ class InceptionApiClient:
             )
             _verify_response_or_raise(response)
             return await response.json(content_type=None)
+        except InceptionApiClientError:
+            # Our own exceptions (esp. InceptionApiClientAuthenticationError
+            # from `_verify_response_or_raise`) must propagate with their
+            # original type so callers can route 401/403 into the re-auth
+            # flow instead of treating them as generic errors.
+            raise
         except TimeoutError as exception:
             _LOGGER.debug("Timeout fetching %s", path)
             raise TimeoutError from exception

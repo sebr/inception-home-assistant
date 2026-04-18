@@ -97,6 +97,65 @@ class TestAuthErrorCallback:
         assert cb in scheduled
 
 
+class TestRequestPreservesAuthErrorType:
+    """`request()` must not rewrap our auth errors as generic errors."""
+
+    @pytest.mark.asyncio
+    async def test_401_response_raises_auth_error_not_generic(self) -> None:
+        """A 401 from the server reaches the caller as auth error, not generic."""
+        mock_session = Mock(spec=aiohttp.ClientSession)
+
+        class _Resp:
+            status = 401
+
+            def raise_for_status(self) -> None:
+                return None
+
+            async def json(self, content_type: object = None) -> dict[str, str]:  # noqa: ARG002
+                return {}
+
+        async def fake_request(*_args: object, **_kwargs: object) -> _Resp:
+            return _Resp()
+
+        mock_session.request = fake_request
+
+        client = InceptionApiClient(
+            token="bad", host="http://h.test", session=mock_session
+        )
+
+        # This used to raise InceptionApiClientError (generic) because the
+        # broad `except Exception` clause was rewrapping our own auth
+        # exception. Assert the specific type survives.
+        with pytest.raises(InceptionApiClientAuthenticationError):
+            await client.request(method="get", path="/control/input")
+
+    @pytest.mark.asyncio
+    async def test_403_response_raises_auth_error_not_generic(self) -> None:
+        """Same guarantee for a 403 response."""
+        mock_session = Mock(spec=aiohttp.ClientSession)
+
+        class _Resp:
+            status = 403
+
+            def raise_for_status(self) -> None:
+                return None
+
+            async def json(self, content_type: object = None) -> dict[str, str]:  # noqa: ARG002
+                return {}
+
+        async def fake_request(*_args: object, **_kwargs: object) -> _Resp:
+            return _Resp()
+
+        mock_session.request = fake_request
+
+        client = InceptionApiClient(
+            token="bad", host="http://h.test", session=mock_session
+        )
+
+        with pytest.raises(InceptionApiClientAuthenticationError):
+            await client.request(method="get", path="/control/input")
+
+
 class TestCoordinatorReauthIntegration:
     """The coordinator should start HA's re-auth flow on auth events."""
 
