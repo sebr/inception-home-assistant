@@ -59,6 +59,16 @@ class InceptionUpdateCoordinator(DataUpdateCoordinator[InceptionApiData]):
             EVENT_HOMEASSISTANT_STOP, self._async_shutdown
         )
 
+        # Probe the controller's API protocol version. The endpoint is
+        # unauthenticated and the docs recommend it as the first call before
+        # using any versioned endpoint. Any failure here is non-fatal — we
+        # still proceed with data fetching and let the normal error path
+        # surface auth / connectivity issues.
+        try:
+            await self.api.get_protocol_version()
+        except Exception as err:  # noqa: BLE001
+            LOGGER.debug("Protocol-version probe failed: %s", err)
+
         return await super()._async_setup()
 
     async def _async_shutdown(self, _event: Any) -> None:
