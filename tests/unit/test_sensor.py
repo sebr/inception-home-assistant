@@ -59,19 +59,19 @@ class TestInceptionLastReviewEventSensor:
         assert sensor.native_value is None
         assert sensor.extra_state_attributes is None
 
-    def test_entity_registry_enabled_default_when_disabled(
+    def test_available_when_review_events_disabled(
         self, sensor: InceptionLastReviewEventSensor, mock_coordinator: Mock
     ) -> None:
-        """Test sensor registry enabled default when review events are disabled."""
+        """Sensor should report unavailable when the global switch is off."""
         mock_coordinator.review_events_global_enabled = False
-        assert not sensor.entity_registry_enabled_default
+        assert sensor.available is False
 
-    def test_entity_registry_enabled_default_when_enabled(
+    def test_available_when_review_events_enabled(
         self, sensor: InceptionLastReviewEventSensor, mock_coordinator: Mock
     ) -> None:
-        """Test sensor registry enabled default when review events are enabled."""
+        """Sensor should report available when the global switch is on."""
         mock_coordinator.review_events_global_enabled = True
-        assert sensor.entity_registry_enabled_default
+        assert sensor.available is True
 
     def test_handle_review_event(self, sensor: InceptionLastReviewEventSensor) -> None:
         """Test handling a review event."""

@@ -8,7 +8,6 @@ from homeassistant.const import CONF_HOST, CONF_TOKEN, EVENT_HOMEASSISTANT_STOP
 from homeassistant.core import callback
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.entity_registry import RegistryEntryDisabler, async_get
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
@@ -265,29 +264,6 @@ class InceptionUpdateCoordinator(DataUpdateCoordinator[InceptionApiData]):
         """Set the review events global enabled state and notify entities."""
         if self._review_events_global_enabled != value:
             self._review_events_global_enabled = value
-            # Force update to notify sensor entities of state change
+            # Notify CoordinatorEntity subscribers (e.g. the last-review-event
+            # sensor uses this to flip its `available` state).
             self.async_update_listeners()
-            # Update sensor entity enabled state
-            self.hass.async_create_task(self._update_sensor_enabled_state())
-
-    async def _update_sensor_enabled_state(self) -> None:
-        """Update sensor entity enabled state based on review events setting."""
-        entity_registry = async_get(self.hass)
-        # Construct the sensor entity ID based on the unique ID pattern
-        sensor_unique_id = f"{self.config_entry.entry_id}_last_review_event"
-        # Find the entity by unique ID rather than guessing entity ID
-        for entity_id, entity_entry in entity_registry.entities.items():
-            if entity_entry.unique_id == sensor_unique_id:
-                should_be_enabled = self._review_events_global_enabled
-                if entity_entry.disabled_by is None and not should_be_enabled:
-                    # Disable the entity
-                    entity_registry.async_update_entity(
-                        entity_id, disabled_by=RegistryEntryDisabler.INTEGRATION
-                    )
-                elif (
-                    entity_entry.disabled_by == RegistryEntryDisabler.INTEGRATION
-                    and should_be_enabled
-                ):
-                    # Enable the entity
-                    entity_registry.async_update_entity(entity_id, disabled_by=None)
-                break
