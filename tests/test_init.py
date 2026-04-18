@@ -171,6 +171,7 @@ async def test_api_client_close_clears_callbacks() -> None:
     assert len(api_client.data_update_cbs) == 0
     assert len(api_client.review_event_cbs) == 0
 
-    # Verify task references were reset
+    # Verify task references were reset; the separate review-events task no
+    # longer exists as review events are bundled into the main long-poll.
     assert api_client.rest_task is None
-    assert api_client._review_events_task is None
+    assert not hasattr(api_client, "_review_events_task")

@@ -45,6 +45,7 @@ class LiveReviewEventsRequest:
             input_data["messageTypeIdFilter"] = self.message_type_id_filter
 
         return {
+            "ID": self.request_id,
             "RequestType": "LiveReviewEvents",
             "InputData": input_data,
         }
