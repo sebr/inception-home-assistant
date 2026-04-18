@@ -6,13 +6,17 @@ from typing import TYPE_CHECKING, Any
 
 from homeassistant.const import CONF_HOST, CONF_TOKEN, EVENT_HOMEASSISTANT_STOP
 from homeassistant.core import callback
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity_registry import RegistryEntryDisabler, async_get
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import DOMAIN, EVENT_REVIEW_EVENT, LOGGER
-from .pyinception.api import InceptionApiClient
+from .pyinception.api import (
+    InceptionApiClient,
+    InceptionApiClientAuthenticationError,
+)
 from .pyinception.data import InceptionApiData
 from .pyinception.message_categories import get_message_info
 
@@ -55,6 +59,16 @@ class InceptionUpdateCoordinator(DataUpdateCoordinator[InceptionApiData]):
             EVENT_HOMEASSISTANT_STOP, self._async_shutdown
         )
 
+        # Probe the controller's API protocol version. The endpoint is
+        # unauthenticated and the docs recommend it as the first call before
+        # using any versioned endpoint. Any failure here is non-fatal — we
+        # still proceed with data fetching and let the normal error path
+        # surface auth / connectivity issues.
+        try:
+            await self.api.get_protocol_version()
+        except Exception as err:  # noqa: BLE001
+            LOGGER.debug("Protocol-version probe failed: %s", err)
+
         return await super()._async_setup()
 
     async def _async_shutdown(self, _event: Any) -> None:
@@ -76,6 +90,10 @@ class InceptionUpdateCoordinator(DataUpdateCoordinator[InceptionApiData]):
         """Fetch data from the API."""
         try:
             data = await self.api.get_data()
+        except InceptionApiClientAuthenticationError as err:
+            # Trigger Home Assistant's built-in re-auth flow so the user
+            # sees a "Reconfigure" prompt and can re-enter their token.
+            raise ConfigEntryAuthFailed(err) from err
         except Exception as err:
             LOGGER.debug("Failed to fetch data: %s", err)
             LOGGER.exception("Error fetching data from Inception")
@@ -91,11 +109,29 @@ class InceptionUpdateCoordinator(DataUpdateCoordinator[InceptionApiData]):
             if not self._callbacks_registered:
                 self.api.register_data_callback(self.data_callback)
                 self.api.register_review_event_callback(self.review_event_callback)
+                self.api.register_auth_error_callback(self._trigger_reauth)
                 self._callbacks_registered = True
 
             self.monitor_connected = True
 
         return data
+
+    @callback
+    def _trigger_reauth(self) -> None:
+        """
+        Start the re-auth flow in response to a background auth failure.
+
+        `_async_update_data` raising `ConfigEntryAuthFailed` handles the
+        foreground path. When the long-poll `_rest_task` hits 401/403 it
+        also needs to surface, but the coordinator may not run
+        `_async_update_data` again for a while — so we kick the re-auth
+        flow directly here.
+        """
+        LOGGER.warning(
+            "Inception authentication failed for %s; starting re-auth flow",
+            self.config_entry.title,
+        )
+        self.config_entry.async_start_reauth(self.hass)
 
     @callback
     def data_callback(self, data: InceptionApiData) -> None:

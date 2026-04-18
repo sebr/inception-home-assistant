@@ -18,42 +18,7 @@ from custom_components.inception.pyinception.api import (
     InceptionApiClientAuthenticationError,
     InceptionApiClientCommunicationError,
     InceptionApiClientError,
-    _verify_response_or_raise,
 )
-
-
-class TestVerifyResponseOrRaise:
-    """Test _verify_response_or_raise function."""
-
-    def test_verify_response_success(self) -> None:
-        """Test successful response verification."""
-        mock_response = Mock()
-        mock_response.status = 200
-        mock_response.raise_for_status.return_value = None
-
-        # Should not raise any exception
-        _verify_response_or_raise(mock_response)
-        mock_response.raise_for_status.assert_called_once()
-
-    def test_verify_response_401_raises_auth_error(self) -> None:
-        """Test 401 response raises authentication error."""
-        mock_response = Mock()
-        mock_response.status = 401
-
-        with pytest.raises(
-            InceptionApiClientAuthenticationError, match="Invalid credentials"
-        ):
-            _verify_response_or_raise(mock_response)
-
-    def test_verify_response_403_raises_auth_error(self) -> None:
-        """Test 403 response raises authentication error."""
-        mock_response = Mock()
-        mock_response.status = 403
-
-        with pytest.raises(
-            InceptionApiClientAuthenticationError, match="Invalid credentials"
-        ):
-            _verify_response_or_raise(mock_response)
 
 
 class TestInceptionApiClient:
@@ -608,3 +573,175 @@ class TestRestTaskBackoff:
 
         assert call_count == 1
         assert api_client._rest_task_retry_count == 1
+
+
+class _AwaitableValue:
+    """Minimal awaitable wrapper so session.request can be mocked synchronously."""
+
+    def __init__(self, value: Any) -> None:
+        self._value = value
+
+    def __await__(self) -> Any:
+        async def _inner() -> Any:
+            return self._value
+
+        return _inner().__await__()
+
+
+class TestProtocolVersion:
+    """Tests for the protocol-version probe."""
+
+    @pytest.fixture
+    def mock_session(self) -> Mock:
+        """Return a mocked aiohttp session."""
+        return Mock(spec=aiohttp.ClientSession)
+
+    @pytest.mark.asyncio
+    async def test_get_protocol_version_stores_integer(
+        self, mock_session: Mock
+    ) -> None:
+        """A 200 response with ProtocolVersion caches and returns the int."""
+        api_client = InceptionApiClient(
+            token="test-token",
+            host="http://test.example.com",
+            session=mock_session,
+        )
+        assert api_client.protocol_version is None
+
+        with patch.object(
+            api_client, "request", return_value={"ProtocolVersion": 11}
+        ) as mock_request:
+            version = await api_client.get_protocol_version()
+
+        assert version == 11
+        assert api_client.protocol_version == 11
+        mock_request.assert_awaited_once_with(
+            method="get",
+            path="/protocol-version",
+            api_prefix="api",
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_protocol_version_404_returns_none(
+        self, mock_session: Mock
+    ) -> None:
+        """Old firmware returns 404; we swallow it and return None."""
+        api_client = InceptionApiClient(
+            token="t", host="http://test.example.com", session=mock_session
+        )
+        with patch.object(
+            api_client,
+            "request",
+            side_effect=InceptionApiClientCommunicationError(
+                "Error fetching information - 404, message='Not Found', url='...'"
+            ),
+        ):
+            version = await api_client.get_protocol_version()
+
+        assert version is None
+        assert api_client.protocol_version is None
+
+    @pytest.mark.asyncio
+    async def test_get_protocol_version_non_404_communication_error_raises(
+        self, mock_session: Mock
+    ) -> None:
+        """Connectivity failures (non-404) bubble up."""
+        api_client = InceptionApiClient(
+            token="t", host="http://test.example.com", session=mock_session
+        )
+        with (
+            patch.object(
+                api_client,
+                "request",
+                side_effect=InceptionApiClientCommunicationError(
+                    "Error fetching information - Cannot connect to host"
+                ),
+            ),
+            pytest.raises(InceptionApiClientCommunicationError),
+        ):
+            await api_client.get_protocol_version()
+
+    @pytest.mark.asyncio
+    async def test_get_protocol_version_malformed_response(
+        self, mock_session: Mock
+    ) -> None:
+        """A response without ProtocolVersion yields None, doesn't crash."""
+        api_client = InceptionApiClient(
+            token="t", host="http://test.example.com", session=mock_session
+        )
+        with patch.object(api_client, "request", return_value={"unexpected": "shape"}):
+            version = await api_client.get_protocol_version()
+
+        assert version is None
+
+    @pytest.mark.asyncio
+    async def test_get_protocol_version_non_dict_response(
+        self, mock_session: Mock
+    ) -> None:
+        """A non-dict response (e.g. list) yields None rather than raising."""
+        api_client = InceptionApiClient(
+            token="t", host="http://test.example.com", session=mock_session
+        )
+        with patch.object(api_client, "request", return_value=[1, 2, 3]):
+            version = await api_client.get_protocol_version()
+
+        assert version is None
+
+
+class TestRequestApiPrefix:
+    """Tests for the api_prefix argument to request()."""
+
+    @pytest.mark.asyncio
+    async def test_request_uses_custom_api_prefix(self) -> None:
+        """The api_prefix argument overrides the default v1 path prefix."""
+        mock_session = Mock(spec=aiohttp.ClientSession)
+        mock_response = Mock()
+        mock_response.status = 200
+        mock_response.raise_for_status.return_value = None
+
+        async def _json(content_type: Any = None) -> dict[str, int]:  # noqa: ARG001
+            return {"ProtocolVersion": 8}
+
+        mock_response.json = _json
+        mock_session.request = Mock(return_value=_AwaitableValue(mock_response))
+
+        client = InceptionApiClient(
+            token="t",
+            host="http://h.test",
+            session=mock_session,
+        )
+
+        result = await client.request(
+            method="get",
+            path="/protocol-version",
+            api_prefix="api",
+        )
+
+        assert result == {"ProtocolVersion": 8}
+        called_url = mock_session.request.call_args.kwargs["url"]
+        assert called_url == "http://h.test/api/protocol-version"
+
+    @pytest.mark.asyncio
+    async def test_request_default_api_prefix_is_v1(self) -> None:
+        """Default prefix remains api/v1 so existing callers are unchanged."""
+        mock_session = Mock(spec=aiohttp.ClientSession)
+        mock_response = Mock()
+        mock_response.status = 200
+        mock_response.raise_for_status.return_value = None
+
+        async def _json(content_type: Any = None) -> dict[str, str]:  # noqa: ARG001
+            return {}
+
+        mock_response.json = _json
+        mock_session.request = Mock(return_value=_AwaitableValue(mock_response))
+
+        client = InceptionApiClient(
+            token="t",
+            host="http://h.test",
+            session=mock_session,
+        )
+
+        await client.request(method="get", path="/control/input")
+
+        called_url = mock_session.request.call_args.kwargs["url"]
+        assert called_url == "http://h.test/api/v1/control/input"
