@@ -49,16 +49,6 @@ class InceptionApiClientAuthenticationError(
     """Exception to indicate an authentication error."""
 
 
-def _verify_response_or_raise(response: aiohttp.ClientResponse) -> None:
-    """Verify that the response is valid."""
-    if response.status in (401, 403):
-        msg = "Invalid credentials"
-        raise InceptionApiClientAuthenticationError(
-            msg,
-        )
-    response.raise_for_status()
-
-
 class InceptionApiClient:
     """Inception API Client."""
 
@@ -577,13 +567,18 @@ class InceptionApiClient:
                 json=data,
                 timeout=api_timeout,
             )
-            _verify_response_or_raise(response)
+            if response.status in (401, 403):
+                # Surface 401/403 as a specific auth error so the coordinator
+                # can route it into Home Assistant's re-auth flow rather than
+                # treating it as a transient connection failure.
+                msg = "Invalid credentials"
+                raise InceptionApiClientAuthenticationError(msg)  # noqa: TRY301
+            response.raise_for_status()
             return await response.json(content_type=None)
         except InceptionApiClientError:
-            # Our own exceptions (esp. InceptionApiClientAuthenticationError
-            # from `_verify_response_or_raise`) must propagate with their
-            # original type so callers can route 401/403 into the re-auth
-            # flow instead of treating them as generic errors.
+            # Our own exception hierarchy must propagate unchanged — the
+            # broad `except Exception` below would otherwise rewrap the
+            # auth error as a generic client error.
             raise
         except TimeoutError as exception:
             _LOGGER.debug("Timeout fetching %s", path)
