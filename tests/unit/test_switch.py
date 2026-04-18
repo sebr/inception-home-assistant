@@ -21,6 +21,7 @@ from custom_components.inception.switch import (
     InceptionLogicalInputSwitch,
     InceptionSwitch,
     InceptionSwitchDescription,
+    ReviewEventGlobalSwitch,
     async_setup_entry,
 )
 
@@ -530,3 +531,99 @@ class TestSwitchEntityKeys:
         ]
         assert len(isolated_switches) == 1
         assert isolated_switches[0]._attr_unique_id == "custom_input_1_input_isolated"
+
+
+class TestReviewEventGlobalSwitchToggle:
+    """Toggling the global switch must update coordinator state in the right order."""
+
+    @pytest.fixture
+    def coordinator(self) -> Mock:
+        """Build a mock coordinator that tracks the order of state changes."""
+        coordinator = MagicMock(spec=InceptionUpdateCoordinator)
+        coordinator.review_events_global_enabled = False
+        coordinator.config_entry = Mock(entry_id="entry-1")
+        coordinator.hass = Mock()
+
+        # Record the value of `review_events_global_enabled` at the moment
+        # `update_review_listener_from_switches` is called, so the test can
+        # assert the coordinator was already in the new state by then.
+        coordinator.observed_global_at_update_call = None
+
+        async def _record_and_run() -> None:
+            coordinator.observed_global_at_update_call = (
+                coordinator.review_events_global_enabled
+            )
+
+        coordinator.update_review_listener_from_switches = Mock(
+            side_effect=_record_and_run
+        )
+
+        async def _stop() -> None:
+            return
+
+        coordinator.stop_review_listener = Mock(side_effect=_stop)
+        return coordinator
+
+    def _build_switch(self, coordinator: Mock) -> object:
+        """Build a ReviewEventGlobalSwitch instance without going through __init__."""
+        switch = ReviewEventGlobalSwitch.__new__(ReviewEventGlobalSwitch)
+        switch.coordinator = coordinator
+        switch.hass = coordinator.hass
+        switch._attr_is_on = False
+        # Stub IO/UI methods.
+        switch._save_state = Mock(side_effect=_async_noop)
+        switch.async_write_ha_state = Mock()
+        switch._update_category_switches_availability = Mock(side_effect=_async_noop)
+        return switch
+
+    @pytest.mark.asyncio
+    async def test_turn_on_sets_coordinator_state_before_starting_listener(
+        self, coordinator: Mock
+    ) -> None:
+        """
+        Coordinator state must be True before the listener-start path runs.
+
+        Otherwise `update_review_listener_from_switches` reads the stale
+        False and stops the listener instead of starting it.
+        """
+        switch = self._build_switch(coordinator)
+
+        await switch.async_turn_on()
+
+        # The listener-start path saw the new (True) state.
+        assert coordinator.observed_global_at_update_call is True
+        # And final coordinator state matches the switch.
+        assert coordinator.review_events_global_enabled is True
+        assert switch._attr_is_on is True
+
+    @pytest.mark.asyncio
+    async def test_turn_off_sets_coordinator_state_before_stopping_listener(
+        self, coordinator: Mock
+    ) -> None:
+        """
+        Coordinator state must be False before the listener-stop path runs.
+
+        Symmetry with the turn-on case; keeps the coordinator's view of the
+        world consistent for any code paths the stop hook might trigger.
+        """
+        coordinator.review_events_global_enabled = True
+        switch = self._build_switch(coordinator)
+        switch._attr_is_on = True
+
+        observed: list[bool] = []
+
+        async def _record_stop() -> None:
+            observed.append(coordinator.review_events_global_enabled)
+
+        coordinator.stop_review_listener = Mock(side_effect=_record_stop)
+
+        await switch.async_turn_off()
+
+        assert observed == [False]
+        assert coordinator.review_events_global_enabled is False
+        assert switch._attr_is_on is False
+
+
+async def _async_noop(*_args: object, **_kwargs: object) -> None:
+    """Async no-op used as a side_effect for stubbed coroutines."""
+    return

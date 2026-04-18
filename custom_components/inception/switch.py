@@ -358,19 +358,27 @@ class ReviewEventGlobalSwitch(SwitchEntity):
     async def async_turn_on(self) -> None:
         """Turn on the global review event listener."""
         self._attr_is_on = True
+        # Mirror the new state into the coordinator BEFORE asking the
+        # listener to (re)start. `_start_review_listener` calls
+        # `coordinator.update_review_listener_from_switches`, which checks
+        # `coordinator.review_events_global_enabled` to decide whether to
+        # start or stop the listener. If we wait until after, the listener
+        # sees the stale `False` value and stops itself instead of starting.
+        self.coordinator.review_events_global_enabled = True
         await self._save_state()
         await self._start_review_listener()
         self.async_write_ha_state()
-        # Update category switches availability
+        # Refresh dependent category switches.
         await self._update_category_switches_availability()
 
     async def async_turn_off(self) -> None:
         """Turn off the global review event listener."""
         self._attr_is_on = False
+        self.coordinator.review_events_global_enabled = False
         await self._save_state()
         await self._stop_review_listener()
         self.async_write_ha_state()
-        # Update category switches availability
+        # Refresh dependent category switches.
         await self._update_category_switches_availability()
 
     async def _start_review_listener(self) -> None:
