@@ -13,12 +13,25 @@
                     "token": "An Inception User API token. Available under Users > Remote / Web Access > User API Token.",
                     "host": "The host address of your Inception hub. If no protocol is specified, http:// will be used."
                 }
+            },
+            "reauth_confirm": {
+                "title": "Re-authenticate with Inception",
+                "description": "The API token for **{name}** was rejected by the Inception controller. Check the token under Users \u2192 Remote / Web Access \u2192 User API Token in the Inception web interface, then paste the current token below.",
+                "data": {
+                    "token": "Token"
+                },
+                "data_description": {
+                    "token": "A valid Inception User API token."
+                }
             }
         },
         "error": {
             "auth": "Unable to authenticate to Inception",
             "connection": "Unable to connect to Inception.",
             "unknown": "Unknown error occurred."
+        },
+        "abort": {
+            "reauth_successful": "Re-authentication was successful."
         }
     },
     "options": {
@@ -75,12 +88,6 @@
                     "timed_unlock": "Timed Unlock"
                 }
             }
-        }
-    },
-    "issues": {
-        "auth_failure": {
-            "title": "Inception authentication failed",
-            "description": "Home Assistant could not authenticate to the Inception controller configured as **{entry_title}**. The API token may have been revoked or the controller may have locked the account after repeated failures. Check the token under Users \u2192 Remote / Web Access in the Inception web interface, then reconfigure the integration with a valid token."
         }
     }
 }
