@@ -29,6 +29,10 @@ This is a Home Assistant custom integration for InnerRange Inception security sy
   - `data.py` - Data structures and models
   - `schemas/` - Pydantic schemas for API responses (door, area, input, output, etc.)
 
+### API Reference
+
+- `docs/inception-api/` - Inner Range's "Inception REST API Sample Usage" document (protocol v8, April 2021) converted to Markdown and split into topic files. Consult these when working on `pyinception/`. Start with `docs/inception-api/README.md` for the index; topic files cover `getting-started.md` (auth, SkyTunnel, protocol-version), `entities.md` (Areas, Outputs), `activities.md` (virtual badge / PIN), `user-management.md` (User CRUD + photos + PIN generation), `review-events.md` (event queries), and `long-polling.md` (real-time monitoring via `api/v1/monitor-updates`). The canonical live docs are served by the controller itself at `http://[inception-address]/ApiDoc` (or `https://skytunnel.com.au/Inception/API_SAMPLE/ApiDoc`).
+
 ### Development Environment
 
 The project uses a containerized development environment with:
