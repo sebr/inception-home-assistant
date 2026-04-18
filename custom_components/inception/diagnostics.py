@@ -18,6 +18,12 @@ if TYPE_CHECKING:
 
 TO_REDACT = {CONF_TOKEN, CONF_HOST}
 
+# `Info1` / `Info2` on entity state updates may carry sensitive data
+# (e.g. `Info1` on a UserState update is the user's current location name,
+# and `Info2` on an AreaState update is the user-count for that area).
+# Redact them from the diagnostics dump.
+EXTRA_FIELDS_TO_REDACT = {"Info1", "Info2"}
+
 
 def _summary_to_dict(summary: Any) -> dict[str, Any]:
     """Render a schema container to JSON-safe primitives."""
@@ -39,7 +45,9 @@ def _summary_to_dict(summary: Any) -> dict[str, Any]:
             entry["public_state"] = int(public_state)
         extra_fields = getattr(item, "extra_fields", None)
         if extra_fields is not None:
-            entry["extra_fields"] = dict(extra_fields)
+            entry["extra_fields"] = async_redact_data(
+                dict(extra_fields), EXTRA_FIELDS_TO_REDACT
+            )
         rendered[str(item_id)] = entry
     return rendered
 

@@ -58,6 +58,27 @@ class TestSummaryToDict:
             },
         }
 
+    def test_info1_and_info2_are_redacted_in_extra_fields(self) -> None:
+        """`Info1`/`Info2` may contain sensitive data (user location, occupancy)."""
+        entry = SimpleNamespace(
+            entity_info=_FakeEntityInfo(ID="a1", Name="Area", ReportingID=1),
+            public_state=2048,
+            extra_fields={
+                "Info1": "Area will automatically Arm at 18:00",
+                "Info2": "3",
+                "LastStateChangeTime": "2026-04-16T00:00:00",
+            },
+        )
+        summary = _fake_summary({"a1": entry})
+
+        rendered = diagnostics._summary_to_dict(summary)
+
+        extras = rendered["a1"]["extra_fields"]
+        assert extras["Info1"] == "**REDACTED**"
+        assert extras["Info2"] == "**REDACTED**"
+        # Non-sensitive keys still pass through.
+        assert extras["LastStateChangeTime"] == "2026-04-16T00:00:00"
+
     def test_entry_with_missing_optional_fields(self) -> None:
         """An entry without public_state/extra_fields still renders."""
         entry = SimpleNamespace(
