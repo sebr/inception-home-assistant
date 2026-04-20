@@ -128,12 +128,25 @@ async def async_setup_entry(
     coordinator: InceptionUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
 
     # Create door binary sensors
-    # Define states with human-readable names and key suffixes
+    # Define states with human-readable names, key suffixes, and icons. The
+    # PROBLEM / TAMPER device classes otherwise fall back to HA's generic
+    # alert glyph, which makes forced / held-open / tamper indistinguishable
+    # in the UI.
     door_states = [
-        (DoorPublicState.FORCED, "Forced", "forced"),
-        (DoorPublicState.HELD_OPEN_TOO_LONG, "Held open too long", "dotl"),
-        (DoorPublicState.OPEN, "Sensor", "open"),
-        (DoorPublicState.READER_TAMPER, "Reader tamper", "tamper"),
+        (DoorPublicState.FORCED, "Forced", "forced", "mdi:lock-open-alert-outline"),
+        (
+            DoorPublicState.HELD_OPEN_TOO_LONG,
+            "Held open too long",
+            "dotl",
+            "mdi:timer-alert-outline",
+        ),
+        (DoorPublicState.OPEN, "Sensor", "open", None),
+        (
+            DoorPublicState.READER_TAMPER,
+            "Reader tamper",
+            "tamper",
+            "mdi:shield-alert-outline",
+        ),
     ]
 
     all_doors = coordinator.data.doors.get_items()
@@ -141,7 +154,7 @@ async def async_setup_entry(
     entities: list[InceptionBinarySensor] = []
 
     for door in all_doors:
-        for state, name, key_suffix in door_states:
+        for state, name, key_suffix, icon in door_states:
             # For the "open" sensor, use door name to determine device class
             # (e.g., garage door vs regular door)
             # For other states, use the state-based device class
@@ -157,6 +170,7 @@ async def async_setup_entry(
                         key=f"door_{key_suffix}",
                         device_class=device_class,
                         name=name,
+                        icon=icon,
                         has_entity_name=True,
                         value_fn=lambda data, state=state: (
                             data.public_state is not None
