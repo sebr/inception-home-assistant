@@ -17,6 +17,7 @@ from .schemas.door import DoorPublicState, DoorSummary
 from .schemas.input import InputPublicState, InputSummary
 from .schemas.output import OutputPublicState, OutputSummary
 from .schemas.review_events import LiveReviewEventsRequest
+from .schemas.system_info import SystemInfo
 from .schemas.update_monitor import (
     MonitorEntityStatesRequest,
     UpdateMonitorResponse,
@@ -77,6 +78,7 @@ class InceptionApiClient:
         self._rest_task_retry_count: int = 0
         self._rest_task_max_retry_delay: int = 300  # 5 minutes max
         self.protocol_version: int | None = None
+        self.system_info: SystemInfo | None = None
 
     T = TypeVar("T", DoorSummary, InputSummary, OutputSummary, AreaSummary)
 
@@ -140,6 +142,37 @@ class InceptionApiClient:
             _LOGGER.info("Inception API protocol version: %d", version)
             return version
         return None
+
+    async def get_system_info(self) -> SystemInfo | None:
+        """
+        Fetch the controller's SystemInfoDto from `/api/v1/system-info`.
+
+        Exposes `SerialNumber` and `SystemName`, used to populate the panel
+        device metadata shown in the Home Assistant device registry.
+        """
+        try:
+            response = await self.request(
+                method="get",
+                path="/system-info",
+            )
+        except InceptionApiClientCommunicationError as err:
+            if "404" in str(err):
+                _LOGGER.debug("Inception firmware does not expose /system-info")
+                self.system_info = None
+                return None
+            raise
+
+        if not isinstance(response, dict):
+            return None
+
+        info = SystemInfo(**response)
+        self.system_info = info
+        _LOGGER.info(
+            "Inception system info: name=%s serial=%s",
+            info.system_name,
+            info.serial_number,
+        )
+        return info
 
     async def connect(self) -> None:
         """Connect to the API."""

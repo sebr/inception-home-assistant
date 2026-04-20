@@ -14,7 +14,7 @@ from homeassistant.components.binary_sensor import (
 from homeassistant.helpers.device_registry import DeviceInfo
 
 from .const import DOMAIN, MANUFACTURER
-from .entity import InceptionEntity
+from .entity import InceptionEntity, panel_identifiers
 from .pyinception.schemas.door import DoorPublicState
 from .pyinception.schemas.input import InputPublicState
 from .util import find_matching_door
@@ -303,6 +303,7 @@ class InceptionInputBinarySensor(
                 identifiers={(DOMAIN, self._device_id)},
                 name=data.entity_info.name,
                 manufacturer=MANUFACTURER,
+                via_device=panel_identifiers(coordinator),
             )
 
 
@@ -328,4 +329,5 @@ class InceptionDoorBinarySensor(
             identifiers={(DOMAIN, self._device_id)},
             name=data.entity_info.name,
             manufacturer=MANUFACTURER,
+            via_device=panel_identifiers(coordinator),
         )

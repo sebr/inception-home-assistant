@@ -14,11 +14,13 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN, EVENT_REVIEW_EVENT
 from .coordinator import InceptionUpdateCoordinator
+from .entity import panel_device_info
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     from homeassistant.core import HomeAssistant
+    from homeassistant.helpers.device_registry import DeviceInfo
 
     from .data import InceptionConfigEntry
 
@@ -130,12 +132,7 @@ class InceptionLastReviewEventSensor(
         }
 
     @property
-    def device_info(self) -> dict[str, Any]:
+    def device_info(self) -> DeviceInfo:
         """Return device information about this entity."""
         coordinator = cast("InceptionUpdateCoordinator", self.coordinator)
-        return {
-            "identifiers": {(DOMAIN, coordinator.config_entry.entry_id)},
-            "name": "Inception Security System",
-            "manufacturer": "InnerRange",
-            "model": "Inception",
-        }
+        return panel_device_info(coordinator)

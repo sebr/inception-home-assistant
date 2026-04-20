@@ -5,15 +5,43 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from homeassistant.core import callback
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import LOGGER
+from .const import DOMAIN, LOGGER, MANUFACTURER
 from .coordinator import InceptionUpdateCoordinator
 
 if TYPE_CHECKING:
     from homeassistant.helpers.entity import EntityDescription
 
     from .pyinception.schemas.entities import InceptionSummaryEntry
+
+
+def panel_device_info(coordinator: InceptionUpdateCoordinator) -> DeviceInfo:
+    """Build the DeviceInfo for the Inception controller (panel)."""
+    entry = coordinator.config_entry
+    protocol_version = coordinator.api.protocol_version
+    system_info = coordinator.api.system_info
+    name = (
+        (system_info.system_name if system_info else "") or entry.title or "Inception"
+    )
+    serial_number = system_info.serial_number if system_info else None
+    return DeviceInfo(
+        identifiers={(DOMAIN, entry.entry_id)},
+        name=name,
+        manufacturer=MANUFACTURER,
+        model="Inception",
+        serial_number=serial_number or None,
+        sw_version=(
+            f"Protocol v{protocol_version}" if protocol_version is not None else None
+        ),
+        configuration_url=coordinator.api._host,
+    )
+
+
+def panel_identifiers(coordinator: InceptionUpdateCoordinator) -> tuple[str, str]:
+    """Return the panel device identifier tuple used as via_device for children."""
+    return (DOMAIN, coordinator.config_entry.entry_id)
 
 
 class InceptionEntity(CoordinatorEntity[InceptionUpdateCoordinator]):
