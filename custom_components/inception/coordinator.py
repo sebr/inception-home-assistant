@@ -68,6 +68,13 @@ class InceptionUpdateCoordinator(DataUpdateCoordinator[InceptionApiData]):
         except Exception as err:  # noqa: BLE001
             LOGGER.debug("Protocol-version probe failed: %s", err)
 
+        # Fetch the controller's system info (serial number, system name)
+        # so the panel device in Home Assistant can expose them. Non-fatal.
+        try:
+            await self.api.get_system_info()
+        except Exception as err:  # noqa: BLE001
+            LOGGER.debug("System-info probe failed: %s", err)
+
         return await super()._async_setup()
 
     async def _async_shutdown(self, _event: Any) -> None:

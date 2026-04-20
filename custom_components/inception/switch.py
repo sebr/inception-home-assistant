@@ -17,7 +17,7 @@ from homeassistant.helpers.entity_registry import async_get
 from homeassistant.helpers.storage import Store
 
 from .const import DOMAIN, LOGGER
-from .entity import InceptionEntity
+from .entity import InceptionEntity, panel_device_info, panel_identifiers
 from .pyinception.schemas.input import InputPublicState, InputType
 from .pyinception.schemas.output import OutputPublicState
 from .util import find_matching_door
@@ -199,6 +199,7 @@ class InceptionInputSwitch(InceptionSwitch, SwitchEntity):
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, data.entity_info.id)},
             name=data.entity_info.name,
+            via_device=panel_identifiers(coordinator),
         )
 
     @property
@@ -323,12 +324,7 @@ class ReviewEventGlobalSwitch(SwitchEntity):
             f"{coordinator.config_entry.entry_id}_review_events_global"
         )
         self._attr_name = "Review Events"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, coordinator.config_entry.entry_id)},
-            name="Inception Integration",
-            manufacturer="InnerRange",
-            model="Inception",
-        )
+        self._attr_device_info = panel_device_info(coordinator)
 
         # Initialize storage for persistent state
         self._store = Store(
@@ -455,12 +451,7 @@ class ReviewEventCategorySwitch(SwitchEntity):
             f"{coordinator.config_entry.entry_id}_review_events_{category.lower()}"
         )
         self._attr_name = f"Review Events {category}"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, coordinator.config_entry.entry_id)},
-            name="Inception Integration",
-            manufacturer="InnerRange",
-            model="Inception",
-        )
+        self._attr_device_info = panel_device_info(coordinator)
 
         # Initialize storage for persistent state
         self._store = Store(
