@@ -2,19 +2,24 @@
 
 [← Back to index](README.md)
 
-CRUD operations on the User entity, plus user photos and PIN generation.
+CRUD operations on the User entity, plus user photos, PIN generation, PIN
+lookup, and SkyCommand mobile-app linking.
 
 ## Contents
 
 - [Example: Querying for Users](#example-querying-for-users)
+  - [Query parameters cheat sheet](#query-parameters-cheat-sheet)
 - [Example: Getting a single User's Data](#example-getting-a-single-users-data)
 - [Example: Creating a New User](#example-creating-a-new-user)
 - [Example: Deleting a User](#example-deleting-a-user)
 - [Example: Updating User Data (full overwrite)](#example-updating-user-data-full-overwrite)
 - [Example: Patching User Data (partial update)](#example-patching-user-data-partial-update)
 - [Example: Adding or Updating a User Photo (new in protocol version 8)](#example-adding-or-updating-a-user-photo-new-in-protocol-version-8)
+- [Example: Getting a User's Photo](#example-getting-a-users-photo)
 - [Example: Deleting a User Photo (new in protocol version 8)](#example-deleting-a-user-photo-new-in-protocol-version-8)
 - [Example: Generating an unused PIN for a user (new in protocol version 11)](#example-generating-an-unused-pin-for-a-user-new-in-protocol-version-11)
+- [Example: Looking up a User by PIN](#example-looking-up-a-user-by-pin)
+- [Example: Linking a User to SkyCommand](#example-linking-a-user-to-skycommand)
 
 ## Example: Querying for Users
 
@@ -42,14 +47,20 @@ CRUD operations on the User entity, plus user photos and PIN generation.
    properties are returned in the query. Additional properties can be
    selectively included by setting the `includedProperties` query parameter
    to the desired properties, e.g.
-   `api/v1/config/user?includedProperties=Permissions,Credentials` will
-   include the `Permissions` and `Credentials` properties in the JSON
-   response. A list of all available property names can be found in the live
-   API docs. Additionally, the results can be filtered to only include Users
-   with new changes since a certain time, in the case where an integration
-   needs to periodically sync User data from Inception but only requires the
-   latest changes. This can be done with the `modifiedSince` query parameter,
-   like `api/v1/config/user?modifiedSince=2019-05-29T15:00:00`.
+   `api/v1/config/user?includedProperties=Permissions,PhysicalCredentials`
+   will include the `Permissions` and `PhysicalCredentials` arrays in the
+   JSON response. A list of all available property names can be found in the
+   live API docs.
+
+### Query parameters cheat sheet
+
+| Param                | Example                                  | Purpose                                                                                       |
+| -------------------- | ---------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `modifiedSince`      | `modifiedSince=2019-05-29T15:00:00`      | Only return users whose data has changed since the given ISO-8601 timestamp. Great for incremental sync. |
+| `includedProperties` | `includedProperties=EmailAddress,Permissions` | Opt-in to additional fields. Works on both list and single-user GETs.                       |
+| `count`              | `count=10`                               | Cap the number of results. Results are sorted by last-updated time, so `count=10` on the list endpoint returns the 10 most recently changed users. |
+
+All three params can be combined.
 
 ## Example: Getting a single User's Data
 
@@ -78,6 +89,11 @@ CRUD operations on the User entity, plus user photos and PIN generation.
      "UserCancelled": false
    }
    ```
+
+4. As with the list endpoint, `includedProperties` narrows the response to
+   specific fields, e.g.
+   `api/v1/config/user/[userID]?includedProperties=EmailAddress,Permissions`
+   returns only those two fields alongside the required `ID` / `Name`.
 
 ## Example: Creating a New User
 
@@ -163,18 +179,26 @@ CRUD operations on the User entity, plus user photos and PIN generation.
    requests.
 2. Send a `PATCH` request to `api/v1/config/user/[userID]` where `[userID]`
    is the ID of the User you want to patch, with a JSON request body
-   containing the patch data. The example below will assign a new `Notes`
-   field value, a new Permission Group (where `[permissionGroupID]` is a
-   valid Permission Group GUID) and Security PIN to the User, while leaving
-   the rest of the User's data unchanged:
+   containing the patch data. The example below updates `Notes`, enables
+   extended unlock times, assigns a new web-permission profile, grants the
+   user three control abilities on an area, and adds a physical credential
+   — while leaving every other field unchanged:
 
    ```json
    {
-     "Notes": "User has been modified",
-     "SecurityPin": "5678",
+     "Notes": "The quick brown fox jumps over the lazy dog",
+     "UseExtendedUnlockTimes": true,
+     "WebPagePermissions": "428B2B7B-E7A2-4DE1-8AD4-36C136647917",
      "Permissions": [
        {
-         "Item": "[permissionGroupID]"
+         "Item": "[areaID]",
+         "ControlAbilities": [1, 2, 8]
+       }
+     ],
+     "PhysicalCredentials": [
+       {
+         "CardTemplate": "5ef5bc02-a512-447d-a0c4-65657b8dc5cd",
+         "CardNumber": "123456"
        }
      ]
    }
@@ -219,6 +243,12 @@ CRUD operations on the User entity, plus user photos and PIN generation.
    upload was successful, or a description of the error if the request
    failed.
 
+## Example: Getting a User's Photo
+
+Send a `GET` request to `api/v1/config/user/[userID]/photo`. The response is
+the raw image bytes, with an appropriate `Content-Type` header (e.g.
+`image/png`). The server returns `404 Not Found` if the user has no photo.
+
 ## Example: Deleting a User Photo (new in protocol version 8)
 
 1. Authenticate as API User, save session ID from cookie and use it for future
@@ -254,6 +284,35 @@ CRUD operations on the User entity, plus user photos and PIN generation.
    [Creating a New User](#example-creating-a-new-user) example for more
    information).
 
+## Example: Looking up a User by PIN
+
+Useful if you already have the PIN in hand (e.g. captured at a terminal) and
+want to resolve the matching user.
+
+1. Send a `GET` request to `api/v1/config/user/by-pin/[pin]`, where `[pin]`
+   is the numeric Security PIN value.
+2. The server responds with the matching user's JSON object (same shape as
+   `GET /config/user/[userID]`) if a match is found, or a `404 Not Found` if
+   no user has that PIN. PINs remain write-only in every other response —
+   this endpoint is the one exception.
+
+## Example: Linking a User to SkyCommand
+
+Associates an Inception user with a SkyCommand (Inner Range's mobile app)
+account so push-to-arm / push-to-unlock features can be used.
+
+1. Send a `POST` request to `api/v1/config/user/[userID]/skycommand` with:
+
+   ```json
+   {
+     "Email": "[skycommand-registered-email]"
+   }
+   ```
+
+2. A successful response is an empty `200 OK`; a `Failure` envelope is
+   returned if the email does not match a SkyCommand account or if the link
+   already exists.
+
 ---
 
-**Next:** [Review Events →](review-events.md)
+**Next:** [Configuration →](configuration.md)

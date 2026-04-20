@@ -3,16 +3,40 @@
 [← Back to index](README.md)
 
 Query historical review events via `api/v1/review` with category, date range,
-message type, and involved entity filters. For real-time event monitoring see
+message type, involved-entity, and reference-event filters. For real-time
+event monitoring see
 [Long Polling & Monitoring](long-polling.md).
+
+## Query-parameter cheat sheet
+
+| Parameter                | Example                                       | Purpose                                                              |
+| ------------------------ | --------------------------------------------- | -------------------------------------------------------------------- |
+| `dir`                    | `dir=desc` / `dir=asc`                        | Sort order. `asc` (oldest first) is the default.                     |
+| `limit`                  | `limit=50`                                    | Max events to return. Default `100`, server-side cap applies.        |
+| `offset`                 | `offset=50`                                   | Skip the first N events — pair with `limit` for pagination.          |
+| `start` / `end`          | `start=2019-01-14&end=2019-01-18`             | ISO-8601 date/time bounds. With `dir=desc`, `start` must be newer.   |
+| `categoryFilter`         | `categoryFilter=Access,Security`              | Comma-separated category names (see live API docs).                  |
+| `messageTypeIdFilter`    | `messageTypeIdFilter=5000,5201`               | Comma-separated integer event-type IDs.                              |
+| `involvedEntityIdFilter` | `involvedEntityIdFilter=[userID]`             | Filter to events whose `WhoID` / `WhatID` / `WhereID` matches.       |
+| `referenceId` + `referenceTime` | `referenceId=[id]&referenceTime=[ticks]` | Anchor pagination around a specific event; combine with `dir`.       |
 
 ## Contents
 
+- [Example: Retrieve the 50 most recent Review Events](#example-retrieve-the-50-most-recent-review-events)
 - [Example: Retrieve the oldest 50 Review Events](#example-retrieve-the-oldest-50-review-events)
 - [Example: Retrieve Access and Security-related Events created between two Dates](#example-retrieve-access-and-security-related-events-created-between-two-dates)
+- [Example: Retrieve the 50 most recent Access Events](#example-retrieve-the-50-most-recent-access-events)
 - [Example: Retrieve User Area Arm/Disarm Events created between two Dates](#example-retrieve-user-area-armdisarm-events-created-between-two-dates)
 - [Example: Retrieve all Events involving a certain User](#example-retrieve-all-events-involving-a-certain-user)
 - [Example: Retrieve First 50 Events older than a Reference Event](#example-retrieve-first-50-events-older-than-a-reference-event)
+- [Example: Retrieve First 50 Events newer than a Reference Event](#example-retrieve-first-50-events-newer-than-a-reference-event)
+
+## Example: Retrieve the 50 most recent Review Events
+
+Send a `GET` request to `api/v1/review?dir=desc&limit=50`. The response shape
+matches the oldest-50 example below; only the ordering differs. Great as a
+one-shot bootstrap before switching to real-time monitoring via
+[Live Review Events](long-polling.md#live-review-events).
 
 ## Example: Retrieve the oldest 50 Review Events
 
@@ -124,6 +148,12 @@ message type, and involved entity filters. For real-time event monitoring see
      ]
    }
    ```
+
+## Example: Retrieve the 50 most recent Access Events
+
+Send a `GET` request to
+`api/v1/review?dir=desc&limit=50&categoryFilter=Access`. The response shape
+matches the date-range example above; only the filter differs.
 
 ## Example: Retrieve User Area Arm/Disarm Events created between two Dates
 
@@ -266,6 +296,15 @@ message type, and involved entity filters. For real-time event monitoring see
      ]
    }
    ```
+
+## Example: Retrieve First 50 Events newer than a Reference Event
+
+Identical to the "older than" example above, but with ascending order. Send a
+`GET` request to
+`api/v1/review?limit=50&referenceId=[msgId]&referenceTime=[msgTime]` —
+omit `dir` to accept the ascending default. The server returns up to 50
+events *newer* than the reference event, in chronological order. Update
+`[msgId]` / `[msgTime]` to the last event in each response to page forward.
 
 ---
 
