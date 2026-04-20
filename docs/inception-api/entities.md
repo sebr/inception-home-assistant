@@ -2,18 +2,66 @@
 
 [← Back to index](README.md)
 
-Retrieving entity information (Areas, Outputs) and controlling them via
-activity requests.
+Retrieving entity information and controlling Inception's primary entity types
+— Areas, Doors, Inputs, Outputs, Lift Floors, Storage Units, and (read-only)
+Users — via activity requests.
 
 ## Contents
 
-- [Requesting Entity Information](#requesting-entity-information)
+- [Endpoint conventions](#endpoint-conventions)
+- [Areas](#areas)
   - [Example: Getting Area Information](#example-getting-area-information)
-- [Controlling Entities](#controlling-entities)
   - [Example: Arming an Area (Standard Mode)](#example-arming-an-area-standard-mode)
+  - [Other Area activities](#other-area-activities)
+- [Doors](#doors)
+  - [Example: Listing Doors and their attached readers](#example-listing-doors-and-their-attached-readers)
+  - [Example: Unlocking a Door (timed)](#example-unlocking-a-door-timed)
+  - [Other Door activities](#other-door-activities)
+- [Inputs](#inputs)
+  - [Example: Isolating and De-Isolating an Input](#example-isolating-and-de-isolating-an-input)
+  - [Custom Inputs](#custom-inputs)
+- [Outputs](#outputs)
   - [Example: Controlling an Output (turn on)](#example-controlling-an-output-turn-on)
+  - [Other Output activities](#other-output-activities)
+- [Lift Floors](#lift-floors)
+- [Storage Units](#storage-units)
+- [Users (read-only control endpoints)](#users-read-only-control-endpoints)
 
-## Requesting Entity Information
+## Endpoint conventions
+
+Every entity type exposes the same four shapes of endpoint under
+`api/v1/control/[type]`:
+
+| Purpose                    | Method | Path                                |
+| -------------------------- | ------ | ----------------------------------- |
+| List visible items         | `GET`  | `/control/[type]`                   |
+| Bundled list + live state  | `GET`  | `/control/[type]/summary`           |
+| Get single item            | `GET`  | `/control/[type]/[id]`              |
+| Get single item's state    | `GET`  | `/control/[type]/[id]/state`        |
+| Submit a control request   | `POST` | `/control/[type]/[id]/activity`     |
+| Submit a system-wide request | `POST` | `/activity`                       |
+
+The value of `[type]` is one of: `area`, `door`, `input`, `output`,
+`lift-floor`, `storage-unit`, or `user` (read-only control semantics).
+For entity-type-specific extras (e.g. an Area's associated inputs and
+arm-info, or a Door's attached readers), see the per-section examples
+below.
+
+Control activity responses all follow the same envelope:
+
+```json
+{
+  "Response": { "Result": "Success", "Message": "OK" },
+  "ActivityID": "d9b90072-745b-49eb-be01-10ae9a8c1792"
+}
+```
+
+The returned `ActivityID` can be fed into the
+[`activity` endpoints](activities.md) or the
+[Activity Progress long-poll](long-polling.md#example-monitoring-the-progress-of-an-area-arm-activity)
+to track execution.
+
+## Areas
 
 ### Example: Getting Area Information
 
@@ -78,7 +126,13 @@ activity requests.
    }
    ```
 
-## Controlling Entities
+5. Two narrower read-only endpoints are also exposed if you only need a
+   subset of the summary data:
+
+   - `GET /control/area/[areaID]/inputs` → just the `AssociatedInputs`
+     array.
+   - `GET /control/area/[areaID]/arm-info` → just the `ArmInfo` object
+     (entry / exit / warn delays and multi-mode flag).
 
 ### Example: Arming an Area (Standard Mode)
 
@@ -117,6 +171,95 @@ activity requests.
    }
    ```
 
+### Other Area activities
+
+Each variant uses the same URL (`POST /control/area/[areaID]/activity`) and
+differs only in the body:
+
+| Action                          | Body                                                                                                         |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Disarm                          | `{ "Type": "ControlArea", "AreaControlType": "Disarm" }`                                                     |
+| Arm (Perimeter / Stay)          | `{ "Type": "ControlArea", "AreaControlType": "ArmStay" }`                                                    |
+| Arm (Night / Sleep)             | `{ "Type": "ControlArea", "AreaControlType": "ArmSleep" }`                                                   |
+| Arm with seal check             | `{ "Type": "ControlArea", "AreaControlType": "Arm", "SealCheck": true }`                                     |
+| Arm with exit delay             | `{ "Type": "ControlArea", "AreaControlType": "Arm", "ExitDelay": true }`                                     |
+| Arm with seal check + exit delay | `{ "Type": "ControlArea", "AreaControlType": "Arm", "SealCheck": true, "ExitDelay": true }`                 |
+| Arm **all** areas               | `POST /activity` with `{ "Type": "ControlArea", "AreaControlType": "Arm", "ControlAll": true }`              |
+
+## Doors
+
+### Example: Listing Doors and their attached readers
+
+1. `GET /control/door` returns the list of visible Doors (same shape as
+   [Areas](#example-getting-area-information)). `/summary` bundles live
+   state in the same way.
+2. For each door, `GET /control/door/[doorID]/attached-readers` returns the
+   card/PIN readers associated with that door — useful when you plan to
+   virtually badge or send a PIN (see [Activities](activities.md)).
+
+### Example: Unlocking a Door (timed)
+
+Send a `POST` to `api/v1/control/door/[doorID]/activity` with:
+
+```json
+{
+  "Type": "ControlDoor",
+  "DoorControlType": "TimedUnlock",
+  "TimeSecs": 5
+}
+```
+
+### Other Door activities
+
+All use `POST /control/door/[doorID]/activity` with `"Type": "ControlDoor"`:
+
+| Action              | `DoorControlType` | Extra fields             |
+| ------------------- | ----------------- | ------------------------ |
+| Momentary open      | `Open`            | —                        |
+| Lock                | `Lock`            | —                        |
+| Unlock (permanent)  | `Unlock`          | —                        |
+| Timed unlock        | `TimedUnlock`     | `TimeSecs: <int>`        |
+| Lockout             | `Lockout`         | —                        |
+| Clear override      | `Reinstate`       | —                        |
+| Unlock **all** doors | `Unlock`          | `ControlAll: true` (POST to `/activity`) |
+
+## Inputs
+
+### Example: Isolating and De-Isolating an Input
+
+1. `GET /control/input` / `GET /control/input/summary` list visible Inputs
+   and their live state.
+2. To isolate (bypass) an input — e.g. temporarily suppress a noisy sensor
+   while the alarm is armed — `POST /control/input/[inputID]/activity`:
+
+   ```json
+   {
+     "Type": "ControlInput",
+     "InputControlType": "Isolate"
+   }
+   ```
+
+3. To remove the isolation, submit the same request with
+   `"InputControlType": "DeIsolate"`.
+
+### Custom Inputs
+
+Custom Inputs (virtual inputs authored in the Inception config) accept a
+different `Type`: `ControlCustomInput`. Use the same
+`POST /control/input/[customInputID]/activity` endpoint, with one of three
+control verbs:
+
+| Action      | Body                                                                            |
+| ----------- | ------------------------------------------------------------------------------- |
+| Activate    | `{ "Type": "ControlCustomInput", "CustomInputControlType": "Activate" }`        |
+| Deactivate  | `{ "Type": "ControlCustomInput", "CustomInputControlType": "Deactivate" }`      |
+| Pulse       | `{ "Type": "ControlCustomInput", "CustomInputControlType": "Pulse" }`           |
+
+`Pulse` activates the input for its configured pulse duration and then
+automatically deactivates it.
+
+## Outputs
+
 ### Example: Controlling an Output (turn on)
 
 1. Authenticate API User, save session ID from cookie and use it for future
@@ -148,6 +291,56 @@ activity requests.
      "ActivityID": "d9b90072-745b-49eb-be01-10ae9a8c1792"
    }
    ```
+
+### Other Output activities
+
+| Action                       | Body                                                                                  |
+| ---------------------------- | ------------------------------------------------------------------------------------- |
+| Turn on (permanent)          | `{ "Type": "ControlOutput", "OutputControlType": "On" }`                              |
+| Turn on for **N** seconds    | `{ "Type": "ControlOutput", "OutputControlType": "On", "TimeSecs": 5 }`               |
+| Turn off                     | `{ "Type": "ControlOutput", "OutputControlType": "Off" }`                             |
+| Toggle                       | `{ "Type": "ControlOutput", "OutputControlType": "Toggle" }`                          |
+
+## Lift Floors
+
+Lift Floors are controlled with `"Type": "ControlFloor"`. List them with
+`GET /control/lift-floor` (or `/summary`).
+
+| Action                              | URL                                            | Body                                                                     |
+| ----------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------ |
+| Timed free access (N seconds)       | `POST /control/lift-floor/[floorID]/activity`  | `{ "Type": "ControlFloor", "FloorControlType": "TimedFreeAccess", "TimeSecs": 5 }` |
+| Secure **all** lift floors          | `POST /activity`                               | `{ "Type": "ControlFloor", "FloorControlType": "Secure", "ControlAll": true }`     |
+
+## Storage Units
+
+Storage Units represent lockers / cabinets that can be unlocked, secured, or
+marked vacant. Note the listing endpoint has a trailing slash
+(`/control/storage-unit/`) — the controller is tolerant of both with and
+without.
+
+| Action              | Body                                                                                  |
+| ------------------- | ------------------------------------------------------------------------------------- |
+| Unlock              | `{ "Type": "ControlStorageUnit", "StorageUnitControlType": "Unlock" }`                |
+| Secure              | `{ "Type": "ControlStorageUnit", "StorageUnitControlType": "Secure" }`                |
+| Mark vacant         | `{ "Type": "ControlStorageUnit", "StorageUnitControlType": "Vacant" }`                |
+| Clear vacancy       | `{ "Type": "ControlStorageUnit", "StorageUnitControlType": "ClearVacancy" }`          |
+
+All four use `POST /control/storage-unit/[storageUnitID]/activity`.
+
+## Users (read-only control endpoints)
+
+Users do not support `POST .../activity` control verbs on `/control/user`;
+instead the control endpoints just expose read-only views intended for
+live-state monitoring:
+
+- `GET /control/user` — list visible Users.
+- `GET /control/user/summary` — list bundled with live state (current
+  location, public-state flags).
+- `GET /control/user/[userID]` — single user's control view.
+- `GET /control/user/[userID]/state` — single user's live state only.
+
+Full CRUD + photo management lives under `/config/user/...`; see
+[User Management](user-management.md).
 
 ---
 

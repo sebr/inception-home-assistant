@@ -3,12 +3,19 @@
 [← Back to index](README.md)
 
 Virtually perform access actions at a door reader — badging a credential or
-presenting a PIN — as though the event happened physically at the reader.
+presenting a PIN — as though the event happened physically at the reader, or
+raise a system-wide user duress alert, and track the lifecycle of any
+activity (state, progress messages, cancellation).
 
 ## Contents
 
 - [Example: Virtually Badging a Card/Credential at a Door Reader](#example-virtually-badging-a-cardcredential-at-a-door-reader)
 - [Example: Virtually Presenting a User PIN at a Door Reader](#example-virtually-presenting-a-user-pin-at-a-door-reader)
+- [Example: Sending a User Duress alert](#example-sending-a-user-duress-alert)
+- [Tracking an Activity](#tracking-an-activity)
+  - [Example: Getting the current state of an Activity](#example-getting-the-current-state-of-an-activity)
+  - [Example: Fetching queued progress messages for an Activity](#example-fetching-queued-progress-messages-for-an-activity)
+  - [Example: Cancelling an Activity](#example-cancelling-an-activity)
 
 ## Example: Virtually Badging a Card/Credential at a Door Reader
 
@@ -95,6 +102,53 @@ presenting a PIN — as though the event happened physically at the reader.
      "ActivityID": "6a6fa14e-1f99-4483-be32-687c99057f66"
    }
    ```
+
+## Example: Sending a User Duress alert
+
+Raises a duress alert on the Inception system as though the logged-in
+user had entered their configured duress PIN at a terminal. The activity is
+attributed to the currently authenticated API User.
+
+1. Authenticate API User, save session ID from cookie and use it for future
+   requests.
+2. Send a `POST` request to `api/v1/activity` with the following body. There
+   is no `Entity` field — duress is a system-level alert rather than a
+   per-reader action:
+
+   ```json
+   {
+     "Type": "SendUserDuress"
+   }
+   ```
+
+3. On success the response contains the usual `ActivityID` which can be
+   tracked with the endpoints in the next section.
+
+## Tracking an Activity
+
+Every successful control / activity request returns an `ActivityID`. You can
+inspect an in-flight (or already completed) activity synchronously with the
+endpoints below — or subscribe to its progress asynchronously via
+[Activity Progress long polling](long-polling.md#example-monitoring-the-progress-of-an-area-arm-activity).
+
+### Example: Getting the current state of an Activity
+
+`GET /activity/[activityID]` returns a JSON snapshot of the activity's
+current state (message log, completion status, etc.).
+
+### Example: Fetching queued progress messages for an Activity
+
+`GET /activity/[activityID]/updates` returns the progress messages that have
+been generated since the previous call. This is the synchronous equivalent
+of the [Activity Progress](long-polling.md#example-monitoring-the-progress-of-an-area-arm-activity)
+long-poll and is useful when your client cannot keep a long-lived request
+open.
+
+### Example: Cancelling an Activity
+
+`DELETE /activity/[activityID]` asks the controller to abort the activity.
+Not every activity type can be cancelled partway through — unsupported
+cancellations will return a `Failure` envelope.
 
 ---
 

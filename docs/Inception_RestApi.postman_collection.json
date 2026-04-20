@@ -1,0 +1,6603 @@
+{
+	"info": {
+		"_postman_id": "674946d0-ac73-445a-b459-e8345ae90e5a",
+		"name": "Inception REST API Samples (API Version 16)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var data = JSON.parse(responseBody);",
+									"",
+									"tests[\"response code is 200\"] = responseCode.code === 200;",
+									"tests[\"Content-Type is application/json\"] = postman.getResponseHeader(\"Content-Type\") === \"application/json; charset=utf-8\";",
+									"tests[\"response was Success\"] = data.Response.Result === \"Success\";",
+									"",
+									"if (data.Response.Result === \"Success\") {",
+									"    postman.setEnvironmentVariable(\"session_id\", data.UserID);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n\t\"Username\": \"{{login_username}}\",\n\t\"Password\": \"{{login_password}}\"\n}"
+						},
+						"url": {
+							"raw": "{{API_ROOT}}/authentication/login",
+							"host": [
+								"{{API_ROOT}}"
+							],
+							"path": [
+								"authentication",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Login (hashed)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var data = JSON.parse(responseBody);",
+									"",
+									"tests[\"response code is 200\"] = responseCode.code === 200;",
+									"tests[\"Content-Type is application/json\"] = postman.getResponseHeader(\"Content-Type\") === \"application/json; charset=utf-8\";",
+									"tests[\"response was Success\"] = data.Response.Result === \"Success\";",
+									"",
+									"if (data.Response.Result === \"Success\") {",
+									"    postman.setEnvironmentVariable(\"session_id\", data.UserID);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"var username = pm.environment.get(\"login_username\");\r",
+									"var password = pm.environment.get(\"login_password\");\r",
+									"var hash = CryptoJS.SHA256(`${username.toLowerCase()}:${password}`);\r",
+									"pm.environment.set(\"login_hash\", CryptoJS.enc.Base64.stringify(hash));"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n\t\"Username\": \"{{login_username}}\",\n\t\"PasswordHash\": \"{{login_hash}}\"\n}"
+						},
+						"url": {
+							"raw": "{{API_ROOT}}/authentication/hashed-login",
+							"host": [
+								"{{API_ROOT}}"
+							],
+							"path": [
+								"authentication",
+								"hashed-login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Login (with 2FA code)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var data = JSON.parse(responseBody);",
+									"",
+									"tests[\"response code is 200\"] = responseCode.code === 200;",
+									"tests[\"Content-Type is application/json\"] = postman.getResponseHeader(\"Content-Type\") === \"application/json; charset=utf-8\";",
+									"tests[\"response was Success\"] = data.Response.Result === \"Success\";",
+									"",
+									"if (data.Response.Result === \"Success\") {",
+									"    postman.setEnvironmentVariable(\"session_id\", data.UserID);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n\t\"Username\": \"{{login_username}}\",\n\t\"Password\": \"{{login_password}}\",\n    \"TwoFactorCode\": \"{{login_2facode}}\"\n}"
+						},
+						"url": {
+							"raw": "{{API_ROOT}}/authentication/login-2fa",
+							"host": [
+								"{{API_ROOT}}"
+							],
+							"path": [
+								"authentication",
+								"login-2fa"
+							]
+						},
+						"description": "Set the login_2facode environment variable to the 6-digit 2FA code in order to log in with it."
+					},
+					"response": []
+				},
+				{
+					"name": "Logout",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Cookie",
+								"value": "LoginSessId={{session_id}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{API_ROOT}}/authentication/logout",
+							"host": [
+								"{{API_ROOT}}"
+							],
+							"path": [
+								"authentication",
+								"logout"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Control",
+			"item": [
+				{
+					"name": "Areas",
+					"item": [
+						{
+							"name": "Get Visible Areas",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (responseBody.length > 0) {",
+											"    var data = JSON.parse(responseBody);",
+											"    var areaValues = Object.values(data);",
+											"    if (!pm.environment.get(\"area_id\") && areaValues.length > 0) {",
+											"        pm.environment.set(\"area_id\", areaValues[0].ID);",
+											"    }",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{API_ROOT}}/control/area",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"area"
+									]
+								},
+								"description": "Retrieves a list of all Areas in the system, and sets the \"area_id\" environment variable to match the first item's id in the list if the list is not empty."
+							},
+							"response": []
+						},
+						{
+							"name": "Get Area Summary",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (responseBody.length > 0) {",
+											"    var data = JSON.parse(responseBody);",
+											"    var areaValues = Object.values(data.Areas);",
+											"    if (!pm.environment.get(\"area_id\") && areaValues.length > 0) {",
+											"        pm.environment.set(\"area_id\", areaValues[0].EntityInfo.ID);",
+											"    }",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{API_ROOT}}/control/area/summary",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"area",
+										"summary"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Area",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"if (!pm.environment.get(\"area_id\")) {",
+											"    throw new Error('area_id not set, try running the Get All Areas request first');",
+											"}"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{API_ROOT}}/control/area/{{area_id}}",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"area",
+										"{{area_id}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Area's Associated Inputs",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"if (!pm.environment.get(\"area_id\")) {",
+											"    throw new Error('area_id not set, try running the Get All Areas request first');",
+											"}"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{API_ROOT}}/control/area/{{area_id}}/inputs",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"area",
+										"{{area_id}}",
+										"inputs"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Area's Arm Info",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"if (!pm.environment.get(\"area_id\")) {",
+											"    throw new Error('area_id not set, try running the Get All Areas request first');",
+											"}"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{API_ROOT}}/control/area/{{area_id}}/arm-info",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"area",
+										"{{area_id}}",
+										"arm-info"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Area's State",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"if (!pm.environment.get(\"area_id\")) {",
+											"    throw new Error('area_id not set, try running the Get All Areas request first');",
+											"}"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{API_ROOT}}/control/area/{{area_id}}/state",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"area",
+										"{{area_id}}",
+										"state"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Arm Area (Standard Mode)",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"if (!pm.environment.get(\"area_id\")) {",
+											"    throw new Error('area_id not set, try setting the environment variable manually or running the Get All Areas request first');",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (responseBody.length > 0) {",
+											"    var data = JSON.parse(responseBody);",
+											"    if (data && data.Response && data.Response.Result === \"Success\")",
+											"        pm.environment.set(\"activity_id\", data.ActivityID);",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"Type\": \"ControlArea\",\n    \"AreaControlType\": \"Arm\"\n}"
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/control/area/{{area_id}}/activity",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"area",
+										"{{area_id}}",
+										"activity"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Disarm Area",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"if (!pm.environment.get(\"area_id\")) {",
+											"    throw new Error('area_id not set, try setting the environment variable manually or running the Get All Areas request first');",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (responseBody.length > 0) {",
+											"    var data = JSON.parse(responseBody);",
+											"    if (data && data.Response && data.Response.Result === \"Success\")",
+											"        pm.environment.set(\"activity_id\", data.ActivityID);",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"Type\": \"ControlArea\",\n    \"AreaControlType\": \"Disarm\"\n}"
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/control/area/{{area_id}}/activity",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"area",
+										"{{area_id}}",
+										"activity"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Arm Area (Standard Mode) with Seal Check",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"if (!pm.environment.get(\"area_id\")) {",
+											"    throw new Error('area_id not set, try setting the environment variable manually or running the Get All Areas request first');",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (responseBody.length > 0) {",
+											"    var data = JSON.parse(responseBody);",
+											"    if (data && data.Response && data.Response.Result === \"Success\")",
+											"        pm.environment.set(\"activity_id\", data.ActivityID);",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"Type\": \"ControlArea\",\n    \"AreaControlType\": \"Arm\",\n    \"Entity\": \"{{area_id}}\",\n    \"SealCheck\": true\n}"
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/control/area/{{area_id}}/activity",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"area",
+										"{{area_id}}",
+										"activity"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Arm Area (Standard Mode) with Exit Delay",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"if (!pm.environment.get(\"area_id\")) {",
+											"    throw new Error('area_id not set, try setting the environment variable manually or running the Get All Areas request first');",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (responseBody.length > 0) {",
+											"    var data = JSON.parse(responseBody);",
+											"    if (data && data.Response && data.Response.Result === \"Success\")",
+											"        pm.environment.set(\"activity_id\", data.ActivityID);",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"Type\": \"ControlArea\",\n    \"AreaControlType\": \"Arm\",\n    \"Entity\": \"{{area_id}}\",\n    \"ExitDelay\": true\n}"
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/control/area/{{area_id}}/activity",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"area",
+										"{{area_id}}",
+										"activity"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Arm Area (Standard Mode) with Seal Check and Exit Delay",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"if (!pm.environment.get(\"area_id\")) {",
+											"    throw new Error('area_id not set, try setting the environment variable manually or running the Get All Areas request first');",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (responseBody.length > 0) {",
+											"    var data = JSON.parse(responseBody);",
+											"    if (data && data.Response && data.Response.Result === \"Success\")",
+											"        pm.environment.set(\"activity_id\", data.ActivityID);",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"Type\": \"ControlArea\",\n    \"AreaControlType\": \"Arm\",\n    \"Entity\": \"{{area_id}}\",\n    \"SealCheck\": true,\n    \"ExitDelay\": true\n}"
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/control/area/{{area_id}}/activity",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"area",
+										"{{area_id}}",
+										"activity"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Arm Area (Perimeter Mode)",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"if (!pm.environment.get(\"area_id\")) {",
+											"    throw new Error('area_id not set, try setting the environment variable manually or running the Get All Areas request first');",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (responseBody.length > 0) {",
+											"    var data = JSON.parse(responseBody);",
+											"    if (data && data.Response && data.Response.Result === \"Success\")",
+											"        pm.environment.set(\"activity_id\", data.ActivityID);",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"Type\": \"ControlArea\",\n    \"AreaControlType\": \"ArmStay\",\n    \"Entity\": \"{{area_id}}\"\n}"
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/control/area/{{area_id}}/activity",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"area",
+										"{{area_id}}",
+										"activity"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Arm Area (Night Mode)",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"if (!pm.environment.get(\"area_id\")) {",
+											"    throw new Error('area_id not set, try setting the environment variable manually or running the Get All Areas request first');",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (responseBody.length > 0) {",
+											"    var data = JSON.parse(responseBody);",
+											"    if (data && data.Response && data.Response.Result === \"Success\")",
+											"        pm.environment.set(\"activity_id\", data.ActivityID);",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"Type\": \"ControlArea\",\n    \"AreaControlType\": \"ArmSleep\",\n    \"Entity\": \"{{area_id}}\"\n}"
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/control/area/{{area_id}}/activity",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"area",
+										"{{area_id}}",
+										"activity"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Arm All Areas",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (responseBody.length > 0) {",
+											"    var data = JSON.parse(responseBody);",
+											"    if (data && data.Response && data.Response.Result === \"Success\")",
+											"        pm.environment.set(\"activity_id\", data.ActivityID);",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"Type\": \"ControlArea\",\n    \"AreaControlType\": \"Arm\",\n    \"ControlAll\": true\n}"
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/activity",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"activity"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Doors",
+					"item": [
+						{
+							"name": "Get Visible Doors",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (responseBody.length > 0) {",
+											"    var data = JSON.parse(responseBody);",
+											"    var doorValues = Object.values(data);",
+											"    if (!pm.environment.get(\"door_id\") && doorValues.length > 0) {",
+											"        pm.environment.set(\"door_id\", doorValues[0].ID);",
+											"    }",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{API_ROOT}}/control/door",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"door"
+									]
+								},
+								"description": "Retrieves a list of all Doors in the system, and sets the \"door_id\" environment variable to match the first item's id in the list if the list is not empty."
+							},
+							"response": []
+						},
+						{
+							"name": "Get Door Summary",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (responseBody.length > 0) {",
+											"    var data = JSON.parse(responseBody);",
+											"    var doorValues = Object.values(data.Doors);",
+											"    if (!pm.environment.get(\"door_id\") && doorValues.length > 0) {",
+											"        pm.environment.set(\"door_id\", doorValues[0].EntityInfo.ID);",
+											"    }",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{API_ROOT}}/control/door/summary",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"door",
+										"summary"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Door",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"if (!pm.environment.get(\"door_id\")) {",
+											"    throw new Error('door_id not set, try running the Get All Doors request first');",
+											"}"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{API_ROOT}}/control/door/{{door_id}}",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"door",
+										"{{door_id}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Door's Associated Readers",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"if (!pm.environment.get(\"door_id\")) {",
+											"    throw new Error('door_id not set, try running the Get All Doors request first');",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{API_ROOT}}/control/door/{{door_id}}/attached-readers",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"door",
+										"{{door_id}}",
+										"attached-readers"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Door's State",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"if (!pm.environment.get(\"door_id\")) {",
+											"    throw new Error('door_id not set, try running the Get All Doors request first');",
+											"}"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{API_ROOT}}/control/door/{{door_id}}/state",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"door",
+										"{{door_id}}",
+										"state"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Open Door",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"if (!pm.environment.get(\"door_id\")) {",
+											"    throw new Error('door_id not set, try setting the environment variable manually or running the Get All Doors request first');",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (responseBody.length > 0) {",
+											"    var data = JSON.parse(responseBody);",
+											"    if (data && data.Response && data.Response.Result === \"Success\")",
+											"        pm.environment.set(\"activity_id\", data.ActivityID);",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"Type\": \"ControlDoor\",\n    \"DoorControlType\": \"Open\",\n    \"Entity\": \"{{door_id}}\"\n}"
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/control/door/{{door_id}}/activity",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"door",
+										"{{door_id}}",
+										"activity"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Lock Door",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"if (!pm.environment.get(\"door_id\")) {",
+											"    throw new Error('door_id not set, try setting the environment variable manually or running the Get All Doors request first');",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (responseBody.length > 0) {",
+											"    var data = JSON.parse(responseBody);",
+											"    if (data && data.Response && data.Response.Result === \"Success\")",
+											"        pm.environment.set(\"activity_id\", data.ActivityID);",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"Type\": \"ControlDoor\",\n    \"DoorControlType\": \"Lock\",\n    \"Entity\": \"{{door_id}}\"\n}"
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/control/door/{{door_id}}/activity",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"door",
+										"{{door_id}}",
+										"activity"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Unlock Door",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"if (!pm.environment.get(\"door_id\")) {",
+											"    throw new Error('door_id not set, try setting the environment variable manually or running the Get All Doors request first');",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (responseBody.length > 0) {",
+											"    var data = JSON.parse(responseBody);",
+											"    if (data && data.Response && data.Response.Result === \"Success\")",
+											"        pm.environment.set(\"activity_id\", data.ActivityID);",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"Type\": \"ControlDoor\",\n    \"DoorControlType\": \"Unlock\",\n    \"Entity\": \"{{door_id}}\"\n}"
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/control/door/{{door_id}}/activity",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"door",
+										"{{door_id}}",
+										"activity"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Lockout Door",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"if (!pm.environment.get(\"door_id\")) {",
+											"    throw new Error('door_id not set, try setting the environment variable manually or running the Get All Doors request first');",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (responseBody.length > 0) {",
+											"    var data = JSON.parse(responseBody);",
+											"    if (data && data.Response && data.Response.Result === \"Success\")",
+											"        pm.environment.set(\"activity_id\", data.ActivityID);",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"Type\": \"ControlDoor\",\n    \"DoorControlType\": \"Lockout\",\n    \"Entity\": \"{{door_id}}\"\n}"
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/control/door/{{door_id}}/activity",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"door",
+										"{{door_id}}",
+										"activity"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Clear Override on Door",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"if (!pm.environment.get(\"door_id\")) {",
+											"    throw new Error('door_id not set, try setting the environment variable manually or running the Get All Doors request first');",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (responseBody.length > 0) {",
+											"    var data = JSON.parse(responseBody);",
+											"    if (data && data.Response && data.Response.Result === \"Success\")",
+											"        pm.environment.set(\"activity_id\", data.ActivityID);",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"Type\": \"ControlDoor\",\n    \"DoorControlType\": \"Reinstate\",\n    \"Entity\": \"{{door_id}}\"\n}"
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/control/door/{{door_id}}/activity",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"door",
+										"{{door_id}}",
+										"activity"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Timed Unlock on Door for 5 seconds",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"if (!pm.environment.get(\"door_id\")) {",
+											"    throw new Error('door_id not set, try setting the environment variable manually or running the Get All Doors request first');",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (responseBody.length > 0) {",
+											"    var data = JSON.parse(responseBody);",
+											"    if (data && data.Response && data.Response.Result === \"Success\")",
+											"        pm.environment.set(\"activity_id\", data.ActivityID);",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"Type\": \"ControlDoor\",\n    \"DoorControlType\": \"TimedUnlock\",\n    \"TimeSecs\": 5,\n    \"Entity\": \"{{door_id}}\"\n}"
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/control/door/{{door_id}}/activity",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"door",
+										"{{door_id}}",
+										"activity"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Unlock All Doors",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (responseBody.length > 0) {",
+											"    var data = JSON.parse(responseBody);",
+											"    if (data && data.Response && data.Response.Result === \"Success\")",
+											"        pm.environment.set(\"activity_id\", data.ActivityID);",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"Type\": \"ControlDoor\",\n    \"DoorControlType\": \"Unlock\",\n    \"ControlAll\": true\n}"
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/activity",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"activity"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Inputs",
+					"item": [
+						{
+							"name": "Get Visible Inputs",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (responseBody.length > 0) {",
+											"    var data = JSON.parse(responseBody);",
+											"    var inputValues = Object.values(data);",
+											"    if (!pm.environment.get(\"input_id\") && inputValues.length > 0) {",
+											"        pm.environment.set(\"input_id\", inputValues[0].ID);",
+											"    }",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{API_ROOT}}/control/input",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"input"
+									]
+								},
+								"description": "Retrieves a list of all Inputs in the system, and sets the \"input_id\" environment variable to match the first item's id in the list if the list is not empty."
+							},
+							"response": []
+						},
+						{
+							"name": "Get Input Summary",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (responseBody.length > 0) {\r",
+											"    var data = JSON.parse(responseBody);\r",
+											"    var inputValues = Object.values(data.Inputs);\r",
+											"    if (!pm.environment.get(\"input_id\") && inputValues.length > 0) {\r",
+											"        pm.environment.set(\"input_id\", inputValues[0].EntityInfo.ID);\r",
+											"    }\r",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{API_ROOT}}/control/input/summary",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"input",
+										"summary"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Input",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"if (!pm.environment.get(\"input_id\")) {",
+											"    throw new Error('input_id not set, try running the Get All Inputs request first');",
+											"}"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{API_ROOT}}/control/input/{{input_id}}",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"input",
+										"{{input_id}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Input's State",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"if (!pm.environment.get(\"input_id\")) {",
+											"    throw new Error('input_id not set, try running the Get All Inputs request first');",
+											"}"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{API_ROOT}}/control/input/{{input_id}}/state",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"input",
+										"{{input_id}}",
+										"state"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Isolate Input",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"if (!pm.environment.get(\"input_id\")) {",
+											"    throw new Error('input_id not set, try setting the environment variable manually or running the Get All Inputs request first');",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (responseBody.length > 0) {",
+											"    var data = JSON.parse(responseBody);",
+											"    if (data && data.Response && data.Response.Result === \"Success\")",
+											"        pm.environment.set(\"activity_id\", data.ActivityID);",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"Type\": \"ControlInput\",\n    \"InputControlType\": \"Isolate\",\n    \"Entity\": \"{{input_id}}\"\n}"
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/control/input/{{input_id}}/activity",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"input",
+										"{{input_id}}",
+										"activity"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "De-Isolate Input",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"if (!pm.environment.get(\"input_id\")) {",
+											"    throw new Error('input_id not set, try setting the environment variable manually or running the Get All Inputs request first');",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (responseBody.length > 0) {",
+											"    var data = JSON.parse(responseBody);",
+											"    if (data && data.Response && data.Response.Result === \"Success\")",
+											"        pm.environment.set(\"activity_id\", data.ActivityID);",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"Type\": \"ControlInput\",\n    \"InputControlType\": \"DeIsolate\",\n    \"Entity\": \"{{input_id}}\"\n}"
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/control/input/{{input_id}}/activity",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"input",
+										"{{input_id}}",
+										"activity"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Activate Custom Input",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"if (!pm.environment.get(\"custominput_id\")) {",
+											"    throw new Error('custominput_id not set, try setting the environment variable manually to a known Custom Input ID');",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (responseBody.length > 0) {",
+											"    var data = JSON.parse(responseBody);",
+											"    if (data && data.Response && data.Response.Result === \"Success\")",
+											"        pm.environment.set(\"activity_id\", data.ActivityID);",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"Type\": \"ControlCustomInput\",\n    \"CustomInputControlType\": \"Activate\",\n    \"Entity\": \"{{custominput_id}}\"\n}"
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/control/input/{{custominput_id}}/activity",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"input",
+										"{{custominput_id}}",
+										"activity"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Deactivate Custom Input",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"if (!pm.environment.get(\"custominput_id\")) {",
+											"    throw new Error('custominput_id not set, try setting the environment variable manually to a known Custom Input ID');",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (responseBody.length > 0) {",
+											"    var data = JSON.parse(responseBody);",
+											"    if (data && data.Response && data.Response.Result === \"Success\")",
+											"        pm.environment.set(\"activity_id\", data.ActivityID);",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"Type\": \"ControlCustomInput\",\n    \"CustomInputControlType\": \"Deactivate\",\n    \"Entity\": \"{{custominput_id}}\"\n}"
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/control/input/{{custominput_id}}/activity",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"input",
+										"{{custominput_id}}",
+										"activity"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Pulse Custom Input",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"if (!pm.environment.get(\"custominput_id\")) {",
+											"    throw new Error('custominput_id not set, try setting the environment variable manually to a known Custom Input ID');",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (responseBody.length > 0) {",
+											"    var data = JSON.parse(responseBody);",
+											"    if (data && data.Response && data.Response.Result === \"Success\")",
+											"        pm.environment.set(\"activity_id\", data.ActivityID);",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"Type\": \"ControlCustomInput\",\n    \"CustomInputControlType\": \"Pulse\",\n    \"Entity\": \"{{custominput_id}}\"\n}"
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/control/input/{{custominput_id}}/activity",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"input",
+										"{{custominput_id}}",
+										"activity"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Outputs",
+					"item": [
+						{
+							"name": "Get Visible Outputs",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (responseBody.length > 0) {",
+											"    var data = JSON.parse(responseBody);",
+											"    var outputValues = Object.values(data);",
+											"    if (!pm.environment.get(\"output_id\") && outputValues.length > 0) {",
+											"        pm.environment.set(\"output_id\", outputValues[0].ID);",
+											"    }",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{API_ROOT}}/control/output",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"output"
+									]
+								},
+								"description": "Retrieves a list of all Outputs in the system, and sets the \"output_id\" environment variable to match the first item's id in the list if the list is not empty."
+							},
+							"response": []
+						},
+						{
+							"name": "Get Output Summary",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (responseBody.length > 0) {",
+											"    var data = JSON.parse(responseBody);",
+											"    var outputValues = Object.values(data.Outputs);",
+											"    if (!pm.environment.get(\"output_id\") && outputValues.length > 0) {",
+											"        pm.environment.set(\"output_id\", outputValues[0].EntityInfo.ID);",
+											"    }",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{API_ROOT}}/control/output/summary",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"output",
+										"summary"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Output",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"if (!pm.environment.get(\"output_id\")) {",
+											"    throw new Error('output_id not set, try running the Get All Outputs request first');",
+											"}"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{API_ROOT}}/control/output/{{output_id}}",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"output",
+										"{{output_id}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Output's State",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"if (!pm.environment.get(\"output_id\")) {",
+											"    throw new Error('output_id not set, try running the Get All Outputs request first');",
+											"}"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{API_ROOT}}/control/output/{{output_id}}/state",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"output",
+										"{{output_id}}",
+										"state"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Turn Output On (permanent)",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"if (!pm.environment.get(\"output_id\")) {",
+											"    throw new Error('output_id not set, try setting the environment variable manually or running the Get All Outputs request first');",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (responseBody.length > 0) {",
+											"    var data = JSON.parse(responseBody);",
+											"    if (data && data.Response && data.Response.Result === \"Success\")",
+											"        pm.environment.set(\"activity_id\", data.ActivityID);",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"Type\": \"ControlOutput\",\n    \"OutputControlType\": \"On\",\n    \"Entity\": \"{{output_id}}\"\n}"
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/control/output/{{output_id}}/activity",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"output",
+										"{{output_id}}",
+										"activity"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Turn Output On (for 5 seconds)",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"if (!pm.environment.get(\"output_id\")) {",
+											"    throw new Error('output_id not set, try setting the environment variable manually or running the Get All Outputs request first');",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (responseBody.length > 0) {",
+											"    var data = JSON.parse(responseBody);",
+											"    if (data && data.Response && data.Response.Result === \"Success\")",
+											"        pm.environment.set(\"activity_id\", data.ActivityID);",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"Type\": \"ControlOutput\",\n    \"OutputControlType\": \"On\",\n    \"TimeSecs\": 5,\n    \"Entity\": \"{{output_id}}\"\n}"
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/control/output/{{output_id}}/activity",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"output",
+										"{{output_id}}",
+										"activity"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Turn Output Off",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"if (!pm.environment.get(\"output_id\")) {",
+											"    throw new Error('output_id not set, try setting the environment variable manually or running the Get All Outputs request first');",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (responseBody.length > 0) {",
+											"    var data = JSON.parse(responseBody);",
+											"    if (data && data.Response && data.Response.Result === \"Success\")",
+											"        pm.environment.set(\"activity_id\", data.ActivityID);",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"Type\": \"ControlOutput\",\n    \"OutputControlType\": \"Off\",\n    \"Entity\": \"{{output_id}}\"\n}"
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/control/output/{{output_id}}/activity",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"output",
+										"{{output_id}}",
+										"activity"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Toggle Output",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"if (!pm.environment.get(\"output_id\")) {",
+											"    throw new Error('output_id not set, try setting the environment variable manually or running the Get All Outputs request first');",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (responseBody.length > 0) {",
+											"    var data = JSON.parse(responseBody);",
+											"    if (data && data.Response && data.Response.Result === \"Success\")",
+											"        pm.environment.set(\"activity_id\", data.ActivityID);",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"Type\": \"ControlOutput\",\n    \"OutputControlType\": \"Toggle\",\n    \"Entity\": \"{{output_id}}\"\n}"
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/control/output/{{output_id}}/activity",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"output",
+										"{{output_id}}",
+										"activity"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Lift Floors",
+					"item": [
+						{
+							"name": "Get Visible Lift Floors",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (responseBody.length > 0) {",
+											"    var data = JSON.parse(responseBody);",
+											"    var floorValues = Object.values(data);",
+											"    if (!pm.environment.get(\"floor_id\") && floorValues.length > 0) {",
+											"        pm.environment.set(\"floor_id\", floorValues[0].ID);",
+											"    }",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{API_ROOT}}/control/lift-floor",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"lift-floor"
+									]
+								},
+								"description": "Retrieves a list of all Lift Floors in the system, and sets the \"floor_id\" environment variable to match the first item's id in the list if the list is not empty."
+							},
+							"response": []
+						},
+						{
+							"name": "Get Lift Floor Summary",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (responseBody.length > 0) {",
+											"    var data = JSON.parse(responseBody);",
+											"    var floorValues = Object.values(data.Floors);",
+											"    if (!pm.environment.get(\"floor_id\") && floorValues.length > 0) {",
+											"        pm.environment.set(\"floor_id\", floorValues[0].EntityInfo.ID);",
+											"    }",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{API_ROOT}}/control/lift-floor/summary",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"lift-floor",
+										"summary"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Lift Floor",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"if (!pm.environment.get(\"floor_id\")) {",
+											"    throw new Error('floor_id not set, try running the Get All Lift Floors request first');",
+											"}"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{API_ROOT}}/control/lift-floor/{{floor_id}}",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"lift-floor",
+										"{{floor_id}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Lift Floor's State",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"if (!pm.environment.get(\"floor_id\")) {",
+											"    throw new Error('floor_id not set, try running the Get All Lift Floors request first');",
+											"}"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{API_ROOT}}/control/lift-floor/{{floor_id}}/state",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"lift-floor",
+										"{{floor_id}}",
+										"state"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Set Timed Free Access for Lift Floor (5 secs)",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"if (!pm.environment.get(\"floor_id\")) {",
+											"    throw new Error('floor_id not set, try setting the environment variable manually or running the Get All Lift Floors request first');",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (responseBody.length > 0) {",
+											"    var data = JSON.parse(responseBody);",
+											"    if (data && data.Response && data.Response.Result === \"Success\")",
+											"        pm.environment.set(\"activity_id\", data.ActivityID);",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"Type\": \"ControlFloor\",\n    \"FloorControlType\": \"TimedFreeAccess\",\n    \"TimeSecs\": 5\n}"
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/control/lift-floor/{{floor_id}}/activity",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"lift-floor",
+										"{{floor_id}}",
+										"activity"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Secure All Lift Floors",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (responseBody.length > 0) {",
+											"    var data = JSON.parse(responseBody);",
+											"    if (data && data.Response && data.Response.Result === \"Success\")",
+											"        pm.environment.set(\"activity_id\", data.ActivityID);",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"Type\": \"ControlFloor\",\n    \"FloorControlType\": \"Secure\",\n    \"ControlAll\": true\n}"
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/activity",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"activity"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Users",
+					"item": [
+						{
+							"name": "Get Visible Users",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (responseBody.length > 0) {",
+											"    var data = JSON.parse(responseBody);",
+											"    var userValues = Object.values(data);",
+											"    if (!pm.environment.get(\"user_id\") && userValues.length > 0) {",
+											"        pm.environment.set(\"user_id\", userValues[0].ID);",
+											"    }",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{API_ROOT}}/control/user",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"user"
+									]
+								},
+								"description": "Retrieves a list of all Users in the system, and sets the \"user_id\" environment variable to match the first item's id in the list if the list is not empty."
+							},
+							"response": []
+						},
+						{
+							"name": "Get User Summary",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (responseBody.length > 0) {",
+											"    var data = JSON.parse(responseBody);",
+											"    var userValues = Object.values(data.Users);",
+											"    if (!pm.environment.get(\"user_id\") && userValues.length > 0) {",
+											"        pm.environment.set(\"user_id\", userValues[0].EntityInfo.ID);",
+											"    }",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{API_ROOT}}/control/user/summary",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"user",
+										"summary"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get User",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"if (!pm.environment.get(\"user_id\")) {",
+											"    throw new Error('user_id not set, try running the Get All Users request first');",
+											"}"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{API_ROOT}}/control/user/{{user_id}}",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"user",
+										"{{user_id}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get User's State",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"if (!pm.environment.get(\"output_id\")) {",
+											"    throw new Error('output_id not set, try running the Get All Outputs request first');",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{API_ROOT}}/control/user/{{user_id}}/state",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"user",
+										"{{user_id}}",
+										"state"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Storage Units",
+					"item": [
+						{
+							"name": "Get Visible Storage Units",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (responseBody.length > 0) {\r",
+											"    var data = JSON.parse(responseBody);\r",
+											"    var storageUnitValues = Object.values(data);\r",
+											"    if (!pm.environment.get(\"storage_unit_id\") && storageUnitValues.length > 0) {\r",
+											"        pm.environment.set(\"storage_unit_id\", storageUnitValues[0].ID);\r",
+											"    }\r",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{API_ROOT}}/control/storage-unit/",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"storage-unit",
+										""
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Storage Unit",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"if (!pm.environment.get(\"storage_unit_id\")) {\r",
+											"    throw new Error('storage_unit_id not set, try running the Get All Storage Units request first');\r",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "default"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}",
+										"type": "default"
+									}
+								],
+								"url": {
+									"raw": "{{API_ROOT}}/control/storage-unit/{{storage_unit_id}}",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"storage-unit",
+										"{{storage_unit_id}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Storage Unit State",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"if (!pm.environment.get(\"storage_unit_id\")) {\r",
+											"    throw new Error('storage_unit_id not set, try running the Get All Storage Units request first');\r",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "default"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}",
+										"type": "default"
+									}
+								],
+								"url": {
+									"raw": "{{API_ROOT}}/control/storage-unit/{{storage_unit_id}}/state",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"storage-unit",
+										"{{storage_unit_id}}",
+										"state"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Storage Unit Summary",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (responseBody.length > 0) {\r",
+											"    var data = JSON.parse(responseBody);\r",
+											"    var storageUnitValues = Object.values(data.StorageUnits);\r",
+											"    if (!pm.environment.get(\"storage_unit_id\") && storageUnitValues.length > 0) {\r",
+											"        pm.environment.set(\"storage_unit_id\", storageUnitValues[0].EntityInfo.ID);\r",
+											"    }\r",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "default"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}",
+										"type": "default"
+									}
+								],
+								"url": {
+									"raw": "{{API_ROOT}}/control/storage-unit/summary",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"storage-unit",
+										"summary"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Unlock Storage Unit",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"if (!pm.environment.get(\"storage_unit_id\")) {\r",
+											"    throw new Error('storage_unit_id not set, try setting the environment variable manually or running the Get All Storage Units request first');\r",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (responseBody.length > 0) {\r",
+											"    var data = JSON.parse(responseBody);\r",
+											"    if (data && data.Response && data.Response.Result === \"Success\")\r",
+											"        pm.environment.set(\"activity_id\", data.ActivityID);\r",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "default"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "default"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}",
+										"type": "default"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"Type\": \"ControlStorageUnit\",\r\n    \"StorageUnitControlType\": \"Unlock\",\r\n    \"Entity\": \"{{storage_unit_id}}\"\r\n}"
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/control/storage-unit/{{storage_unit_id}}/activity",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"storage-unit",
+										"{{storage_unit_id}}",
+										"activity"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Secure Storage Unit",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"if (!pm.environment.get(\"storage_unit_id\")) {\r",
+											"    throw new Error('storage_unit_id not set, try setting the environment variable manually or running the Get All Storage Units request first');\r",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (responseBody.length > 0) {\r",
+											"    var data = JSON.parse(responseBody);\r",
+											"    if (data && data.Response && data.Response.Result === \"Success\")\r",
+											"        pm.environment.set(\"activity_id\", data.ActivityID);\r",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "default"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "default"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}",
+										"type": "default"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"Type\": \"ControlStorageUnit\",\r\n    \"StorageUnitControlType\": \"Secure\",\r\n    \"Entity\": \"{{storage_unit_id}}\"\r\n}"
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/control/storage-unit/{{storage_unit_id}}/activity",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"storage-unit",
+										"{{storage_unit_id}}",
+										"activity"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Mark Storage Unit as Vacant",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"if (!pm.environment.get(\"storage_unit_id\")) {\r",
+											"    throw new Error('storage_unit_id not set, try setting the environment variable manually or running the Get All Storage Units request first');\r",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (responseBody.length > 0) {\r",
+											"    var data = JSON.parse(responseBody);\r",
+											"    if (data && data.Response && data.Response.Result === \"Success\")\r",
+											"        pm.environment.set(\"activity_id\", data.ActivityID);\r",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "default"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "default"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}",
+										"type": "default"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"Type\": \"ControlStorageUnit\",\r\n    \"StorageUnitControlType\": \"Vacant\",\r\n    \"Entity\": \"{{storage_unit_id}}\"\r\n}"
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/control/storage-unit/{{storage_unit_id}}/activity",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"storage-unit",
+										"{{storage_unit_id}}",
+										"activity"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Clear Storage Unit Vacancy",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"if (!pm.environment.get(\"storage_unit_id\")) {\r",
+											"    throw new Error('storage_unit_id not set, try setting the environment variable manually or running the Get All Storage Units request first');\r",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (responseBody.length > 0) {\r",
+											"    var data = JSON.parse(responseBody);\r",
+											"    if (data && data.Response && data.Response.Result === \"Success\")\r",
+											"        pm.environment.set(\"activity_id\", data.ActivityID);\r",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "default"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "default"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}",
+										"type": "default"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"Type\": \"ControlStorageUnit\",\r\n    \"StorageUnitControlType\": \"ClearVacancy\",\r\n    \"Entity\": \"{{storage_unit_id}}\"\r\n}"
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/control/storage-unit/{{storage_unit_id}}/activity",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"control",
+										"storage-unit",
+										"{{storage_unit_id}}",
+										"activity"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			],
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				}
+			]
+		},
+		{
+			"name": "Configuration",
+			"item": [
+				{
+					"name": "Users",
+					"item": [
+						{
+							"name": "Get All Users",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											""
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{API_ROOT}}/config/user",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"config",
+										"user"
+									]
+								},
+								"description": "Retrieves a list of all the User items in the system. Returns a JSON array of objects that contain the \"Name\" and \"ID\" field of Users."
+							},
+							"response": []
+						},
+						{
+							"name": "Get All Users Modified Since 2019-02-01",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{API_ROOT}}/config/user?modifiedSince=2019-02-01",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"config",
+										"user"
+									],
+									"query": [
+										{
+											"key": "modifiedSince",
+											"value": "2019-02-01"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get All Users' Permissions & Physical Credentials",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{API_ROOT}}/config/user?includedProperties=Permissions,PhysicalCredentials",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"config",
+										"user"
+									],
+									"query": [
+										{
+											"key": "includedProperties",
+											"value": "Permissions,PhysicalCredentials"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get First 10 Users (sorted by Last Updated Time)",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{API_ROOT}}/config/user?count=10",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"config",
+										"user"
+									],
+									"query": [
+										{
+											"key": "count",
+											"value": "10"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create User",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											""
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"var data = JSON.parse(responseBody);",
+											"if (data) {",
+											"    pm.environment.set(\"user_id\", data.ID);",
+											"}"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n\t\"Name\": \"John Smith\",\n\t\"Notes\": \"This is a test user created by the Inception REST API Postman test suite\"\n}"
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/config/user",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"config",
+										"user"
+									]
+								},
+								"description": "Creates a new User item in the Inception database, using the JSON object in the request body. Returns a JSON representation of the created User object as a response. Any fields not specified in the JSON object will be set to their default values."
+							},
+							"response": []
+						},
+						{
+							"name": "Get User",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"if (!pm.environment.get(\"user_id\")) {",
+											"    throw new Error('user_id not set, try running the Create User request first');",
+											"}"
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{API_ROOT}}/config/user/{{user_id}}",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"config",
+										"user",
+										"{{user_id}}"
+									]
+								},
+								"description": "Retrieves all the details of a single User item in the Inception system, specified by the ID in the URL. Returns a single JSON object containing the User's data."
+							},
+							"response": []
+						},
+						{
+							"name": "Generate Unused PIN",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{API_ROOT}}/config/user/generate-unused-pin",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"config",
+										"user",
+										"generate-unused-pin"
+									]
+								},
+								"description": "Retrieves all the details of a single User item in the Inception system, specified by the ID in the URL. Returns a single JSON object containing the User's data."
+							},
+							"response": []
+						},
+						{
+							"name": "Get User's Email and Permission fields only",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"if (!pm.environment.get(\"user_id\")) {",
+											"    throw new Error('user_id not set, try running the Create User request first');",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{API_ROOT}}/config/user/{{user_id}}?includedProperties=EmailAddress,Permissions",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"config",
+										"user",
+										"{{user_id}}"
+									],
+									"query": [
+										{
+											"key": "includedProperties",
+											"value": "EmailAddress,Permissions"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get User's Photo",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"if (!pm.environment.get(\"user_id\")) {",
+											"    throw new Error('user_id not set, try running the Create User request first');",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{API_ROOT}}/config/user/{{user_id}}/photo",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"config",
+										"user",
+										"{{user_id}}",
+										"photo"
+									]
+								},
+								"description": "Retrieves a user's photo if one exists."
+							},
+							"response": []
+						},
+						{
+							"name": "Create/Update User's Photo",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"if (!pm.environment.get(\"user_id\")) {",
+											"    throw new Error('user_id not set, try running the Create User request first');",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "image",
+											"type": "file",
+											"src": "/C:/Users/michael.truscott/Pictures/Stock User Photos/Female 6.png"
+										}
+									]
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/config/user/{{user_id}}/photo",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"config",
+										"user",
+										"{{user_id}}",
+										"photo"
+									]
+								},
+								"description": "Uploads an image file to use for a user's photo. Go to the Body section of the request and set the value of the form-data \"image\" to an image file in order to upload that file."
+							},
+							"response": []
+						},
+						{
+							"name": "Delete User's Photo",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"if (!pm.environment.get(\"user_id\")) {",
+											"    throw new Error('user_id not set, try running the Create User request first');",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{API_ROOT}}/config/user/{{user_id}}/photo",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"config",
+										"user",
+										"{{user_id}}",
+										"photo"
+									]
+								},
+								"description": "Deletes a user's photo."
+							},
+							"response": []
+						},
+						{
+							"name": "Update (Replace) User",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"if (!pm.environment.get(\"user_id\")) {",
+											"    throw new Error('user_id not set, try running the Create User request first');",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n\t\"Name\": \"Miguel Sanchez\",\n\t\"Notes\": \"Replacing the user with ID {{user_id}}\",\n\t\"TerminalProfile\": \"FE4E00F4-24B2-4DDA-9355-761D37448650\"\n}"
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/config/user/{{user_id}}",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"config",
+										"user",
+										"{{user_id}}"
+									]
+								},
+								"description": "Replaces the User at the specified URL with a new User item, using the JSON object in the request body. NOTE: This method completely replaces the entire object, previous field values are not retained. If you only want to update certain fields (e.g. the User's Name or Permissions field only), see the Patch User example request."
+							},
+							"response": []
+						},
+						{
+							"name": "Patch (Modify) User",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"if (!pm.environment.get(\"user_id\")) {",
+											"    throw new Error('user_id not set, try running the Create User request first');",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n\t\"Notes\": \"The quick brown fox jumps over the lazy dog\",\n\t\"UseExtendedUnlockTimes\": true,\n\t\"WebPagePermissions\": \"428B2B7B-E7A2-4DE1-8AD4-36C136647917\",\n\t\"Permissions\": [\n\t\t{\n\t\t\t\"Item\": \"{{area_id}}\",\n\t\t\t\"ControlAbilities\": [\n\t\t\t\t1,\n\t\t\t\t2,\n\t\t\t\t8\n\t\t\t]\n\t\t}\n\t],\n\t\"PhysicalCredentials\": [\n\t\t{\n\t\t\t\"CardTemplate\": \"5ef5bc02-a512-447d-a0c4-65657b8dc5cd\",\n\t\t\t\"CardNumber\": \"123456\"\n\t\t}\n\t]\n}"
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/config/user/{{user_id}}",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"config",
+										"user",
+										"{{user_id}}"
+									]
+								},
+								"description": "Patches/modifies the User item at the specified URL, using the field values in the JSON request body. Only the field values specified in the body will be applied to the object, other fields will remain unmodified. If you wish to fully replace a User item, see the Update (Replace) User example request."
+							},
+							"response": []
+						},
+						{
+							"name": "Delete User",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"if (!pm.environment.get(\"user_id\")) {",
+											"    throw new Error('user_id not set, try running the Create User request first');",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (responseCode.code === 200) {",
+											"    pm.environment.set(\"user_id\", \"\");",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/config/user/{{user_id}}",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"config",
+										"user",
+										"{{user_id}}"
+									]
+								},
+								"description": "Deletes the User at the specified URL, erasing it from the Inception database if it exists. Returns a blank 200 OK response if successful."
+							},
+							"response": []
+						},
+						{
+							"name": "Get User by PIN",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"if (!pm.environment.get(\"user_pin\")) {",
+											"    throw new Error('user_pin not set, please assign a value in the environment variables window');",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{API_ROOT}}/config/user/by-pin/{{user_pin}}",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"config",
+										"user",
+										"by-pin",
+										"{{user_pin}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Link SkyCommand User",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}",
+										"type": "default"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json",
+										"type": "default"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n\t\"Email\": \"{{skycommand_email}}\"\r\n}"
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/config/user/{{user_id}}/skycommand",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"config",
+										"user",
+										"{{user_id}}",
+										"skycommand"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Other",
+					"item": [
+						{
+							"name": "Get All Permission Groups",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											""
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{API_ROOT}}/config/permission-group",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"config",
+										"permission-group"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get All Doors",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											""
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{API_ROOT}}/config/door",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"config",
+										"door"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get All Areas",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											""
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{API_ROOT}}/config/area",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"config",
+										"area"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get All Outputs",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											""
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{API_ROOT}}/config/output",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"config",
+										"output"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get All Lift Floors",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											""
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{API_ROOT}}/config/lift-floor",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"config",
+										"lift-floor"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get All Credential Templates",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{API_ROOT}}/config/credential-template",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"config",
+										"credential-template"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get All Remote Fob Templates",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											""
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{API_ROOT}}/config/fob-template",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"config",
+										"fob-template"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get All LCD Terminal Profiles",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											""
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{API_ROOT}}/config/lcdterminal-profile",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"config",
+										"lcdterminal-profile"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get All Storage Units",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{API_ROOT}}/config/storage-unit",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"config",
+										"storage-unit"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get All Web Permission Profiles",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											""
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											""
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{API_ROOT}}/config/webpermission-profile",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"config",
+										"webpermission-profile"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Activities",
+			"item": [
+				{
+					"name": "User Duress",
+					"item": [
+						{
+							"name": "Send User Duress Alert",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"var data = JSON.parse(responseBody);",
+											"if (data && data.Response && data.Response.Result === \"Success\")",
+											"    pm.environment.set(\"activity_id\", data.ActivityID);"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"Type\": \"SendUserDuress\"\n}"
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/activity",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"activity"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Readers",
+					"item": [
+						{
+							"name": "Badge Card Data at Reader",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"if (!pm.environment.get(\"reader_id\")) {",
+											"    throw new Error('reader_id not set, try setting the environment variable manually');",
+											"}",
+											"if (!pm.environment.get(\"credentialtemplate_id\")) {",
+											"    throw new Error('credentialtemplate_id not set, try setting the environment variable manually');",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (responseBody.length > 0) {",
+											"    var data = JSON.parse(responseBody);",
+											"    if (data && data.Response && data.Response.Result === \"Success\")",
+											"        pm.environment.set(\"activity_id\", data.ActivityID);",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"Type\": \"BadgeCredentialAtReader\",\n    \"Entity\": \"{{reader_id}}\",\n    \"CredentialData\" : {\n    \t\"CredentialTemplate\" : \"{{credentialtemplate_id}}\",\n    \t\"Data\": \"{{user_cardnumber}}\"\n    }\n}"
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/activity",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"activity"
+									]
+								},
+								"description": "Virtually badges card data at a reader to simulate a user physically badging a card.\n\nUse the \"Control/Doors/Get Door's Associated Readers\" request to fetch a reader's ID, and put it in the \"reader_id\" environment variable.\n\nUse the \"Configuration/Get All Card Templates\" request to fetch a credential template ID, and put it in the \"credentialtemplate_id\" environment variable.\n\nEdit the \"user_cardnumber\" environment variable to set the card number."
+							},
+							"response": []
+						},
+						{
+							"name": "Send PIN Data to Reader",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											"if (!pm.environment.get(\"reader_id\")) {",
+											"    throw new Error('reader_id not set, try setting the environment variable manually');",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (responseBody.length > 0) {",
+											"    var data = JSON.parse(responseBody);",
+											"    if (data && data.Response && data.Response.Result === \"Success\")",
+											"        pm.environment.set(\"activity_id\", data.ActivityID);",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"Type\": \"SendPINDataToReader\",\n    \"Entity\": \"{{reader_id}}\",\n    \"PINData\": \"{{user_pin}}\"\n}"
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/activity",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"activity"
+									]
+								},
+								"description": "Virtually badges card data at a reader to simulate a user physically badging a card.\n\nUse the \"Control/Doors/Get Door's Associated Readers\" request to fetch a reader's ID, and put it in the \"reader_id\" environment variable.\n\nEdit the \"user_pin\" environment variable to set the PIN data."
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Get Current Activity State",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"if (!pm.environment.get(\"activity_id\")) {",
+									"    throw new Error('activity_id not set, try running an Activity Request');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Cookie",
+								"value": "LoginSessId={{session_id}}"
+							}
+						],
+						"url": {
+							"raw": "{{API_ROOT}}/activity/{{activity_id}}",
+							"host": [
+								"{{API_ROOT}}"
+							],
+							"path": [
+								"activity",
+								"{{activity_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Current Activity's Updates",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"if (!pm.environment.get(\"activity_id\")) {",
+									"    throw new Error('activity_id not set, try running an Activity Request');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Cookie",
+								"value": "LoginSessId={{session_id}}"
+							}
+						],
+						"url": {
+							"raw": "{{API_ROOT}}/activity/{{activity_id}}/updates",
+							"host": [
+								"{{API_ROOT}}"
+							],
+							"path": [
+								"activity",
+								"{{activity_id}}",
+								"updates"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Cancel Current Activity",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"if (!pm.environment.get(\"activity_id\")) {",
+									"    throw new Error('activity_id not set, try running an Activity Request');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Cookie",
+								"value": "LoginSessId={{session_id}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "{{API_ROOT}}/activity/{{activity_id}}",
+							"host": [
+								"{{API_ROOT}}"
+							],
+							"path": [
+								"activity",
+								"{{activity_id}}"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				}
+			]
+		},
+		{
+			"name": "Update Monitor",
+			"item": [
+				{
+					"name": "Monitor Entity States",
+					"item": [
+						{
+							"name": "Monitor Area States",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "[\n\t{\n\t\t\"ID\": \"Test123\",\n\t\t\"RequestType\": \"MonitorEntityStates\",\n\t\t\"InputData\": {\n\t\t\t\"stateType\": \"AreaState\",\n\t\t\t\"timeSinceUpdate\": \"0\"\n\t\t}\n\t}\n]"
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/monitor-updates",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"monitor-updates"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Monitor Door States",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "[\n\t{\n\t\t\"ID\": \"Test123\",\n\t\t\"RequestType\": \"MonitorEntityStates\",\n\t\t\"InputData\": {\n\t\t\t\"stateType\": \"DoorState\",\n\t\t\t\"timeSinceUpdate\": \"0\"\n\t\t}\n\t}\n]"
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/monitor-updates",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"monitor-updates"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Monitor Input States",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "[\n\t{\n\t\t\"ID\": \"Test123\",\n\t\t\"RequestType\": \"MonitorEntityStates\",\n\t\t\"InputData\": {\n\t\t\t\"stateType\": \"InputState\",\n\t\t\t\"timeSinceUpdate\": \"0\"\n\t\t}\n\t}\n]"
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/monitor-updates",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"monitor-updates"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Monitor Output States",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "[\n\t{\n\t\t\"ID\": \"Test123\",\n\t\t\"RequestType\": \"MonitorEntityStates\",\n\t\t\"InputData\": {\n\t\t\t\"stateType\": \"OutputState\",\n\t\t\t\"timeSinceUpdate\": \"0\"\n\t\t}\n\t}\n]"
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/monitor-updates",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"monitor-updates"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Monitor Area, Input, and Output States",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "[\n\t{\n\t\t\"ID\": \"AreaStateRequest\",\n\t\t\"RequestType\": \"MonitorEntityStates\",\n\t\t\"InputData\": {\n\t\t\t\"stateType\": \"AreaState\",\n\t\t\t\"timeSinceUpdate\": \"0\"\n\t\t}\n\t},\n\t{\n\t\t\"ID\": \"InputStateRequest\",\n\t\t\"RequestType\": \"MonitorEntityStates\",\n\t\t\"InputData\": {\n\t\t\t\"stateType\": \"InputState\",\n\t\t\t\"timeSinceUpdate\": \"0\"\n\t\t}\n\t},\n\t{\n\t\t\"ID\": \"OutputStateRequest\",\n\t\t\"RequestType\": \"MonitorEntityStates\",\n\t\t\"InputData\": {\n\t\t\t\"stateType\": \"OutputState\",\n\t\t\t\"timeSinceUpdate\": \"0\"\n\t\t}\n\t}\n]"
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/monitor-updates",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"monitor-updates"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Activity Progress",
+					"item": [
+						{
+							"name": "Monitor Current Activity",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "[\n\t{\n\t\t\"ID\": \"Test123\",\n\t\t\"RequestType\": \"ActivityProgress\",\n\t\t\"InputData\": {\n\t\t\t\"activityId\": \"{{activity_id}}\",\n\t\t\t\"receivedMsgs\": \"\"\n\t\t}\n\t}\n]"
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/monitor-updates",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"monitor-updates"
+									]
+								},
+								"description": "Retrieves updates for the activity whose ID is specified in the \"activity_id\" environment variable. Running one of the the requests in the \"Activities\" folder will automatically populate the activity_id variable."
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Recent User Info",
+					"item": [
+						{
+							"name": "Monitor Recent User Info (Area Arm events)",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "[\n\t{\n\t\t\"ID\": \"Test\",\n\t\t\"RequestType\": \"RecentUserInfo\",\n\t\t\"InputData\": {\n\t\t\t\"timeSinceUpdate\": \"0\",\n\t\t\t\"eventTypes\": \"AreaArm\"\n\t\t}\n\t}\n]"
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/monitor-updates",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"monitor-updates"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Monitor Recent User Info (Area Arm, Area Disarm, Door Access, and Door Access Denied events)",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "[\n\t{\n\t\t\"ID\": \"Test\",\n\t\t\"RequestType\": \"RecentUserInfo\",\n\t\t\"InputData\": {\n\t\t\t\"timeSinceUpdate\": \"0\",\n\t\t\t\"eventTypes\": \"AreaArm,AreaDisarm,DoorAccess,DoorDenied\"\n\t\t}\n\t}\n]"
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/monitor-updates",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"monitor-updates"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Live Review",
+					"item": [
+						{
+							"name": "Update Reference Event ID To Latest",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"exec": [
+											""
+										],
+										"type": "text/javascript"
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"var data = JSON.parse(responseBody);",
+											"if (data && data.Count === 1 && data.Data) {",
+											"    pm.environment.set(\"review_ref_id\", data.Data[0].ID);",
+											"    pm.environment.set(\"review_ref_time\", data.Data[0].ReferenceTime);",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									}
+								],
+								"url": {
+									"raw": "{{API_ROOT}}/review?dir=desc&limit=1",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"review"
+									],
+									"query": [
+										{
+											"key": "dir",
+											"value": "desc"
+										},
+										{
+											"key": "limit",
+											"value": "1"
+										}
+									]
+								},
+								"description": "This request manually fetches the newest review event in the system to use as a reference point (via setting environment variables) so that we can poll for events that are newer than this one."
+							},
+							"response": []
+						},
+						{
+							"name": "Monitor Live Review Events",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"var data = JSON.parse(responseBody);",
+											"if (data && data.Result) {",
+											"    var lastMsg = data.Result[data.Result.length - 1];",
+											"    pm.environment.set(\"review_ref_id\", lastMsg.ID);",
+											"    pm.environment.set(\"review_ref_time\", lastMsg.ReferenceTime);",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "[\n\t{\n\t\t\"ID\": \"Test123\",\n\t\t\"RequestType\": \"LiveReviewEvents\",\n\t\t\"InputData\": {\n\t\t\t\"referenceId\": \"{{review_ref_id}}\",\n\t\t\t\"referenceTime\": \"{{review_ref_time}}\"\n\t\t}\n\t}\n]"
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/monitor-updates",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"monitor-updates"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Monitor Live Review Events (Only Security and Access events)",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"var data = JSON.parse(responseBody);",
+											"if (data && data.Result) {",
+											"    var lastMsg = data.Result[data.Result.length - 1];",
+											"    pm.environment.set(\"review_ref_id\", lastMsg.ID);",
+											"    pm.environment.set(\"review_ref_time\", lastMsg.ReferenceTime);",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "[\n\t{\n\t\t\"ID\": \"Test123\",\n\t\t\"RequestType\": \"LiveReviewEvents\",\n\t\t\"InputData\": {\n\t\t\t\"referenceId\": \"{{review_ref_id}}\",\n\t\t\t\"referenceTime\": \"{{review_ref_time}}\",\n\t\t\t\"categoryFilter\": \"Security,Access\"\n\t\t}\n\t}\n]"
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/monitor-updates",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"monitor-updates"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Monitor Live Review Events (Only Area Arm/Disarm events)",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"var data = JSON.parse(responseBody);",
+											"if (data && data.Result) {",
+											"    var lastMsg = data.Result[data.Result.length - 1];",
+											"    pm.environment.set(\"review_ref_id\", lastMsg.ID);",
+											"    pm.environment.set(\"review_ref_time\", lastMsg.ReferenceTime);",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "[\n\t{\n\t\t\"ID\": \"Test123\",\n\t\t\"RequestType\": \"LiveReviewEvents\",\n\t\t\"InputData\": {\n\t\t\t\"referenceId\": \"{{review_ref_id}}\",\n\t\t\t\"referenceTime\": \"{{review_ref_time}}\",\n\t\t\t\"messageTypeIdFilter\": \"5000,5001,5002,5003,5004,5005,5201,5202,5203,5204,5205\"\n\t\t}\n\t}\n]"
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/monitor-updates",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"monitor-updates"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Monitor Live Review Events (Only events related to the current Area)",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"var data = JSON.parse(responseBody);",
+											"if (data && data.Result) {",
+											"    var lastMsg = data.Result[data.Result.length - 1];",
+											"    pm.environment.set(\"review_ref_id\", lastMsg.ID);",
+											"    pm.environment.set(\"review_ref_time\", lastMsg.ReferenceTime);",
+											"}"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "[\n\t{\n\t\t\"ID\": \"Test123\",\n\t\t\"RequestType\": \"LiveReviewEvents\",\n\t\t\"InputData\": {\n\t\t\t\"referenceId\": \"{{review_ref_id}}\",\n\t\t\t\"referenceTime\": \"{{review_ref_time}}\",\n\t\t\t\"involvedEntityIdFilter\": \"{{area_id}}\"\n\t\t}\n\t}\n]"
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/monitor-updates",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"monitor-updates"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Data Changes",
+					"item": [
+						{
+							"name": "Monitor User Data Changes",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "[\n\t{\n\t\t\"ID\": \"Test\",\n\t\t\"RequestType\": \"DataChange\",\n\t\t\"InputData\": {\n\t\t\t\"timeSinceUpdate\": \"0\",\n\t\t\t\"EntityType\": \"User\"\n\t\t}\n\t}\n]"
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/monitor-updates",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"monitor-updates"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Monitor Area Data Changes",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Cookie",
+										"value": "LoginSessId={{session_id}}"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "[\n\t{\n\t\t\"ID\": \"Test\",\n\t\t\"RequestType\": \"DataChange\",\n\t\t\"InputData\": {\n\t\t\t\"timeSinceUpdate\": \"0\",\n\t\t\t\"EntityType\": \"Area\"\n\t\t}\n\t}\n]"
+								},
+								"url": {
+									"raw": "{{API_ROOT}}/monitor-updates",
+									"host": [
+										"{{API_ROOT}}"
+									],
+									"path": [
+										"monitor-updates"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			],
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				}
+			]
+		},
+		{
+			"name": "Review",
+			"item": [
+				{
+					"name": "Get 50 Most Recent Events",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Cookie",
+								"value": "LoginSessId={{session_id}}"
+							}
+						],
+						"url": {
+							"raw": "{{API_ROOT}}/review?dir=desc&limit=50",
+							"host": [
+								"{{API_ROOT}}"
+							],
+							"path": [
+								"review"
+							],
+							"query": [
+								{
+									"key": "dir",
+									"value": "desc"
+								},
+								{
+									"key": "limit",
+									"value": "50"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get 50 Oldest Events",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Cookie",
+								"value": "LoginSessId={{session_id}}"
+							}
+						],
+						"url": {
+							"raw": "{{API_ROOT}}/review?dir=asc&limit=50",
+							"host": [
+								"{{API_ROOT}}"
+							],
+							"path": [
+								"review"
+							],
+							"query": [
+								{
+									"key": "dir",
+									"value": "asc"
+								},
+								{
+									"key": "limit",
+									"value": "50"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get up to 100 Events between 14 Jan 2019 and 18 Jan 2019",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Cookie",
+								"value": "LoginSessId={{session_id}}"
+							}
+						],
+						"url": {
+							"raw": "{{API_ROOT}}/review?dir=asc&limit=100&offset=0&start=2019-01-14&end=2019-01-18",
+							"host": [
+								"{{API_ROOT}}"
+							],
+							"path": [
+								"review"
+							],
+							"query": [
+								{
+									"key": "dir",
+									"value": "asc"
+								},
+								{
+									"key": "limit",
+									"value": "100"
+								},
+								{
+									"key": "offset",
+									"value": "0"
+								},
+								{
+									"key": "start",
+									"value": "2019-01-14"
+								},
+								{
+									"key": "end",
+									"value": "2019-01-18"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get 50 Most Recent Access Events",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Cookie",
+								"value": "LoginSessId={{session_id}}"
+							}
+						],
+						"url": {
+							"raw": "{{API_ROOT}}/review?dir=desc&limit=50&categoryFilter=Access",
+							"host": [
+								"{{API_ROOT}}"
+							],
+							"path": [
+								"review"
+							],
+							"query": [
+								{
+									"key": "dir",
+									"value": "desc"
+								},
+								{
+									"key": "limit",
+									"value": "50"
+								},
+								{
+									"key": "categoryFilter",
+									"value": "Access"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get 50 Most Recent Arm/Disarm Area Events",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Cookie",
+								"value": "LoginSessId={{session_id}}"
+							}
+						],
+						"url": {
+							"raw": "{{API_ROOT}}/review?dir=desc&limit=50&messageTypeIdFilter=5000,5001,5002,5003,5004,5005,5201,5202,5203,5204,5205",
+							"host": [
+								"{{API_ROOT}}"
+							],
+							"path": [
+								"review"
+							],
+							"query": [
+								{
+									"key": "dir",
+									"value": "desc"
+								},
+								{
+									"key": "limit",
+									"value": "50"
+								},
+								{
+									"key": "messageTypeIdFilter",
+									"value": "5000,5001,5002,5003,5004,5005,5201,5202,5203,5204,5205"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get 50 Most Recent Events related to Current Area",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Cookie",
+								"value": "LoginSessId={{session_id}}"
+							}
+						],
+						"url": {
+							"raw": "{{API_ROOT}}/review?dir=desc&limit=50&involvedEntityIdFilter={{area_id}}",
+							"host": [
+								"{{API_ROOT}}"
+							],
+							"path": [
+								"review"
+							],
+							"query": [
+								{
+									"key": "dir",
+									"value": "desc"
+								},
+								{
+									"key": "limit",
+									"value": "50"
+								},
+								{
+									"key": "involvedEntityIdFilter",
+									"value": "{{area_id}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get 50 Events Newer than Reference Event",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Cookie",
+								"value": "LoginSessId={{session_id}}"
+							}
+						],
+						"url": {
+							"raw": "{{API_ROOT}}/review?limit=50&referenceId={{review_ref_id}}&referenceTime={{review_ref_time}}",
+							"host": [
+								"{{API_ROOT}}"
+							],
+							"path": [
+								"review"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "50"
+								},
+								{
+									"key": "referenceId",
+									"value": "{{review_ref_id}}"
+								},
+								{
+									"key": "referenceTime",
+									"value": "{{review_ref_time}}"
+								}
+							]
+						},
+						"description": "Set the \"review_ref_id\" and \"review_ref_time\" environment variables to an existing review event's \"ID\" and \"ReferenceTime\" values to use that event as a reference/anchor point for the query."
+					},
+					"response": []
+				},
+				{
+					"name": "Get 50 Events Older than Reference Event",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							},
+							{
+								"key": "Cookie",
+								"value": "LoginSessId={{session_id}}"
+							}
+						],
+						"url": {
+							"raw": "{{API_ROOT}}/review?dir=desc&limit=50&referenceId={{review_ref_id}}&referenceTime={{review_ref_time}}",
+							"host": [
+								"{{API_ROOT}}"
+							],
+							"path": [
+								"review"
+							],
+							"query": [
+								{
+									"key": "dir",
+									"value": "desc"
+								},
+								{
+									"key": "limit",
+									"value": "50"
+								},
+								{
+									"key": "referenceId",
+									"value": "{{review_ref_id}}"
+								},
+								{
+									"key": "referenceTime",
+									"value": "{{review_ref_time}}"
+								}
+							]
+						},
+						"description": "Set the \"review_ref_id\" and \"review_ref_time\" environment variables to an existing review event's \"ID\" and \"ReferenceTime\" values to use that event as a reference/anchor point for the query."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "System",
+			"item": [
+				{
+					"name": "Get Protocol Version",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{API_ROOT}}/../protocol-version",
+							"host": [
+								"{{API_ROOT}}"
+							],
+							"path": [
+								"..",
+								"protocol-version"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get System Info",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Cookie",
+								"value": "LoginSessId={{session_id}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{API_ROOT}}/system-info",
+							"host": [
+								"{{API_ROOT}}"
+							],
+							"path": [
+								"system-info"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"var apiToken = pm.environment.get('api_token');",
+					"if (apiToken)",
+					"{",
+					"    if (!pm.request.headers.get('authorization'))",
+					"    {",
+					"        pm.request.headers.add({",
+					"            key: \"authorization\",",
+					"            value: \"APIToken \" + apiToken",
+					"        });",
+					"    }",
+					"}"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	]
+}
