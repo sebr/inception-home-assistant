@@ -2,21 +2,30 @@
 
 [← Back to index](README.md)
 
-Real-time updates for entity states, activity progress, and review events
-via the `api/v1/monitor-updates` endpoint.
+Real-time updates for entity states, activity progress, recent user info,
+live review events, and data changes via the `api/v1/monitor-updates`
+endpoint.
 
 ## Contents
 
 - [Introduction to Long Polling](#introduction-to-long-polling)
-- [Monitoring for Long Poll Updates](#monitoring-for-long-poll-updates)
+- [Sub-request types](#sub-request-types)
+- [Entity state monitoring](#entity-state-monitoring)
   - [Example: Monitoring Area States](#example-monitoring-area-states)
+  - [Example: Monitoring Door, Input, or Output States](#example-monitoring-door-input-or-output-states)
   - [Example: Monitoring User States & Locations](#example-monitoring-user-states--locations)
-  - [Example: Monitoring both Area states and Output states](#example-monitoring-both-area-states-and-output-states)
+  - [Example: Monitoring multiple entity types in one request](#example-monitoring-multiple-entity-types-in-one-request)
+- [Activity progress](#activity-progress)
   - [Example: Monitoring the progress of an Area Arm activity](#example-monitoring-the-progress-of-an-area-arm-activity)
+- [Live review events](#live-review-events)
   - [Example: Monitoring real-time Review Events](#example-monitoring-real-time-review-events)
   - [Example: Monitoring real-time Review Events (only Security and Access events)](#example-monitoring-real-time-review-events-only-security-and-access-events)
   - [Example: Monitoring real-time Review Events for a specific Item](#example-monitoring-real-time-review-events-for-a-specific-item)
   - [Example: Monitoring specific Review Event types](#example-monitoring-specific-review-event-types)
+- [Recent user info](#recent-user-info)
+  - [Example: Monitoring Recent User Info (Area Arm events)](#example-monitoring-recent-user-info-area-arm-events)
+- [Data changes](#data-changes)
+  - [Example: Monitoring User data changes](#example-monitoring-user-data-changes)
 
 ## Introduction to Long Polling
 
@@ -51,14 +60,33 @@ have 3 separate sub-requests to monitor Area, Door, and Output states and
 combine them into the body of a single HTTP long polling request to the
 `api/v1/monitor-updates` endpoint on an Inception device, and the request
 will return with updates as soon as they become available for any of the 3
-sub-requests. For an example of this usage, see [Monitoring both Area states
-and Output states](#example-monitoring-both-area-states-and-output-states)
+sub-requests. For an example of this usage, see [Monitoring multiple entity
+types in one request](#example-monitoring-multiple-entity-types-in-one-request)
 below.
 
 For details on the JSON data types used in Inception's Update Monitor / long
 polling requests, see the Update Monitor page of the API documentation.
 
-## Monitoring for Long Poll Updates
+## Sub-request types
+
+Every long-poll sub-request is an object in the top-level array of the request
+body. The `ID` field is an opaque string — the server echoes it back on the
+matching response so you can route responses to the right handler. The
+`RequestType` field selects the semantic and drives which `InputData` fields
+apply.
+
+| `RequestType`          | Purpose                                                             | Key `InputData` fields                                         |
+| ---------------------- | ------------------------------------------------------------------- | -------------------------------------------------------------- |
+| `MonitorEntityStates`  | Stream state-change events for an entity type.                      | `stateType` (`AreaState` / `DoorState` / `InputState` / `OutputState` / `UserState`), `timeSinceUpdate` |
+| `ActivityProgress`     | Stream progress messages for a specific activity.                   | `activityId`, `receivedMsgs`                                   |
+| `LiveReviewEvents`     | Stream new review events since a reference point.                   | `referenceId`, `referenceTime`, optional `categoryFilter`, `messageTypeIdFilter`, `involvedEntityIdFilter` |
+| `RecentUserInfo`       | Stream recent user-centric events (arm, disarm, access, denied).    | `timeSinceUpdate`, `eventTypes`                                |
+| `DataChange`           | Stream *configuration* changes for an entity type.                  | `timeSinceUpdate`, `EntityType` (e.g. `User`, `Area`)          |
+
+**The response body will only ever contain a response to a single
+sub-request.** The matching `ID` and response envelope tell you which.
+
+## Entity state monitoring
 
 ### Example: Monitoring Area States
 
@@ -122,6 +150,32 @@ polling requests, see the Update Monitor page of the API documentation.
    poll requests in this way will ensure that new updates are delivered
    contiguously in chronological order.
 
+### Example: Monitoring Door, Input, or Output States
+
+The three state types work identically to `AreaState` — swap the
+`stateType` value in `InputData`:
+
+- `DoorState` — reports the door's public-state flags (locked, open,
+  forced, etc.) and the door's `LockState`.
+- `InputState` — reports inputs' sealed/open/isolated flags.
+- `OutputState` — reports whether outputs are energised.
+
+```json
+[
+  {
+    "ID": "Monitor_DoorStates",
+    "RequestType": "MonitorEntityStates",
+    "InputData": {
+      "stateType": "DoorState",
+      "timeSinceUpdate": "0"
+    }
+  }
+]
+```
+
+Replace `DoorState` with `InputState` or `OutputState` as needed. Response
+shape matches the Area example above.
+
 ### Example: Monitoring User States & Locations
 
 1. Authenticate API User, save session ID from cookie and use it for future
@@ -184,12 +238,13 @@ polling requests, see the Update Monitor page of the API documentation.
    it in the original request's `timeSinceUpdate` field, and repeat from
    step 2 to wait for new updates for as many times as desired.
 
-### Example: Monitoring both Area states and Output states
+### Example: Monitoring multiple entity types in one request
 
 1. Authenticate API User, save session ID from cookie and use it for future
    requests.
 2. Send a `POST` request to `api/v1/monitor-updates` with a JSON request body
-   containing 2 sub-requests like the following.
+   containing multiple sub-requests like the following. The collection's
+   "Monitor Area, Input, and Output States" example bundles three at once.
 
    > **NOTE**: The `ID` field of each JSON sub-request object must be unique
    > when monitoring multiple types of updates from a single HTTP request, in
@@ -199,7 +254,7 @@ polling requests, see the Update Monitor page of the API documentation.
    ```json
    [
      {
-       "ID": "Monitor_AreaStates",
+       "ID": "AreaStateRequest",
        "RequestType": "MonitorEntityStates",
        "InputData": {
          "stateType": "AreaState",
@@ -207,7 +262,15 @@ polling requests, see the Update Monitor page of the API documentation.
        }
      },
      {
-       "ID": "Monitor_OutputStates",
+       "ID": "InputStateRequest",
+       "RequestType": "MonitorEntityStates",
+       "InputData": {
+         "stateType": "InputState",
+         "timeSinceUpdate": "0"
+       }
+     },
+     {
+       "ID": "OutputStateRequest",
        "RequestType": "MonitorEntityStates",
        "InputData": {
          "stateType": "OutputState",
@@ -219,20 +282,16 @@ polling requests, see the Update Monitor page of the API documentation.
 
 3. Hold the request open for up to 60 seconds until a response is received
    from the server.
-   1. If the response body is empty (no new updates to report), you can
-      re-send the request unmodified to wait for new events (i.e. go back to
-      step 2).
-   2. If the response body contains data, continue to step 4.
 4. Read the `ID` field of the response to determine which sub-request this
    update is relevant to (in this example, the response was for the
-   `Monitor_AreaStates` request). **The response body will only ever contain
+   `AreaStateRequest` request). **The response body will only ever contain
    a response to a single sub-request.** Read the array of state updates in
    the response (in the `Result.stateData` field) and process the data as
    needed.
 
    ```json
    {
-     "ID": "Monitor_AreaStates",
+     "ID": "AreaStateRequest",
      "Result": {
        "updateTime": "8128806",
        "stateData": [
@@ -257,12 +316,14 @@ polling requests, see the Update Monitor page of the API documentation.
 
 5. After processing the response data, take the `updateTime` field value
    from the response and replace the `timeSinceUpdate` field value in the
-   relevant sub-request (`Monitor_AreaStates` in this example), before
+   relevant sub-request (`AreaStateRequest` in this example), before
    resending the whole request again in a new HTTP long poll request.
    Updating the specific sub-request parameter fields in this way after each
    response allows each one to be processed independently, but combined in a
    single HTTP request to avoid the overhead of waiting simultaneously on
    multiple requests to return.
+
+## Activity progress
 
 ### Example: Monitoring the progress of an Area Arm activity
 
@@ -337,6 +398,8 @@ polling requests, see the Update Monitor page of the API documentation.
    field in the response and place it in the `receivedMsgs` field of your
    original request. Repeat from step 3 again with the updated request body,
    until the activity is completed and has no more progress messages to send.
+
+## Live review events
 
 ### Example: Monitoring real-time Review Events
 
@@ -565,3 +628,72 @@ polling requests, see the Update Monitor page of the API documentation.
 6. Re-send the `POST` request with the newest event `ID` and `WhenTicks`
    value in the `referenceId` and `referenceTime` fields if you want to
    retrieve more events.
+
+## Recent user info
+
+`RecentUserInfo` streams user-attributed events — area arms / disarms, door
+accesses, door denies — with higher-level structuring than raw review
+events. Useful for UIs that want to show "who was last active where".
+
+### Example: Monitoring Recent User Info (Area Arm events)
+
+Send a `POST` to `api/v1/monitor-updates` with:
+
+```json
+[
+  {
+    "ID": "Monitor_RecentUserInfo",
+    "RequestType": "RecentUserInfo",
+    "InputData": {
+      "timeSinceUpdate": "0",
+      "eventTypes": "AreaArm"
+    }
+  }
+]
+```
+
+To subscribe to multiple event types at once, pass a comma-separated list —
+e.g. `"eventTypes": "AreaArm,AreaDisarm,DoorAccess,DoorDenied"`. The known
+values are:
+
+| Value        | Meaning                              |
+| ------------ | ------------------------------------ |
+| `AreaArm`    | A user armed an area.                |
+| `AreaDisarm` | A user disarmed an area.             |
+| `DoorAccess` | A user was granted access at a door. |
+| `DoorDenied` | A user was denied access at a door.  |
+
+As with the entity-state sub-requests, the response carries an
+`updateTime`; echo it back in the next request's `timeSinceUpdate` to
+resume the stream.
+
+## Data changes
+
+`DataChange` notifies you when *configuration* data for an entity type
+changes on the controller (user added / edited, area settings tweaked, etc.)
+so you can invalidate caches or trigger an incremental sync. Distinct from
+`MonitorEntityStates`, which reports live-state changes.
+
+### Example: Monitoring User data changes
+
+```json
+[
+  {
+    "ID": "Monitor_UserDataChanges",
+    "RequestType": "DataChange",
+    "InputData": {
+      "timeSinceUpdate": "0",
+      "EntityType": "User"
+    }
+  }
+]
+```
+
+Swap `EntityType` for `Area` (or another supported entity type — consult the
+live API docs) to monitor a different config surface. The typical follow-up
+is a `GET /config/[type]?modifiedSince=[lastSyncTime]` to pull the changed
+records.
+
+---
+
+**Next:** [System →](system.md)

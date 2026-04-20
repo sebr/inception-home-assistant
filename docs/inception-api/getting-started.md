@@ -7,6 +7,11 @@
 - [Introduction](#introduction)
 - [Retrieving the API Protocol version](#retrieving-the-api-protocol-version)
 - [Authentication / Logging In](#authentication--logging-in)
+  - [Password login](#password-login)
+  - [Hashed-password login](#hashed-password-login)
+  - [Two-factor login](#two-factor-login)
+  - [Logout](#logout)
+  - [API Token authentication](#api-token-authentication)
 - [Using the REST API over SkyTunnel](#using-the-rest-api-over-skytunnel)
 
 ## Introduction
@@ -20,9 +25,11 @@ It is recommended that the reader already has some general level of experience
 with sending HTTP requests, interaction with REST APIs, and JSON serialized
 data.
 
-The information in this document is relevant to the Inception REST API
-protocol v8 released in Inception firmware version 4.0; previous firmware
-versions may not support certain API features used in examples.
+The prose examples here were originally written against **protocol v8**
+(Inception firmware 4.0); the accompanying Postman collection targets
+**protocol v16**. Previous firmware versions may not support certain API
+features used in examples — always probe the protocol version first when
+targeting a controller of unknown firmware.
 
 The complete documentation for the Inception REST API can be found on-board on
 any Inception device at the URL `http://[inception-address]/ApiDoc`, where
@@ -53,6 +60,11 @@ methods without first upgrading the Inception device's firmware.
 Follow these steps to retrieve the current API protocol version of the device:
 
 1. Send a `GET` request to `api/protocol-version`.
+
+   > **NOTE**: Note the `api/` prefix — this endpoint sits outside the
+   > versioned `api/v1/` namespace used by every other request in this
+   > document.
+
 2. Depending on how old the Inception firmware is, you may receive a valid
    JSON response, or a `404 Not Found` response if the firmware is too old.
    1. If the response contains a valid JSON response, the `ProtocolVersion`
@@ -86,6 +98,12 @@ data. It is necessary to authenticate with valid credentials before the rest
 of the API can be used. See the API Overview documentation page for more
 general information on setting up API User credentials to enable authenticated
 requests to be made.
+
+The controller exposes **four** authentication methods. Three establish a
+short-lived session cookie (`LoginSessId`); the fourth uses a long-lived
+**API Token** that is sent as an HTTP header with every request.
+
+### Password login
 
 1. Send a `POST` request to `api/v1/authentication/login` on the targeted
    Inception's hostname/IP address with a JSON request body like the following
@@ -126,6 +144,66 @@ requests to be made.
       request headers or cookies, the session ID can also be appended to the
       URL as a query string parameter with every API request you send (e.g.
       `GET api/v1/control/area?session-id=[id]`).
+
+### Hashed-password login
+
+If you do not want to send the cleartext password over the wire, the
+controller accepts a SHA-256 hash of `lowercase(username) + ":" + password`,
+base64-encoded.
+
+1. Compute `hash = base64(sha256("[username_lowercase]:[password]"))`.
+2. Send a `POST` request to `api/v1/authentication/hashed-login` with:
+
+   ```json
+   {
+     "Username": "[username]",
+     "PasswordHash": "[hash]"
+   }
+   ```
+
+3. On success the response shape is identical to the password-login
+   response — record `UserID` and send it as the `LoginSessId` cookie on
+   subsequent requests.
+
+### Two-factor login
+
+If the API User has two-factor authentication configured, include the 6-digit
+TOTP code alongside the username and password.
+
+1. Send a `POST` request to `api/v1/authentication/login-2fa` with:
+
+   ```json
+   {
+     "Username": "[username]",
+     "Password": "[password]",
+     "TwoFactorCode": "[6-digit-code]"
+   }
+   ```
+
+2. On success the response shape matches the password-login response.
+
+### Logout
+
+Invalidate the current session cookie by sending a `POST` to
+`api/v1/authentication/logout`. No request body is needed; the authenticated
+`Cookie` header is the only thing the server looks at. After logout the
+session ID will no longer be accepted on subsequent requests.
+
+### API Token authentication
+
+For unattended integrations the controller supports **API Tokens** — long-lived
+credentials created under **Configuration → Users → API Users** in the web UI.
+Rather than a cookie, the token is sent as an `Authorization` header on every
+request:
+
+```
+Authorization: APIToken [token]
+```
+
+When the header is present, the server treats the request as authenticated and
+does **not** require a login step. API tokens are the recommended path for
+server-to-server integrations that do not need the short session-refresh
+semantics of cookie login.
 
 ## Using the REST API over SkyTunnel
 

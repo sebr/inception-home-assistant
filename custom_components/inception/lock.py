@@ -21,7 +21,7 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from custom_components.inception.number import DEFAULT_TIMED_UNLOCK_DURATION
 
 from .const import DOMAIN, MANUFACTURER
-from .entity import InceptionEntity
+from .entity import InceptionEntity, panel_identifiers
 from .pyinception.schemas.door import (
     DoorControlType,
     DoorPublicState,
@@ -115,6 +115,7 @@ class InceptionLock(InceptionEntity, LockEntity):
                 r"[^a-zA-Z\s]*(Lock|Strike)", "", data.entity_info.name
             ).strip(),
             manufacturer=MANUFACTURER,
+            via_device=panel_identifiers(coordinator),
         )
 
     async def _fetch_config_entities(self) -> None:

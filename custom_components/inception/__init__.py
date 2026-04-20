@@ -10,10 +10,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from homeassistant.const import Platform
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.storage import Store
 
 from .const import DOMAIN
 from .coordinator import InceptionUpdateCoordinator
+from .entity import panel_device_info
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -43,6 +45,14 @@ async def async_setup_entry(
     await coordinator.async_config_entry_first_refresh()
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
+
+    # Register the controller as a device up front so child devices that
+    # reference it via `via_device` always have a parent to attach to.
+    device_registry = dr.async_get(hass)
+    device_registry.async_get_or_create(
+        config_entry_id=entry.entry_id,
+        **panel_device_info(coordinator),
+    )
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
