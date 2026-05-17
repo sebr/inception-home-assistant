@@ -4,9 +4,8 @@ from collections.abc import Iterable
 from unittest.mock import Mock
 
 import pytest
-from homeassistant.helpers.entity import Entity
-
 from homeassistant.components.binary_sensor import BinarySensorDeviceClass
+from homeassistant.helpers.entity import Entity
 
 from custom_components.inception.binary_sensor import (
     async_setup_entry,
