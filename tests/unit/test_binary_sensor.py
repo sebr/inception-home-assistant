@@ -4,9 +4,13 @@ from collections.abc import Iterable
 from unittest.mock import Mock
 
 import pytest
+from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 from homeassistant.helpers.entity import Entity
 
-from custom_components.inception.binary_sensor import async_setup_entry
+from custom_components.inception.binary_sensor import (
+    async_setup_entry,
+    get_device_class_for_name,
+)
 from custom_components.inception.coordinator import InceptionUpdateCoordinator
 from custom_components.inception.pyinception.schemas.door import DoorPublicState
 from custom_components.inception.pyinception.schemas.input import InputPublicState
@@ -533,3 +537,26 @@ class TestBinarySensorKeys:
             "identifiers"
         ]  # pyright: ignore[reportTypedDictNotRequiredAccess]
         assert input_sensor._attr_device_info["name"] == "PIR Motion Sensor"  # pyright: ignore[reportTypedDictNotRequiredAccess]
+
+
+class TestGetDeviceClassForName:
+    """Test device class resolution from entity names."""
+
+    @pytest.mark.parametrize(
+        ("name", "expected"),
+        [
+            # Sensor type must beat location keywords
+            ("Garage PIR sensor", BinarySensorDeviceClass.MOTION),
+            ("Garage motion", BinarySensorDeviceClass.MOTION),
+            ("Garage PE beam", BinarySensorDeviceClass.MOTION),
+            # Bare location still resolves to garage door
+            ("Garage", BinarySensorDeviceClass.GARAGE_DOOR),
+            ("Garage Door", BinarySensorDeviceClass.GARAGE_DOOR),
+            # Generic door / motion still work
+            ("Front Door", BinarySensorDeviceClass.DOOR),
+            ("Hallway PIR", BinarySensorDeviceClass.MOTION),
+        ],
+    )
+    def test_resolution(self, name: str, expected: BinarySensorDeviceClass) -> None:
+        """Names containing a sensor-type keyword take precedence over location."""
+        assert get_device_class_for_name(name) == expected
