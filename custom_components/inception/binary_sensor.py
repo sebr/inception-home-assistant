@@ -52,16 +52,16 @@ def get_device_class_for_name(name: str) -> BinarySensorDeviceClass:
     # Ordered list of (keyword, device_class) tuples
     # More specific patterns first to avoid false positives
     device_class_patterns = [
-        # Specific door types (must come before generic "door")
-        ("side door", BinarySensorDeviceClass.DOOR),
-        ("hallway door", BinarySensorDeviceClass.DOOR),
-        ("garage door", BinarySensorDeviceClass.GARAGE_DOOR),
-        ("garage", BinarySensorDeviceClass.GARAGE_DOOR),
         # Motion and presence detection
         ("pe beam", BinarySensorDeviceClass.MOTION),
         ("pir", BinarySensorDeviceClass.MOTION),
         ("motion", BinarySensorDeviceClass.MOTION),
         ("beam", BinarySensorDeviceClass.MOTION),
+        # Specific door types (must come before generic "door")
+        ("side door", BinarySensorDeviceClass.DOOR),
+        ("hallway door", BinarySensorDeviceClass.DOOR),
+        ("garage door", BinarySensorDeviceClass.GARAGE_DOOR),
+        ("garage", BinarySensorDeviceClass.GARAGE_DOOR),
         # Safety and security
         ("duress", BinarySensorDeviceClass.SAFETY),
         ("panic", BinarySensorDeviceClass.SAFETY),
