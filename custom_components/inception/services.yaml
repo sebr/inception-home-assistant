@@ -28,3 +28,75 @@ area_arm:
       required: false
       selector:
         text:
+
+get_review_events:
+  fields:
+    entry_id:
+      required: false
+      selector:
+        config_entry:
+          integration: inception
+    limit:
+      required: false
+      default: 100
+      selector:
+        number:
+          min: 1
+          max: 1000
+          mode: box
+    offset:
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 100000
+          mode: box
+    direction:
+      required: false
+      selector:
+        select:
+          options:
+            - value: asc
+              label: Oldest first
+            - value: desc
+              label: Newest first
+    start:
+      required: false
+      selector:
+        datetime:
+    end:
+      required: false
+      selector:
+        datetime:
+    category_filter:
+      required: false
+      selector:
+        select:
+          multiple: true
+          options:
+            - System
+            - Audit
+            - Access
+            - Security
+            - Hardware
+    message_type_id_filter:
+      required: false
+      example: "5000, 5201"
+      selector:
+        object:
+    involved_entity_id_filter:
+      required: false
+      example: "fbec7c22-500d-4f3b-b94e-4c19ff501f9f"
+      selector:
+        object:
+    reference_id:
+      required: false
+      selector:
+        text:
+    reference_time:
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 9999999999999999999
+          mode: box

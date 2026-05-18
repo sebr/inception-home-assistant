@@ -16,6 +16,7 @@ from homeassistant.helpers.storage import Store
 from .const import DOMAIN
 from .coordinator import InceptionUpdateCoordinator
 from .entity import panel_device_info
+from .services import async_register_services, async_unregister_services
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -57,6 +58,8 @@ async def async_setup_entry(
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
 
+    async_register_services(hass)
+
     return True
 
 
@@ -75,6 +78,8 @@ async def async_unload_entry(
 
     # Remove the coordinator from hass.data
     hass.data[DOMAIN].pop(entry.entry_id)
+
+    async_unregister_services(hass)
 
     return True
 

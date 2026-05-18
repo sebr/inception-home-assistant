@@ -645,6 +645,62 @@ class InceptionApiClient:
         """Send a control payload to an input."""
         return await self._control_item(item=f"input/{input_id}", data=data)
 
+    async def get_review_events(  # noqa: PLR0913
+        self,
+        *,
+        limit: int | None = None,
+        offset: int | None = None,
+        direction: str | None = None,
+        start: str | None = None,
+        end: str | None = None,
+        category_filter: list[str] | None = None,
+        message_type_id_filter: list[int] | None = None,
+        involved_entity_id_filter: list[str] | None = None,
+        reference_id: str | None = None,
+        reference_time: int | None = None,
+    ) -> list[dict[str, Any]]:
+        """
+        Query historical review events via `GET /api/v1/review`.
+
+        Any parameter left as `None` is omitted from the query. The Inception
+        controller returns either a wrapped `{"Offset", "Count", "Data": [...]}`
+        envelope or, for some firmware versions, a bare list. Both shapes are
+        normalised to a list of event dicts before returning.
+        """
+        candidates: list[tuple[str, Any]] = [
+            ("limit", limit),
+            ("offset", offset),
+            ("dir", direction),
+            ("start", start),
+            ("end", end),
+            ("referenceId", reference_id),
+            ("referenceTime", reference_time),
+        ]
+        params: dict[str, str] = {
+            key: str(value) for key, value in candidates if value is not None
+        }
+        if category_filter:
+            params["categoryFilter"] = ",".join(category_filter)
+        if message_type_id_filter:
+            params["messageTypeIdFilter"] = ",".join(
+                str(value) for value in message_type_id_filter
+            )
+        if involved_entity_id_filter:
+            params["involvedEntityIdFilter"] = ",".join(involved_entity_id_filter)
+
+        query_params = urlencode(params)
+        response = await self._review_events_request(query_params)
+
+        if response is None:
+            return []
+        if isinstance(response, list):
+            return response
+        if isinstance(response, dict):
+            data = response.get("Data", [])
+            if isinstance(data, list):
+                return data
+        return []
+
     async def start_review_listener(self, categories: list[str]) -> None:
         """
         Enable bundled review-event polling on the next long-poll iteration.

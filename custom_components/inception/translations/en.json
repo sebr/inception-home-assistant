@@ -77,6 +77,56 @@
                     "description": "PIN code for arming the area. If omitted, defaults to the user which is associated with the configured API token."
                 }
             }
+        },
+        "get_review_events": {
+            "name": "Get review events",
+            "description": "Queries historical review events from the Inception controller. Returns matching events as a service response. All fields are optional; leave them empty to fetch the most recent events.",
+            "fields": {
+                "entry_id": {
+                    "name": "Inception hub",
+                    "description": "Select which configured Inception hub to query. Only required when multiple hubs are configured."
+                },
+                "limit": {
+                    "name": "Limit",
+                    "description": "Maximum number of events to return. Defaults to 100 when omitted."
+                },
+                "offset": {
+                    "name": "Offset",
+                    "description": "Skip this many events before returning results. Use with 'limit' for pagination."
+                },
+                "direction": {
+                    "name": "Direction",
+                    "description": "Sort order. 'Oldest first' (asc) is the default; 'Newest first' (desc) returns the most recent events."
+                },
+                "start": {
+                    "name": "Start",
+                    "description": "Earliest event timestamp to include. When using 'Newest first', this must be more recent than 'End'."
+                },
+                "end": {
+                    "name": "End",
+                    "description": "Latest event timestamp to include."
+                },
+                "category_filter": {
+                    "name": "Categories",
+                    "description": "Only return events in one or more of the selected categories."
+                },
+                "message_type_id_filter": {
+                    "name": "Message type IDs",
+                    "description": "Only return events whose numeric MessageID matches one of the supplied values. Provide a list of integers."
+                },
+                "involved_entity_id_filter": {
+                    "name": "Involved entity IDs",
+                    "description": "Only return events whose WhoID, WhatID or WhereID matches one of the supplied entity IDs. Provide a list of UUID strings."
+                },
+                "reference_id": {
+                    "name": "Reference event ID",
+                    "description": "Anchor pagination around a specific event. Pair with 'Reference time' (the event's WhenTicks value)."
+                },
+                "reference_time": {
+                    "name": "Reference time",
+                    "description": "WhenTicks value of the reference event. Must be supplied alongside 'Reference event ID'."
+                }
+            }
         }
     },
     "entity": {

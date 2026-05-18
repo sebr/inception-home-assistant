@@ -781,3 +781,103 @@ class TestBundledLongPoll:
 
         assert api_client._review_events_enabled is False
         assert api_client._review_events_categories == []
+
+
+class TestGetReviewEvents:
+    """Test the get_review_events query helper."""
+
+    @pytest.fixture
+    def mock_session(self) -> Mock:
+        """Create a mock session."""
+        return Mock(spec=aiohttp.ClientSession)
+
+    @pytest.mark.asyncio
+    async def test_passes_filters_as_query_params(self, mock_session: Mock) -> None:
+        """All supplied filters are serialised into the request query string."""
+        api_client = InceptionApiClient(
+            token="t", host="http://h.test", session=mock_session
+        )
+
+        captured: dict[str, Any] = {}
+
+        async def fake_request(query_params: str) -> dict[str, Any]:
+            captured["query"] = query_params
+            return {"Offset": 0, "Count": 1, "Data": [{"ID": "event-1"}]}
+
+        api_client._review_events_request = fake_request  # type: ignore[assignment]
+
+        events = await api_client.get_review_events(
+            limit=50,
+            offset=10,
+            direction="desc",
+            start="2025-01-01T00:00:00",
+            end="2025-01-02T00:00:00",
+            category_filter=["Access", "Security"],
+            message_type_id_filter=[5000, 5201],
+            involved_entity_id_filter=["abc"],
+            reference_id="ref",
+            reference_time=12345,
+        )
+
+        assert events == [{"ID": "event-1"}]
+        query = captured["query"]
+        assert "limit=50" in query
+        assert "offset=10" in query
+        assert "dir=desc" in query
+        assert "categoryFilter=Access%2CSecurity" in query
+        assert "messageTypeIdFilter=5000%2C5201" in query
+        assert "involvedEntityIdFilter=abc" in query
+        assert "referenceId=ref" in query
+        assert "referenceTime=12345" in query
+
+    @pytest.mark.asyncio
+    async def test_omits_none_params(self, mock_session: Mock) -> None:
+        """Parameters left as None are not included in the query string."""
+        api_client = InceptionApiClient(
+            token="t", host="http://h.test", session=mock_session
+        )
+
+        captured: dict[str, Any] = {}
+
+        async def fake_request(query_params: str) -> list[dict[str, Any]]:
+            captured["query"] = query_params
+            return []
+
+        api_client._review_events_request = fake_request  # type: ignore[assignment]
+
+        events = await api_client.get_review_events(limit=5)
+
+        assert events == []
+        assert captured["query"] == "limit=5"
+
+    @pytest.mark.asyncio
+    async def test_handles_bare_list_response(self, mock_session: Mock) -> None:
+        """Firmware variants returning a bare list are normalised."""
+        api_client = InceptionApiClient(
+            token="t", host="http://h.test", session=mock_session
+        )
+
+        async def fake_request(_query_params: str) -> list[dict[str, Any]]:
+            return [{"ID": "event-1"}, {"ID": "event-2"}]
+
+        api_client._review_events_request = fake_request  # type: ignore[assignment]
+
+        events = await api_client.get_review_events()
+
+        assert events == [{"ID": "event-1"}, {"ID": "event-2"}]
+
+    @pytest.mark.asyncio
+    async def test_handles_none_response(self, mock_session: Mock) -> None:
+        """Empty / None responses are surfaced as an empty list."""
+        api_client = InceptionApiClient(
+            token="t", host="http://h.test", session=mock_session
+        )
+
+        async def fake_request(_query_params: str) -> None:
+            return None
+
+        api_client._review_events_request = fake_request  # type: ignore[assignment]
+
+        events = await api_client.get_review_events()
+
+        assert events == []
