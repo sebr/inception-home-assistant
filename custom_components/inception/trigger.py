@@ -22,23 +22,17 @@ if TYPE_CHECKING:
     from homeassistant.helpers.trigger import TriggerActionType, TriggerInfo
     from homeassistant.helpers.typing import ConfigType
 
-CONF_EVENT_TYPE = "type"
 CONF_MESSAGE_CATEGORY = "message_category"
 CONF_MESSAGE_VALUE = "message_value"
 CONF_WHO_ID = "who_id"
 CONF_WHAT_ID = "what_id"
 CONF_WHERE_ID = "where_id"
 
-TRIGGER_REVIEW_EVENT = "review_event"
-
 MESSAGE_CATEGORIES = ["System", "Audit", "Access", "Security", "Hardware"]
 
 TRIGGER_SCHEMA = cv.TRIGGER_BASE_SCHEMA.extend(
     {
         vol.Required(CONF_PLATFORM): DOMAIN,
-        vol.Required(CONF_EVENT_TYPE, default=TRIGGER_REVIEW_EVENT): vol.In(
-            [TRIGGER_REVIEW_EVENT]
-        ),
         vol.Optional(CONF_MESSAGE_CATEGORY): vol.All(
             cv.ensure_list, [vol.In(MESSAGE_CATEGORIES)]
         ),

@@ -91,7 +91,7 @@
         }
     },
     "triggers": {
-        "review_event": {
+        "_": {
             "name": "Review event received",
             "description": "Fires when a review event is received from the Inception system. All filter fields are optional; leave them empty to match every event.",
             "fields": {

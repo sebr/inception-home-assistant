@@ -1,4 +1,4 @@
-review_event:
+_:
   fields:
     message_category:
       required: false

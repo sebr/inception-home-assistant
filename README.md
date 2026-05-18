@@ -252,7 +252,6 @@ automation:
   - alias: "Alert on Door Forced Open"
     trigger:
       platform: inception
-      type: review_event
       message_value: [5505] # Input forced
       where_id: ["abc123"]
     action:
