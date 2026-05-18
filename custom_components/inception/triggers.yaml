@@ -1,0 +1,32 @@
+_:
+  fields:
+    message_category:
+      required: false
+      selector:
+        select:
+          multiple: true
+          options:
+            - System
+            - Audit
+            - Access
+            - Security
+            - Hardware
+    message_value:
+      required: false
+      selector:
+        number:
+          mode: box
+          min: 0
+          max: 100000
+    who_id:
+      required: false
+      selector:
+        text:
+    what_id:
+      required: false
+      selector:
+        text:
+    where_id:
+      required: false
+      selector:
+        text:

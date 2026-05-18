@@ -241,6 +241,26 @@ automation:
 
 **Note:** Review events are only available if your Inception user account has permission to access the review/audit logs. If you see 404 errors in the logs, contact your system administrator to enable review event permissions.
 
+### Inception trigger platform
+
+For easier discovery in the visual automation editor, the integration also registers an `inception` trigger type. Pick **Inception** → **Review event received** from the trigger type dropdown and choose any optional filters (category, message ID, who/what/where IDs). Multiple values per field are OR-ed together; multiple fields are AND-ed.
+
+YAML equivalent:
+
+```yaml
+automation:
+  - alias: "Alert on Door Forced Open"
+    trigger:
+      platform: inception
+      message_value: [5505] # Input forced
+      where_id: ["abc123"]
+    action:
+      - service: notify.mobile_app
+        data:
+          message: "{{ trigger.event.data.description }}"
+```
+
+
 ## Installation
 
 Recommended installation is via the [Home Assistant Community Store (HACS)](https://hacs.xyz/). [![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg)](https://github.com/custom-components/hacs)
