@@ -89,5 +89,33 @@
                 }
             }
         }
+    },
+    "triggers": {
+        "review_event": {
+            "name": "Review event received",
+            "description": "Fires when a review event is received from the Inception system. All filter fields are optional; leave them empty to match every event.",
+            "fields": {
+                "message_category": {
+                    "name": "Message category",
+                    "description": "Only fire when the event belongs to one of the selected categories."
+                },
+                "message_value": {
+                    "name": "Message ID",
+                    "description": "Only fire when the event's numeric MessageID matches one of the supplied values. See the Inception API documentation for the full list of IDs."
+                },
+                "who_id": {
+                    "name": "Who ID",
+                    "description": "Only fire when the event was raised by one of the listed Inception user/entity IDs."
+                },
+                "what_id": {
+                    "name": "What ID",
+                    "description": "Only fire when the event targets one of the listed Inception entity IDs (door, area, input, output, etc.)."
+                },
+                "where_id": {
+                    "name": "Where ID",
+                    "description": "Only fire when the event occurred in one of the listed Inception area/location IDs."
+                }
+            }
+        }
     }
 }
