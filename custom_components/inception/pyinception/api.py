@@ -645,6 +645,70 @@ class InceptionApiClient:
         """Send a control payload to an input."""
         return await self._control_item(item=f"input/{input_id}", data=data)
 
+    async def get_attached_readers(self, door_id: str) -> list[dict[str, Any]]:
+        """List readers attached to ``door_id`` via the control endpoint."""
+        response = await self.request(
+            method="get",
+            path=f"/control/door/{door_id}/attached-readers",
+        )
+        if isinstance(response, list):
+            return response
+        return []
+
+    async def _submit_activity(self, payload: dict[str, Any]) -> str | None:
+        """
+        POST ``payload`` to ``/api/v1/activity`` and return the ActivityID.
+
+        Returns ``None`` if the server reports a ``Failure`` result. Network
+        / HTTP errors propagate as the usual ``InceptionApiClientError``
+        subclasses so callers can map them to ``HomeAssistantError``.
+        """
+        response = await self.request(
+            method="post",
+            path="/activity",
+            data=payload,
+        )
+        if not isinstance(response, dict):
+            return None
+        result = response.get("Response", {})
+        if isinstance(result, dict) and result.get("Result") == "Success":
+            activity_id = response.get("ActivityID")
+            if isinstance(activity_id, str):
+                return activity_id
+        message = "Unknown"
+        if isinstance(result, dict):
+            message = str(result.get("Message", message))
+        msg = f"Activity submission failed: {message}"
+        raise InceptionApiClientError(msg)
+
+    async def badge_credential_at_reader(
+        self,
+        reader_id: str,
+        credential_template: str,
+        card_number: str,
+    ) -> str | None:
+        """Virtually badge a credential at a reader. Returns the ActivityID."""
+        return await self._submit_activity(
+            {
+                "Type": "BadgeCredentialAtReader",
+                "CredentialData": {
+                    "CredentialTemplate": credential_template,
+                    "Data": card_number,
+                },
+                "Entity": reader_id,
+            }
+        )
+
+    async def send_pin_to_reader(self, reader_id: str, pin: str) -> str | None:
+        """Virtually present a User PIN at a reader. Returns the ActivityID."""
+        return await self._submit_activity(
+            {
+                "Type": "SendPINDataToReader",
+                "Entity": reader_id,
+                "PINData": pin,
+            }
+        )
+
     async def get_review_events(  # noqa: PLR0913
         self,
         *,

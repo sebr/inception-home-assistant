@@ -78,6 +78,60 @@
                 }
             }
         },
+        "badge_credential": {
+            "name": "Badge credential",
+            "description": "Virtually badges a user credential at a door reader, as though the card was physically presented. Returns the ActivityID of the submitted activity.",
+            "fields": {
+                "entry_id": {
+                    "name": "Inception hub",
+                    "description": "Select which configured Inception hub to target. Only required when multiple hubs are configured."
+                },
+                "reader_id": {
+                    "name": "Reader ID",
+                    "description": "ID of the reader to badge at. Discover reader IDs for a door via the 'Get attached readers' service."
+                },
+                "credential_template": {
+                    "name": "Credential template ID",
+                    "description": "The Credential Template ID of the user credential to badge."
+                },
+                "card_number": {
+                    "name": "Card number",
+                    "description": "The card number (Credential 'Data' value) of the user credential to badge."
+                }
+            }
+        },
+        "send_pin": {
+            "name": "Send PIN",
+            "description": "Virtually presents a User PIN at a door reader, as though it was physically entered. Returns the ActivityID of the submitted activity.",
+            "fields": {
+                "entry_id": {
+                    "name": "Inception hub",
+                    "description": "Select which configured Inception hub to target. Only required when multiple hubs are configured."
+                },
+                "reader_id": {
+                    "name": "Reader ID",
+                    "description": "ID of the reader to present the PIN at. Discover reader IDs for a door via the 'Get attached readers' service."
+                },
+                "pin": {
+                    "name": "PIN",
+                    "description": "The User PIN to present. PINs cannot be retrieved from the Inception API, so the caller must know the value."
+                }
+            }
+        },
+        "get_attached_readers": {
+            "name": "Get attached readers",
+            "description": "Returns the readers attached to a door. Use the resulting reader IDs with the 'Badge credential' and 'Send PIN' services.",
+            "fields": {
+                "entry_id": {
+                    "name": "Inception hub",
+                    "description": "Select which configured Inception hub to query. Only required when multiple hubs are configured."
+                },
+                "door_id": {
+                    "name": "Door ID",
+                    "description": "The ID of the door to list readers for."
+                }
+            }
+        },
         "get_review_events": {
             "name": "Get review events",
             "description": "Queries historical review events from the Inception controller. Returns matching events as a service response. All fields are optional; leave them empty to fetch the most recent events.",

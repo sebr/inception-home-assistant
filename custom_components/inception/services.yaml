@@ -29,6 +29,60 @@ area_arm:
       selector:
         text:
 
+badge_credential:
+  fields:
+    entry_id:
+      required: false
+      selector:
+        config_entry:
+          integration: inception
+    reader_id:
+      required: true
+      example: "5a1b8b27-3d0c-4d52-9f72-3f0e5b9d4a52"
+      selector:
+        text:
+    credential_template:
+      required: true
+      example: "0f8c5e94-5cb7-4f3f-9b66-2e2e3c0a5d33"
+      selector:
+        text:
+    card_number:
+      required: true
+      example: "0000123"
+      selector:
+        text:
+
+send_pin:
+  fields:
+    entry_id:
+      required: false
+      selector:
+        config_entry:
+          integration: inception
+    reader_id:
+      required: true
+      example: "5a1b8b27-3d0c-4d52-9f72-3f0e5b9d4a52"
+      selector:
+        text:
+    pin:
+      required: true
+      example: "1234"
+      selector:
+        text:
+
+get_attached_readers:
+  fields:
+    entry_id:
+      required: false
+      selector:
+        config_entry:
+          integration: inception
+    door_id:
+      required: true
+      example: "fbec7c22-500d-4f3b-b94e-4c19ff501f9f"
+      selector:
+        text:
+
 get_review_events:
   fields:
     entry_id:
