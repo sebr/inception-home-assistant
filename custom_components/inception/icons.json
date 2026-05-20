@@ -1,7 +1,21 @@
 {
-  "triggers": {
-    "_": {
-      "trigger": "mdi:shield-alert-outline"
+  "entity": {
+    "select": {
+      "unlock_strategy": {
+        "default": "mdi:timer-lock-open",
+        "state": {
+          "unlock": "mdi:lock-open-variant",
+          "timed_unlock": "mdi:timer-lock-open-outline"
+        }
+      }
     }
+  },
+  "services": {
+    "unlock": { "service": "mdi:lock-open-variant" },
+    "area_arm": { "service": "mdi:shield-home" },
+    "get_review_events": { "service": "mdi:history" }
+  },
+  "triggers": {
+    "_": { "trigger": "mdi:shield-alert-outline" }
   }
 }
