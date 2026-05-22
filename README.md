@@ -161,8 +161,8 @@ data:
 Virtually badges a user credential at a door reader, as though the card had been physically presented. The Inception controller carries out the resulting access attempt (grant / deny / review-event emission) exactly as it would for a real swipe.
 
 **Parameters:**
-- `reader_id` (required): ID of the reader to badge at. Discover reader IDs via the [`inception.get_attached_readers`](#inceptionget_attached_readers) service.
-- `credential_template` (required): The Credential Template ID of the user credential. Available from the user's `PhysicalCredentials[]` entry in the Inception API.
+- `reader_id` (required): ID of the reader to badge at. Reader IDs are attributes of a lock, or can be discovered via the [`inception.get_attached_readers`](#inceptionget_attached_readers) service.
+- `credential_template` (required): The Credential Template ID of the user credential. Find the ID at Inception > System > API Details.
 - `card_number` (required): The card number (Credential `Data` value) of the user credential.
 - `entry_id` (optional): Select which configured Inception hub to target. Only required when multiple hubs are configured.
 
@@ -183,7 +183,7 @@ response_variable: result
 Virtually presents a User PIN at a door reader, as though it had been physically entered on the keypad.
 
 **Parameters:**
-- `reader_id` (required): ID of the reader to present the PIN at. Discover reader IDs via the [`inception.get_attached_readers`](#inceptionget_attached_readers) service.
+- `reader_id` (required): ID of the reader to present the PIN at. Reader IDs are attributes of a lock, or can be discovered via the [`inception.get_attached_readers`](#inceptionget_attached_readers) service.
 - `pin` (required): The User PIN to present. PINs cannot be retrieved from the Inception API (they are write-only for security), so the caller must know the value.
 - `entry_id` (optional): Select which configured Inception hub to target. Only required when multiple hubs are configured.
 
