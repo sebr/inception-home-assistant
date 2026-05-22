@@ -10,10 +10,22 @@ from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 
 from custom_components.inception.const import DOMAIN
 from custom_components.inception.services import (
+    SERVICE_BADGE_CREDENTIAL,
+    SERVICE_GET_ATTACHED_READERS,
     SERVICE_GET_REVIEW_EVENTS,
+    SERVICE_SEND_PIN,
     _resolve_coordinator,
     async_register_services,
 )
+
+
+def _registered_handler(hass: MagicMock, service_name: str) -> Any:
+    """Return the handler that was registered under ``service_name``."""
+    for call_args in hass.services.async_register.call_args_list:
+        if call_args.args[1] == service_name:
+            return call_args.args[2]
+    msg = f"Service {service_name} not registered"
+    raise AssertionError(msg)
 
 
 def _hass_with_coordinators(coordinators: dict[str, Any]) -> MagicMock:
@@ -63,15 +75,19 @@ class TestResolveCoordinator:
 class TestAsyncRegisterServices:
     """Test the service registration entry point."""
 
-    def test_registers_get_review_events_once(self) -> None:
-        """async_register_services registers the get_review_events service."""
+    def test_registers_all_services(self) -> None:
+        """async_register_services registers every Inception domain service."""
         hass = _hass_with_coordinators({"a": MagicMock()})
         async_register_services(hass)
 
-        hass.services.async_register.assert_called_once()
-        call_args = hass.services.async_register.call_args
-        assert call_args.args[0] == DOMAIN
-        assert call_args.args[1] == SERVICE_GET_REVIEW_EVENTS
+        registered = [
+            call_args.args[1]
+            for call_args in hass.services.async_register.call_args_list
+        ]
+        assert SERVICE_GET_REVIEW_EVENTS in registered
+        assert SERVICE_BADGE_CREDENTIAL in registered
+        assert SERVICE_SEND_PIN in registered
+        assert SERVICE_GET_ATTACHED_READERS in registered
 
     def test_skips_when_already_registered(self) -> None:
         """Re-invocation is a no-op so multiple entries don't double-register."""
@@ -92,7 +108,7 @@ class TestAsyncRegisterServices:
         hass = _hass_with_coordinators({"only": coordinator})
 
         async_register_services(hass)
-        handler = hass.services.async_register.call_args.args[2]
+        handler = _registered_handler(hass, SERVICE_GET_REVIEW_EVENTS)
 
         call = MagicMock()
         call.data = {
@@ -128,10 +144,152 @@ class TestAsyncRegisterServices:
         hass = _hass_with_coordinators({"only": coordinator})
 
         async_register_services(hass)
-        handler = hass.services.async_register.call_args.args[2]
+        handler = _registered_handler(hass, SERVICE_GET_REVIEW_EVENTS)
 
         call = MagicMock()
         call.data = {}
+
+        with pytest.raises(HomeAssistantError):
+            await handler(call)
+
+
+class TestBadgeCredentialService:
+    """Tests for the inception.badge_credential service handler."""
+
+    @pytest.mark.asyncio
+    async def test_handler_delegates_to_api(self) -> None:
+        """Required fields are forwarded to badge_credential_at_reader."""
+        coordinator = MagicMock()
+        coordinator.api.badge_credential_at_reader = AsyncMock(
+            return_value="activity-1"
+        )
+        hass = _hass_with_coordinators({"only": coordinator})
+
+        async_register_services(hass)
+        handler = _registered_handler(hass, SERVICE_BADGE_CREDENTIAL)
+
+        call = MagicMock()
+        call.data = {
+            "reader_id": "reader-1",
+            "credential_template": "template-1",
+            "card_number": "0000123",
+        }
+
+        response = await handler(call)
+
+        coordinator.api.badge_credential_at_reader.assert_awaited_once_with(
+            reader_id="reader-1",
+            credential_template="template-1",
+            card_number="0000123",
+        )
+        assert response == {"activity_id": "activity-1"}
+
+    @pytest.mark.asyncio
+    async def test_handler_wraps_api_errors(self) -> None:
+        """API failures surface as HomeAssistantError."""
+        coordinator = MagicMock()
+        coordinator.api.badge_credential_at_reader = AsyncMock(
+            side_effect=RuntimeError("boom")
+        )
+        hass = _hass_with_coordinators({"only": coordinator})
+
+        async_register_services(hass)
+        handler = _registered_handler(hass, SERVICE_BADGE_CREDENTIAL)
+
+        call = MagicMock()
+        call.data = {
+            "reader_id": "reader-1",
+            "credential_template": "template-1",
+            "card_number": "0000123",
+        }
+
+        with pytest.raises(HomeAssistantError):
+            await handler(call)
+
+
+class TestSendPinService:
+    """Tests for the inception.send_pin service handler."""
+
+    @pytest.mark.asyncio
+    async def test_handler_delegates_to_api(self) -> None:
+        """Required fields are forwarded to send_pin_to_reader."""
+        coordinator = MagicMock()
+        coordinator.api.send_pin_to_reader = AsyncMock(return_value="activity-2")
+        hass = _hass_with_coordinators({"only": coordinator})
+
+        async_register_services(hass)
+        handler = _registered_handler(hass, SERVICE_SEND_PIN)
+
+        call = MagicMock()
+        call.data = {"reader_id": "reader-1", "pin": "1234"}
+
+        response = await handler(call)
+
+        coordinator.api.send_pin_to_reader.assert_awaited_once_with(
+            reader_id="reader-1",
+            pin="1234",
+        )
+        assert response == {"activity_id": "activity-2"}
+
+    @pytest.mark.asyncio
+    async def test_handler_wraps_api_errors(self) -> None:
+        """API failures surface as HomeAssistantError."""
+        coordinator = MagicMock()
+        coordinator.api.send_pin_to_reader = AsyncMock(side_effect=RuntimeError("boom"))
+        hass = _hass_with_coordinators({"only": coordinator})
+
+        async_register_services(hass)
+        handler = _registered_handler(hass, SERVICE_SEND_PIN)
+
+        call = MagicMock()
+        call.data = {"reader_id": "reader-1", "pin": "1234"}
+
+        with pytest.raises(HomeAssistantError):
+            await handler(call)
+
+
+class TestGetAttachedReadersService:
+    """Tests for the inception.get_attached_readers service handler."""
+
+    @pytest.mark.asyncio
+    async def test_handler_returns_readers(self) -> None:
+        """Door ID is forwarded and the reader list is returned with a count."""
+        coordinator = MagicMock()
+        coordinator.api.get_attached_readers = AsyncMock(
+            return_value=[{"ID": "reader-1"}, {"ID": "reader-2"}]
+        )
+        hass = _hass_with_coordinators({"only": coordinator})
+
+        async_register_services(hass)
+        handler = _registered_handler(hass, SERVICE_GET_ATTACHED_READERS)
+
+        call = MagicMock()
+        call.data = {"door_id": "door-1"}
+
+        response = await handler(call)
+
+        coordinator.api.get_attached_readers.assert_awaited_once_with(
+            door_id="door-1",
+        )
+        assert response == {
+            "readers": [{"ID": "reader-1"}, {"ID": "reader-2"}],
+            "count": 2,
+        }
+
+    @pytest.mark.asyncio
+    async def test_handler_wraps_api_errors(self) -> None:
+        """API failures surface as HomeAssistantError."""
+        coordinator = MagicMock()
+        coordinator.api.get_attached_readers = AsyncMock(
+            side_effect=RuntimeError("boom")
+        )
+        hass = _hass_with_coordinators({"only": coordinator})
+
+        async_register_services(hass)
+        handler = _registered_handler(hass, SERVICE_GET_ATTACHED_READERS)
+
+        call = MagicMock()
+        call.data = {"door_id": "door-1"}
 
         with pytest.raises(HomeAssistantError):
             await handler(call)

@@ -156,6 +156,93 @@ data:
   code: "1234"
 ```
 
+### inception.badge_credential
+
+Virtually badges a user credential at a door reader, as though the card had been physically presented. The Inception controller carries out the resulting access attempt (grant / deny / review-event emission) exactly as it would for a real swipe.
+
+**Parameters:**
+- `reader_id` (required): ID of the reader to badge at. Reader IDs are attributes of a lock, or can be discovered via the [`inception.get_attached_readers`](#inceptionget_attached_readers) service.
+- `credential_template` (required): The Credential Template ID of the user credential. Find the ID at Inception > System > API Details.
+- `card_number` (required): The card number (Credential `Data` value) of the user credential.
+- `entry_id` (optional): Select which configured Inception hub to target. Only required when multiple hubs are configured.
+
+**Response:** A service response containing `activity_id` — the controller's `ActivityID` for the submitted activity, useful for cross-referencing review events.
+
+**Example:**
+```yaml
+service: inception.badge_credential
+data:
+  reader_id: "5a1b8b27-3d0c-4d52-9f72-3f0e5b9d4a52"
+  credential_template: "0f8c5e94-5cb7-4f3f-9b66-2e2e3c0a5d33"
+  card_number: "0000123"
+response_variable: result
+```
+
+### inception.send_pin
+
+Virtually presents a User PIN at a door reader, as though it had been physically entered on the keypad.
+
+**Parameters:**
+- `reader_id` (required): ID of the reader to present the PIN at. Reader IDs are attributes of a lock, or can be discovered via the [`inception.get_attached_readers`](#inceptionget_attached_readers) service.
+- `pin` (required): The User PIN to present. PINs cannot be retrieved from the Inception API (they are write-only for security), so the caller must know the value.
+- `entry_id` (optional): Select which configured Inception hub to target. Only required when multiple hubs are configured.
+
+**Response:** A service response containing `activity_id` — the controller's `ActivityID` for the submitted activity.
+
+**Example:**
+```yaml
+service: inception.send_pin
+data:
+  reader_id: "5a1b8b27-3d0c-4d52-9f72-3f0e5b9d4a52"
+  pin: "1234"
+response_variable: result
+```
+
+### inception.get_attached_readers
+
+Returns the readers attached to a door. Use the resulting reader IDs with [`inception.badge_credential`](#inceptionbadge_credential) and [`inception.send_pin`](#inceptionsend_pin). Reader IDs are stable, so you typically only need to call this once per automation while wiring it up.
+
+**Parameters:**
+- `door_id` (required): The Inception ID of the door to list readers for. Available as the `unique_id` of the door's lock entity in Home Assistant.
+- `entry_id` (optional): Select which configured Inception hub to query. Only required when multiple hubs are configured.
+
+**Response:** A service response containing `readers` (the list of reader objects, each with `ID` and `Name`) and `count`.
+
+**Example:**
+```yaml
+service: inception.get_attached_readers
+data:
+  door_id: "fbec7c22-500d-4f3b-b94e-4c19ff501f9f"
+response_variable: result
+```
+
+### inception.get_review_events
+
+Queries historical review events from the Inception controller. Returns matching events as a service response.
+
+**Parameters:** All optional. Leave them empty to fetch the most recent events.
+- `limit`: Maximum number of events to return (default 100, max 1000).
+- `offset`: Skip this many events before returning results. Use with `limit` for pagination.
+- `direction`: `asc` (oldest first, default) or `desc` (newest first).
+- `start` / `end`: Earliest / latest event timestamp to include.
+- `category_filter`: One or more of `System`, `Audit`, `Access`, `Security`, `Hardware`.
+- `message_type_id_filter`: A list of numeric `MessageID` values to match.
+- `involved_entity_id_filter`: A list of UUID strings — events whose `WhoID`, `WhatID`, or `WhereID` matches will be returned.
+- `reference_id` / `reference_time`: Anchor pagination around a specific event (the event's ID and its `WhenTicks` value).
+- `entry_id`: Select which configured Inception hub to query. Only required when multiple hubs are configured.
+
+**Response:** A service response containing `events` (the list of event records) and `count`.
+
+**Example:**
+```yaml
+service: inception.get_review_events
+data:
+  limit: 50
+  direction: desc
+  category_filter: [Access, Security]
+response_variable: result
+```
+
 ## Events
 
 The integration emits Home Assistant events for real-time security notifications:

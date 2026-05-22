@@ -783,6 +783,124 @@ class TestBundledLongPoll:
         assert api_client._review_events_categories == []
 
 
+class TestVirtualActivityMethods:
+    """Tests for badge/PIN activity submission and reader discovery."""
+
+    @pytest.fixture
+    def mock_session(self) -> Mock:
+        """Create a mock session."""
+        return Mock(spec=aiohttp.ClientSession)
+
+    @pytest.mark.asyncio
+    async def test_get_attached_readers_returns_list(self, mock_session: Mock) -> None:
+        """A list response from /attached-readers is returned verbatim."""
+        api_client = InceptionApiClient(
+            token="t", host="http://h.test", session=mock_session
+        )
+        readers = [{"ID": "reader-1"}, {"ID": "reader-2"}]
+        with patch.object(api_client, "request", return_value=readers) as mock_request:
+            result = await api_client.get_attached_readers("door-1")
+
+        assert result == readers
+        mock_request.assert_awaited_once_with(
+            method="get",
+            path="/control/door/door-1/attached-readers",
+        )
+
+    @pytest.mark.asyncio
+    async def test_get_attached_readers_non_list_returns_empty(
+        self, mock_session: Mock
+    ) -> None:
+        """A non-list response is normalised to an empty list."""
+        api_client = InceptionApiClient(
+            token="t", host="http://h.test", session=mock_session
+        )
+        with patch.object(api_client, "request", return_value={"unexpected": "shape"}):
+            result = await api_client.get_attached_readers("door-1")
+
+        assert result == []
+
+    @pytest.mark.asyncio
+    async def test_badge_credential_at_reader_returns_activity_id(
+        self, mock_session: Mock
+    ) -> None:
+        """A Success response yields the ActivityID."""
+        api_client = InceptionApiClient(
+            token="t", host="http://h.test", session=mock_session
+        )
+        response = {
+            "Response": {"Result": "Success", "Message": "OK"},
+            "ActivityID": "act-1",
+        }
+        with patch.object(api_client, "request", return_value=response) as mock_request:
+            activity_id = await api_client.badge_credential_at_reader(
+                reader_id="reader-1",
+                credential_template="template-1",
+                card_number="0000123",
+            )
+
+        assert activity_id == "act-1"
+        mock_request.assert_awaited_once_with(
+            method="post",
+            path="/activity",
+            data={
+                "Type": "BadgeCredentialAtReader",
+                "CredentialData": {
+                    "CredentialTemplate": "template-1",
+                    "Data": "0000123",
+                },
+                "Entity": "reader-1",
+            },
+        )
+
+    @pytest.mark.asyncio
+    async def test_send_pin_to_reader_returns_activity_id(
+        self, mock_session: Mock
+    ) -> None:
+        """A Success response yields the ActivityID."""
+        api_client = InceptionApiClient(
+            token="t", host="http://h.test", session=mock_session
+        )
+        response = {
+            "Response": {"Result": "Success", "Message": "OK"},
+            "ActivityID": "act-2",
+        }
+        with patch.object(api_client, "request", return_value=response) as mock_request:
+            activity_id = await api_client.send_pin_to_reader(
+                reader_id="reader-1", pin="1234"
+            )
+
+        assert activity_id == "act-2"
+        mock_request.assert_awaited_once_with(
+            method="post",
+            path="/activity",
+            data={
+                "Type": "SendPINDataToReader",
+                "Entity": "reader-1",
+                "PINData": "1234",
+            },
+        )
+
+    @pytest.mark.asyncio
+    async def test_failure_response_raises(self, mock_session: Mock) -> None:
+        """A Failure response raises InceptionApiClientError with the message."""
+        api_client = InceptionApiClient(
+            token="t", host="http://h.test", session=mock_session
+        )
+        response = {
+            "Response": {"Result": "Failure", "Message": "Unknown reader"},
+        }
+        with (
+            patch.object(api_client, "request", return_value=response),
+            pytest.raises(InceptionApiClientError, match="Unknown reader"),
+        ):
+            await api_client.badge_credential_at_reader(
+                reader_id="reader-1",
+                credential_template="template-1",
+                card_number="0000123",
+            )
+
+
 class TestGetReviewEvents:
     """Test the get_review_events query helper."""
 

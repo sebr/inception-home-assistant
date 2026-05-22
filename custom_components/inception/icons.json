@@ -13,7 +13,10 @@
   "services": {
     "unlock": { "service": "mdi:lock-open-variant" },
     "area_arm": { "service": "mdi:shield-home" },
-    "get_review_events": { "service": "mdi:history" }
+    "get_review_events": { "service": "mdi:history" },
+    "get_attached_readers": { "service": "mdi:smart-card-reader-outline" },
+    "badge_credential": { "service": "mdi:badge-account-outline" },
+    "send_pin": { "service": "mdi:numeric" }
   },
   "triggers": {
     "_": { "trigger": "mdi:shield-alert-outline" }

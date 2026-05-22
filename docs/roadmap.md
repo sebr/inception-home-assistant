@@ -99,17 +99,21 @@ attribute on the alarm panel entity.
 
 ## Tier 3 — opportunistic additions
 
-### 3.1 Virtual badge / virtual PIN services (idea)
+### 3.1 Virtual badge / virtual PIN services [x]
 
 [`activities.md`](inception-api/activities.md) — `POST /api/v1/activity`
 with `BadgeCredentialAtReader` or `SendPINDataToReader` lets HA "press
 the reader" on behalf of a user. Useful for "unlock door as Alice when
 her phone arrives".
 
-- **Shape**: two HA services (`inception.badge_credential`,
-  `inception.send_pin`) + reader discovery via
-  `GET /control/door/[id]/attached-readers`.
-- **Dependency**: User schema from 2.3.
+- **Delivered**: three HA services — `inception.badge_credential`,
+  `inception.send_pin`, and `inception.get_attached_readers` for reader
+  discovery via `GET /control/door/[id]/attached-readers`. Each service
+  returns the controller's `ActivityID` (or `null` on failure) for
+  optional follow-up via Activity Progress (see 2.2).
+- **Note**: the User schema from 2.3 wasn't actually required; callers
+  pass the credential template + card number directly, matching how the
+  Inception API exposes them.
 
 ### 3.2 Historical review-event query service (idea)
 
