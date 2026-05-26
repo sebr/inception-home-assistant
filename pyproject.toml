@@ -15,7 +15,7 @@ dev = [
     "pre-commit",
     "pytest-asyncio",
     "pytest-homeassistant-custom-component",
-    "ruff==0.15.13",
+    "ruff==0.15.14",
 ]
 
 [tool.uv]
