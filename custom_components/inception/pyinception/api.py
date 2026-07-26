@@ -18,6 +18,7 @@ from .schemas.input import InputPublicState, InputSummary
 from .schemas.output import OutputPublicState, OutputSummary
 from .schemas.review_events import LiveReviewEventsRequest
 from .schemas.system_info import SystemInfo
+from .schemas.time_period import TimePeriodPublicState, TimePeriodSummary
 from .schemas.update_monitor import (
     MonitorEntityStatesRequest,
     UpdateMonitorResponse,
@@ -80,7 +81,9 @@ class InceptionApiClient:
         self.protocol_version: int | None = None
         self.system_info: SystemInfo | None = None
 
-    T = TypeVar("T", DoorSummary, InputSummary, OutputSummary, AreaSummary)
+    T = TypeVar(
+        "T", DoorSummary, InputSummary, OutputSummary, AreaSummary, TimePeriodSummary
+    )
 
     async def get_controls(self, Type: type[T]) -> T:  # noqa: N803
         """Get control item summaries."""
@@ -89,6 +92,7 @@ class InceptionApiClient:
             InputSummary: "input",
             OutputSummary: "output",
             AreaSummary: "area",
+            TimePeriodSummary: "time-period",
         }
         if Type not in path_map:
             msg = f"Unsupported entity type: {Type}"
@@ -182,11 +186,12 @@ class InceptionApiClient:
     async def get_data(self) -> InceptionApiData:
         """Get the status of the API."""
         if self.data is None:
-            doors, outputs, inputs, areas = await asyncio.gather(
+            doors, outputs, inputs, areas, time_periods = await asyncio.gather(
                 self.get_controls(DoorSummary),
                 self.get_controls(OutputSummary),
                 self.get_controls(InputSummary),
                 self.get_controls(AreaSummary),
+                self._get_time_periods(),
             )
 
             self.data = InceptionApiData(
@@ -194,9 +199,29 @@ class InceptionApiClient:
                 doors=doors,
                 areas=areas,
                 outputs=outputs,
+                time_periods=time_periods,
             )
 
         return self.data
+
+    async def _get_time_periods(self) -> TimePeriodSummary:
+        """
+        Fetch the time-period summary, tolerating controllers that lack it.
+
+        Time Periods follow the same universal `/control/[type]/summary`
+        convention as the other entity types, but the endpoint is only present
+        on firmware that supports it. Any non-auth failure (e.g. a 404 on older
+        firmware) degrades to an empty summary so the core entity types keep
+        working. Authentication errors are re-raised so the coordinator can
+        route them into Home Assistant's re-auth flow.
+        """
+        try:
+            return await self.get_controls(TimePeriodSummary)
+        except InceptionApiClientAuthenticationError:
+            raise
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.debug("Time periods not available: %s", err)
+            return TimePeriodSummary(TimePeriods={})
 
     REVIEW_EVENTS_REQUEST_ID: ClassVar[str] = "LiveReviewEventsRequest"
 
@@ -204,8 +229,9 @@ class InceptionApiClient:
         """
         Run a single long-poll iteration against `/monitor-updates`.
 
-        The payload bundles state-change sub-requests for all four entity
-        types (Input, Door, Output, Area), plus the LiveReviewEvents
+        The payload bundles state-change sub-requests for the four core entity
+        types (Input, Door, Output, Area) — plus a Time Period sub-request when
+        the controller exposes time periods, and the LiveReviewEvents
         sub-request when review events are enabled. The server returns a
         response for exactly one sub-request per call (matched by `ID`),
         so the dispatch here simply routes on the response `ID`.
@@ -215,6 +241,28 @@ class InceptionApiClient:
             _LOGGER.warning("state monitor: no data to update")
             return
 
+        entity_state_specs = [
+            ("InputStateRequest", "InputState", InputPublicState, "inputs"),
+            ("DoorStateRequest", "DoorState", DoorPublicState, "doors"),
+            ("OutputStateRequest", "OutputState", OutputPublicState, "outputs"),
+            ("AreaStateRequest", "AreaState", AreaPublicState, "areas"),
+        ]
+
+        # Only monitor time-period state on controllers that actually expose
+        # time periods (i.e. the /control/time-period/summary fetch returned
+        # items). This avoids sending an unrecognised `TimePeriodState`
+        # sub-request to firmware that doesn't support it, which could disrupt
+        # the shared long-poll for the other entity types.
+        if self.data.time_periods.get_items():
+            entity_state_specs.append(
+                (
+                    "TimePeriodStateRequest",
+                    "TimePeriodState",
+                    TimePeriodPublicState,
+                    "time_periods",
+                )
+            )
+
         request_types = {
             request_id: MonitorEntityStatesRequest(
                 request_id=request_id,
@@ -223,12 +271,12 @@ class InceptionApiClient:
                 time_since_last_update=self._monitor_update_times.get(request_id, 0),
                 api_data=api_data,
             )
-            for request_id, state_type, public_state_type, api_data in [
-                ("InputStateRequest", "InputState", InputPublicState, "inputs"),
-                ("DoorStateRequest", "DoorState", DoorPublicState, "doors"),
-                ("OutputStateRequest", "OutputState", OutputPublicState, "outputs"),
-                ("AreaStateRequest", "AreaState", AreaPublicState, "areas"),
-            ]
+            for (
+                request_id,
+                state_type,
+                public_state_type,
+                api_data,
+            ) in entity_state_specs
         }
 
         payload = [

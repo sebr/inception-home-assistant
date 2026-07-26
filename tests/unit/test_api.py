@@ -545,6 +545,81 @@ class TestProtocolVersion:
         assert version is None
 
 
+class TestGetTimePeriods:
+    """Tests for the defensive time-period fetch."""
+
+    @pytest.fixture
+    def mock_session(self) -> Mock:
+        """Return a mocked aiohttp session."""
+        return Mock(spec=aiohttp.ClientSession)
+
+    @pytest.mark.asyncio
+    async def test_returns_summary_on_success(self, mock_session: Mock) -> None:
+        """A well-formed summary response is parsed into time period items."""
+        api_client = InceptionApiClient(
+            token="t", host="http://h.test", session=mock_session
+        )
+        summary_payload = {
+            "TimePeriods": {
+                "tp_1": {
+                    "EntityInfo": {
+                        "ID": "tp_1",
+                        "Name": "Business Hours",
+                        "ReportingID": "1",
+                    },
+                    "CurrentState": 1,
+                }
+            }
+        }
+        with patch.object(
+            api_client, "request", return_value=summary_payload
+        ) as mock_request:
+            summary = await api_client._get_time_periods()
+
+        items = summary.get_items()
+        assert len(items) == 1
+        assert items[0].entity_info.name == "Business Hours"
+        mock_request.assert_awaited_once_with(
+            method="get",
+            path="/control/time-period/summary",
+        )
+
+    @pytest.mark.asyncio
+    async def test_returns_empty_on_404(self, mock_session: Mock) -> None:
+        """Firmware without time periods (404) degrades to an empty summary."""
+        api_client = InceptionApiClient(
+            token="t", host="http://h.test", session=mock_session
+        )
+        with patch.object(
+            api_client,
+            "request",
+            side_effect=InceptionApiClientCommunicationError(
+                "Error fetching information - 404, message='Not Found'"
+            ),
+        ):
+            summary = await api_client._get_time_periods()
+
+        assert summary.get_items() == []
+
+    @pytest.mark.asyncio
+    async def test_reraises_auth_error(self, mock_session: Mock) -> None:
+        """Authentication errors propagate so re-auth can be triggered."""
+        api_client = InceptionApiClient(
+            token="t", host="http://h.test", session=mock_session
+        )
+        with (
+            patch.object(
+                api_client,
+                "request",
+                side_effect=InceptionApiClientAuthenticationError(
+                    "Invalid credentials"
+                ),
+            ),
+            pytest.raises(InceptionApiClientAuthenticationError),
+        ):
+            await api_client._get_time_periods()
+
+
 class TestRequestApiPrefix:
     """Tests for the api_prefix argument to request()."""
 
@@ -627,6 +702,8 @@ class TestBundledLongPoll:
             token="t", host="http://h.test", session=mock_session
         )
         api_client.data = Mock()
+        # No time periods configured -> no TimePeriod sub-request bundled.
+        api_client.data.time_periods.get_items.return_value = []
         api_client._review_events_enabled = False
 
         captured_payloads: list[list[dict[str, Any]]] = []
@@ -657,6 +734,8 @@ class TestBundledLongPoll:
             token="t", host="http://h.test", session=mock_session
         )
         api_client.data = Mock()
+        # No time periods configured -> no TimePeriod sub-request bundled.
+        api_client.data.time_periods.get_items.return_value = []
         api_client._review_events_enabled = True
         api_client._review_events_categories = ["Access", "Security"]
 
@@ -678,6 +757,44 @@ class TestBundledLongPoll:
         ids = [entry["ID"] for entry in captured_payloads[0]]
         assert InceptionApiClient.REVIEW_EVENTS_REQUEST_ID in ids
         assert len(ids) == 5
+
+    @pytest.mark.asyncio
+    async def test_payload_includes_time_period_request_when_present(
+        self, mock_session: Mock
+    ) -> None:
+        """A TimePeriodState sub-request is bundled when time periods exist."""
+        api_client = InceptionApiClient(
+            token="t", host="http://h.test", session=mock_session
+        )
+        api_client.data = Mock()
+        # At least one time period configured -> bundle the sub-request.
+        api_client.data.time_periods.get_items.return_value = [Mock()]
+        api_client._review_events_enabled = False
+
+        captured_payloads: list[list[dict[str, Any]]] = []
+
+        async def fake_request(payload: list[dict[str, Any]]) -> None:
+            captured_payloads.append(payload)
+
+        with patch.object(
+            api_client, "_monitor_events_request", side_effect=fake_request
+        ):
+            await api_client.monitor_entity_states()
+
+        assert len(captured_payloads) == 1
+        payload = captured_payloads[0]
+        ids = [entry["ID"] for entry in payload]
+        assert ids == [
+            "InputStateRequest",
+            "DoorStateRequest",
+            "OutputStateRequest",
+            "AreaStateRequest",
+            "TimePeriodStateRequest",
+        ]
+        tp_entry = next(
+            entry for entry in payload if entry["ID"] == "TimePeriodStateRequest"
+        )
+        assert tp_entry["InputData"]["stateType"] == "TimePeriodState"
 
     @pytest.mark.asyncio
     async def test_review_events_response_routed_to_processor(

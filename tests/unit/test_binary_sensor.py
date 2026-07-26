@@ -8,12 +8,17 @@ from homeassistant.components.binary_sensor import BinarySensorDeviceClass
 from homeassistant.helpers.entity import Entity
 
 from custom_components.inception.binary_sensor import (
+    InceptionTimePeriodBinarySensor,
     async_setup_entry,
     get_device_class_for_name,
 )
 from custom_components.inception.coordinator import InceptionUpdateCoordinator
 from custom_components.inception.pyinception.schemas.door import DoorPublicState
 from custom_components.inception.pyinception.schemas.input import InputPublicState
+from custom_components.inception.pyinception.schemas.time_period import (
+    TimePeriodPublicState,
+    TimePeriodSummary,
+)
 
 
 class TestBinarySensorKeys:
@@ -36,6 +41,9 @@ class TestBinarySensorKeys:
         coordinator.data = Mock()
         coordinator.data.inputs = Mock()
         coordinator.data.inputs.get_items = Mock(return_value=[])
+        # Default to no time periods; individual tests override as needed.
+        coordinator.data.time_periods = Mock()
+        coordinator.data.time_periods.get_items = Mock(return_value=[])
 
         return coordinator
 
@@ -537,6 +545,155 @@ class TestBinarySensorKeys:
             "identifiers"
         ]  # pyright: ignore[reportTypedDictNotRequiredAccess]
         assert input_sensor._attr_device_info["name"] == "PIR Motion Sensor"  # pyright: ignore[reportTypedDictNotRequiredAccess]
+
+
+def _build_time_period_summary(
+    periods: list[tuple[str, str, str, int]],
+) -> TimePeriodSummary:
+    """Build a real TimePeriodSummary from (id, name, reporting_id, state) tuples."""
+    return TimePeriodSummary(
+        TimePeriods={
+            tp_id: {
+                "EntityInfo": {"ID": tp_id, "Name": name, "ReportingID": reporting_id},
+                "CurrentState": state,
+            }
+            for tp_id, name, reporting_id, state in periods
+        }
+    )
+
+
+class TestTimePeriodBinarySensor:
+    """Test time period binary sensors."""
+
+    @pytest.fixture
+    def mock_coordinator(self) -> Mock:
+        """Create a mock coordinator with empty doors/inputs by default."""
+        coordinator = Mock(spec=InceptionUpdateCoordinator)
+        coordinator.config_entry = Mock()
+        coordinator.config_entry.entry_id = "test_entry_id"
+        coordinator.api = Mock()
+        coordinator.api._host = "test.example.com"
+
+        coordinator.data = Mock()
+        coordinator.data.doors = Mock()
+        coordinator.data.doors.get_items = Mock(return_value=[])
+        coordinator.data.inputs = Mock()
+        coordinator.data.inputs.get_items = Mock(return_value=[])
+        coordinator.data.time_periods = Mock()
+        coordinator.data.time_periods.get_items = Mock(return_value=[])
+
+        return coordinator
+
+    @pytest.fixture
+    def mock_hass(self) -> Mock:
+        """Create a mock Home Assistant instance."""
+        hass = Mock()
+        hass.data = {}
+        return hass
+
+    @pytest.fixture
+    def mock_entry(self) -> Mock:
+        """Create a mock config entry."""
+        entry = Mock()
+        entry.entry_id = "test_entry_id"
+        return entry
+
+    async def _setup(
+        self, mock_coordinator: Mock, mock_hass: Mock, mock_entry: Mock
+    ) -> list[Entity]:
+        """Run async_setup_entry and return the created entities."""
+        added_entities: list[Entity] = []
+
+        def mock_async_add_entities(
+            new_entities: Iterable[Entity],
+            update_before_add: bool = False,  # noqa: FBT001, FBT002, ARG001
+        ) -> None:
+            added_entities.extend(new_entities)
+
+        mock_hass.data = {"inception": {mock_entry.entry_id: mock_coordinator}}
+        await async_setup_entry(mock_hass, mock_entry, mock_async_add_entities)
+        return added_entities
+
+    @pytest.mark.asyncio
+    async def test_creates_one_sensor_per_time_period(
+        self, mock_coordinator: Mock, mock_hass: Mock, mock_entry: Mock
+    ) -> None:
+        """Each configured time period yields exactly one binary sensor."""
+        summary = _build_time_period_summary(
+            [
+                ("tp_1", "Business Hours", "1", TimePeriodPublicState.ACTIVE),
+                ("tp_2", "Weekend", "2", TimePeriodPublicState.INACTIVE),
+            ]
+        )
+        mock_coordinator.data.time_periods.get_items = Mock(
+            return_value=summary.get_items()
+        )
+
+        added_entities = await self._setup(mock_coordinator, mock_hass, mock_entry)
+
+        time_period_sensors = [
+            e for e in added_entities if isinstance(e, InceptionTimePeriodBinarySensor)
+        ]
+        assert len(time_period_sensors) == 2
+        assert len(added_entities) == 2
+
+        keys = sorted(e._attr_unique_id for e in time_period_sensors)
+        assert keys == ["tp_1_time_period", "tp_2_time_period"]
+
+    @pytest.mark.asyncio
+    async def test_is_on_reflects_active_state(
+        self, mock_coordinator: Mock, mock_hass: Mock, mock_entry: Mock
+    ) -> None:
+        """is_on is True only for the active time period."""
+        summary = _build_time_period_summary(
+            [
+                ("tp_active", "Business Hours", "1", TimePeriodPublicState.ACTIVE),
+                ("tp_inactive", "Weekend", "2", TimePeriodPublicState.INACTIVE),
+            ]
+        )
+        mock_coordinator.data.time_periods.get_items = Mock(
+            return_value=summary.get_items()
+        )
+
+        added_entities = await self._setup(mock_coordinator, mock_hass, mock_entry)
+
+        by_id = {e._attr_unique_id: e for e in added_entities}
+        assert by_id["tp_active_time_period"].is_on is True
+        assert by_id["tp_inactive_time_period"].is_on is False
+
+    @pytest.mark.asyncio
+    async def test_time_period_device_grouping_and_name(
+        self, mock_coordinator: Mock, mock_hass: Mock, mock_entry: Mock
+    ) -> None:
+        """A time period sensor is its own device under the panel, named after it."""
+        summary = _build_time_period_summary(
+            [("tp_1", "Business Hours", "1", TimePeriodPublicState.ACTIVE)]
+        )
+        mock_coordinator.data.time_periods.get_items = Mock(
+            return_value=summary.get_items()
+        )
+
+        added_entities = await self._setup(mock_coordinator, mock_hass, mock_entry)
+
+        assert len(added_entities) == 1
+        sensor = added_entities[0]
+
+        # Its own device, grouped under the panel via_device.
+        assert sensor._attr_device_info is not None
+        assert ("inception", "tp_1") in sensor._attr_device_info["identifiers"]  # pyright: ignore[reportTypedDictNotRequiredAccess]
+        assert sensor._attr_device_info["name"] == "Business Hours"  # pyright: ignore[reportTypedDictNotRequiredAccess]
+
+        # Primary feature of the device: name is None so HA uses the device name.
+        assert sensor.name is None
+        assert sensor.entity_description.icon == "mdi:calendar-clock"
+
+    @pytest.mark.asyncio
+    async def test_no_time_periods_creates_no_sensors(
+        self, mock_coordinator: Mock, mock_hass: Mock, mock_entry: Mock
+    ) -> None:
+        """A controller without time periods creates no time period sensors."""
+        added_entities = await self._setup(mock_coordinator, mock_hass, mock_entry)
+        assert added_entities == []
 
 
 class TestGetDeviceClassForName:

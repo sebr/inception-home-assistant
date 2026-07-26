@@ -203,4 +203,5 @@ class TestAsyncGetConfigEntryDiagnostics:
             "doors": {},
             "areas": {},
             "outputs": {},
+            "time_periods": {},
         }

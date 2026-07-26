@@ -17,6 +17,7 @@ from .const import DOMAIN, MANUFACTURER
 from .entity import InceptionEntity, panel_identifiers
 from .pyinception.schemas.door import DoorPublicState
 from .pyinception.schemas.input import InputPublicState
+from .pyinception.schemas.time_period import TimePeriodPublicState
 from .util import find_matching_door
 
 if TYPE_CHECKING:
@@ -32,6 +33,7 @@ if TYPE_CHECKING:
         InceptionSummaryEntry,
     )
     from .pyinception.schemas.input import InputSummaryEntry
+    from .pyinception.schemas.time_period import TimePeriodSummaryEntry
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -249,6 +251,29 @@ async def async_setup_entry(
                 )
             )
 
+    # Create time period binary sensors. Time Periods are Inception's
+    # scheduling primitive (e.g. "Business Hours" or "Weekend"); each one is
+    # either active or inactive at any given moment. One binary sensor is
+    # created per configured time period, reporting whether it is currently
+    # active. Controllers whose firmware does not expose time periods simply
+    # yield an empty list here.
+    entities.extend(
+        InceptionTimePeriodBinarySensor(
+            coordinator=coordinator,
+            entity_description=InceptionBinarySensorDescription(
+                key="time_period",
+                icon="mdi:calendar-clock",
+                has_entity_name=True,
+                value_fn=lambda data: (
+                    data.public_state is not None
+                    and bool(data.public_state & TimePeriodPublicState.ACTIVE)
+                ),
+            ),
+            data=time_period,
+        )
+        for time_period in coordinator.data.time_periods.get_items()
+    )
+
     async_add_entities(entities)
 
 
@@ -345,3 +370,40 @@ class InceptionDoorBinarySensor(
             manufacturer=MANUFACTURER,
             via_device=panel_identifiers(coordinator),
         )
+
+
+class InceptionTimePeriodBinarySensor(
+    InceptionBinarySensor,
+):
+    """inception binary_sensor for Time Periods."""
+
+    data: TimePeriodSummaryEntry
+
+    def __init__(
+        self,
+        coordinator: InceptionUpdateCoordinator,
+        entity_description: InceptionBinarySensorDescription,
+        data: TimePeriodSummaryEntry,
+    ) -> None:
+        """Initialize the binary_sensor class."""
+        super().__init__(coordinator, entity_description=entity_description, data=data)
+
+        self.data = data
+        self._device_id = data.entity_info.id
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, self._device_id)},
+            name=data.entity_info.name,
+            manufacturer=MANUFACTURER,
+            via_device=panel_identifiers(coordinator),
+        )
+
+    @property
+    def name(self) -> str | None:
+        """
+        Return None so the entity inherits its device (time period) name.
+
+        A time period maps to exactly one binary sensor, so it is the primary
+        feature of its device — Home Assistant then labels it with the time
+        period's name (e.g. "Business Hours") rather than a redundant suffix.
+        """
+        return None

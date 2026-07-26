@@ -77,5 +77,6 @@ async def async_get_config_entry_diagnostics(
             "doors": _summary_to_dict(getattr(api_data, "doors", None)),
             "areas": _summary_to_dict(getattr(api_data, "areas", None)),
             "outputs": _summary_to_dict(getattr(api_data, "outputs", None)),
+            "time_periods": _summary_to_dict(getattr(api_data, "time_periods", None)),
         },
     }
