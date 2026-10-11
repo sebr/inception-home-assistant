@@ -4,7 +4,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from homeassistant.const import CONF_HOST, CONF_TOKEN, EVENT_HOMEASSISTANT_STOP
+from homeassistant.const import (
+    CONF_HOST,
+    CONF_PASSWORD,
+    CONF_TOKEN,
+    CONF_USERNAME,
+    EVENT_HOMEASSISTANT_STOP,
+)
 from homeassistant.core import callback
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -44,9 +50,11 @@ class InceptionUpdateCoordinator(DataUpdateCoordinator[InceptionApiData]):
         )
         self.config_entry = entry
         self.api = InceptionApiClient(
-            token=entry.data[CONF_TOKEN],
+            token=entry.data.get(CONF_TOKEN),
             host=entry.data[CONF_HOST],
             session=async_get_clientsession(hass),
+            username=entry.data.get(CONF_USERNAME),
+            password=entry.data.get(CONF_PASSWORD),
         )
 
         self.monitor_connected: bool = False
@@ -98,7 +106,7 @@ class InceptionUpdateCoordinator(DataUpdateCoordinator[InceptionApiData]):
             data = await self.api.get_data()
         except InceptionApiClientAuthenticationError as err:
             # Trigger Home Assistant's built-in re-auth flow so the user
-            # sees a "Reconfigure" prompt and can re-enter their token.
+            # sees a "Reconfigure" prompt and can re-enter their credentials.
             raise ConfigEntryAuthFailed(err) from err
         except Exception as err:
             LOGGER.debug("Failed to fetch data: %s", err)

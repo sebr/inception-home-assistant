@@ -6,7 +6,7 @@ from dataclasses import asdict, is_dataclass
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.components.diagnostics import async_redact_data
-from homeassistant.const import CONF_HOST, CONF_TOKEN
+from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_TOKEN, CONF_USERNAME
 
 from .const import DOMAIN
 
@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from .coordinator import InceptionUpdateCoordinator
     from .data import InceptionConfigEntry
 
-TO_REDACT = {CONF_TOKEN, CONF_HOST}
+TO_REDACT = {CONF_TOKEN, CONF_HOST, CONF_USERNAME, CONF_PASSWORD}
 
 # `Info1` / `Info2` on entity state updates may carry sensitive data
 # (e.g. `Info1` on a UserState update is the user's current location name,

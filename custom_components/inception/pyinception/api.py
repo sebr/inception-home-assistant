@@ -58,12 +58,28 @@ class InceptionApiClient:
 
     def __init__(
         self,
-        token: str,
+        token: str | None,
         host: str,
         session: aiohttp.ClientSession,
+        username: str | None = None,
+        password: str | None = None,
     ) -> None:
-        """Inception API Client."""
+        """
+        Inception API Client.
+
+        Authenticates with ``token`` (``Authorization: APIToken``) when given.
+        Otherwise logs in with ``username``/``password`` and sends the
+        resulting session ID as the ``LoginSessId`` cookie. Older firmware
+        has no API tokens, so password login is the only option there.
+        """
+        if not token and not (username and password):
+            msg = "Either a token or a username and password is required"
+            raise ValueError(msg)
         self._token = token
+        self._username = username
+        self._password = password
+        self._session_id: str | None = None
+        self._login_lock = asyncio.Lock()
         self._host = host.rstrip("/")
         self._session = session
         self.data: InceptionApiData | None = None
@@ -508,6 +524,63 @@ class InceptionApiClient:
         )
         return delay
 
+    async def _ensure_session(self, stale: str | None = None) -> str:
+        """
+        Return a valid login session ID, logging in if needed.
+
+        Pass ``stale`` to replace a session the server rejected. The lock
+        stops concurrent requests (e.g. the long-poll and a door command)
+        from each logging in when the same session expires.
+        """
+        async with self._login_lock:
+            if self._session_id is None or self._session_id == stale:
+                self._session_id = await self._login()
+            return self._session_id
+
+    async def _login(self) -> str:
+        """Log in with username/password and return the new session ID."""
+        _LOGGER.debug("Logging in to Inception as %s", self._username)
+        try:
+            response = await self._session.request(
+                method="post",
+                url=f"{self._host}/api/v1/authentication/login",
+                json={"Username": self._username, "Password": self._password},
+                timeout=aiohttp.ClientTimeout(total=10),
+            )
+            if response.status in (401, 403):
+                msg = "Invalid credentials"
+                raise InceptionApiClientAuthenticationError(msg)
+            response.raise_for_status()
+            body = await response.json(content_type=None)
+        except InceptionApiClientError:
+            raise
+        except TimeoutError as exception:
+            _LOGGER.debug("Timeout logging in")
+            raise TimeoutError from exception
+        except (aiohttp.ClientError, socket.gaierror) as exception:
+            msg = f"Error logging in - {exception}"
+            raise InceptionApiClientCommunicationError(msg) from exception
+
+        session_id = body.get("UserID") if isinstance(body, dict) else None
+        if not session_id:
+            result = body.get("Response", {}) if isinstance(body, dict) else {}
+            msg = f"Login failed: {result.get('Message') or 'no session returned'}"
+            raise InceptionApiClientAuthenticationError(msg)
+        return session_id
+
+    async def _logout(self) -> None:
+        """Best-effort logout so the panel can drop the session immediately."""
+        session_id, self._session_id = self._session_id, None
+        if not session_id:
+            return
+        with contextlib.suppress(Exception):
+            await self._session.request(
+                method="post",
+                url=f"{self._host}/api/v1/authentication/logout",
+                cookies={"LoginSessId": session_id},
+                timeout=aiohttp.ClientTimeout(total=5),
+            )
+
     async def close(self) -> None:
         """Close the session."""
         _LOGGER.debug("Closing session")
@@ -530,6 +603,8 @@ class InceptionApiClient:
 
         # Reset task references
         self.rest_task = None
+
+        await self._logout()
 
     async def _monitor_events_request(self, payload: Any) -> Any | None:
         """Monitor updates from the API."""
@@ -586,22 +661,42 @@ class InceptionApiClient:
             if api_timeout is None:
                 api_timeout = aiohttp.ClientTimeout(total=10)
             headers = {
-                "Authorization": f"APIToken {self._token}",
                 "Content-Type": "application/json",
                 "Accept": "application/json",
             }
+            cookies: dict[str, str] | None = None
+            session_id: str | None = None
+            if self._token:
+                headers["Authorization"] = f"APIToken {self._token}"
+            else:
+                session_id = await self._ensure_session()
+                cookies = {"LoginSessId": session_id}
 
             # If path begins with a slash, remove it
             path = path.removeprefix("/")
             prefix = api_prefix.strip("/")
+            url = f"{self._host}/{prefix}/{path}"
 
             response = await self._session.request(
                 method=method,
-                url=f"{self._host}/{prefix}/{path}",
+                url=url,
                 headers=headers,
+                cookies=cookies,
                 json=data,
                 timeout=api_timeout,
             )
+            if session_id and response.status in (401, 403):
+                # Sessions expire after 10 idle minutes; log in again and
+                # retry once before treating it as bad credentials.
+                session_id = await self._ensure_session(stale=session_id)
+                response = await self._session.request(
+                    method=method,
+                    url=url,
+                    headers=headers,
+                    cookies={"LoginSessId": session_id},
+                    json=data,
+                    timeout=api_timeout,
+                )
             if response.status in (401, 403):
                 # Surface 401/403 as a specific auth error so the coordinator
                 # can route it into Home Assistant's re-auth flow rather than
