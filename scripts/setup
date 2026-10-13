@@ -13,8 +13,8 @@ if ! command -v uv >/dev/null 2>&1; then
     export PATH="$HOME/.local/bin:$PATH"
 fi
 
-# Install dependencies (runtime + dev) into a managed virtualenv
-uv sync
+# Install dependencies (runtime + dev) into ./.venv
+scripts/bootstrap
 
 # Install Claude Code
 curl -fsSL https://claude.ai/install.sh -o /tmp/claude-install.sh

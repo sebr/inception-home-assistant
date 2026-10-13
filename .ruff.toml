@@ -21,6 +21,12 @@ ignore = [
     "PLR2004", # Magic numbers in tests are fine
 ]
 
+[lint.per-file-ignores]
+"scripts/*" = [
+    "INP001",  # standalone scripts, not a package
+    "T201",    # scripts print their output
+]
+
 [lint.flake8-pytest-style]
 fixture-parentheses = false
 
