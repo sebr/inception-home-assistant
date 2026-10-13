@@ -21,3 +21,6 @@ config/*
 !config/scenes.yaml
 !config/scripts.yaml
 .claude/settings.local.json
+
+# portree runtime state
+.portree/
