@@ -3,9 +3,10 @@
 set -e
 
 cd "$(dirname "$0")/.."
+source scripts/_venv
 
 # Run tests with verbose output and coverage
-uv run pytest tests/ -v --tb=short
+python -m pytest tests/ -v --tb=short "$@"
 
 # Optional: Run with coverage if pytest-cov is available
-# uv run pytest tests/ -v --cov=custom_components.bhyve --cov-report=term-missing
+# python -m pytest tests/ -v --cov=custom_components.inception --cov-report=term-missing
