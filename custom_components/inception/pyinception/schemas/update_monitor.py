@@ -21,7 +21,7 @@ class UpdateMonitorRequest:
     api_data: str
     time_since_last_update: int
 
-    def __init__(  # noqa: PLR0913
+    def __init__(  # noqa: PLR0913, PLR0917
         self,
         request_id: str,
         request_type: str,
