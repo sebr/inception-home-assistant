@@ -49,6 +49,11 @@ class InceptionApiClientAuthenticationError(
     """Exception to indicate an authentication error."""
 
 
+def _session_cookie(session_id: str | None) -> dict[str, str] | None:
+    """Return the login session cookie, or None in token mode."""
+    return {"LoginSessId": session_id} if session_id else None
+
+
 class InceptionApiClient:
     """Inception API Client."""
 
@@ -58,12 +63,32 @@ class InceptionApiClient:
 
     def __init__(
         self,
-        token: str,
+        token: str | None,
         host: str,
         session: aiohttp.ClientSession,
+        username: str | None = None,
+        password: str | None = None,
     ) -> None:
-        """Inception API Client."""
+        """
+        Inception API Client.
+
+        Authenticates with ``token`` (``Authorization: APIToken``) when given.
+        Otherwise logs in with ``username``/``password`` and sends the
+        resulting session ID as the ``LoginSessId`` cookie. Older firmware
+        has no API tokens, so password login is the only option there.
+        """
+        if not token and not (username and password):
+            msg = "Either a token or a username and password is required"
+            raise ValueError(msg)
         self._token = token
+        self._username = username
+        self._password = password
+        self._session_id: str | None = None
+        self._login_lock = asyncio.Lock()
+        # Set once a login is rejected, so later requests fail fast instead of
+        # each retrying the same bad password and tripping the panel lockout.
+        self._login_error: str | None = None
+        self._closed = False
         self._host = host.rstrip("/")
         self._session = session
         self.data: InceptionApiData | None = None
@@ -114,14 +139,15 @@ class InceptionApiClient:
 
         Returns the `ProtocolVersion` integer reported by the controller, or
         `None` if the endpoint returns 404 (firmware too old to expose it).
-        Authentication is not required by the API for this endpoint, but the
-        auth header is sent anyway for simplicity — the server ignores it.
+        Authentication is not required by the API for this endpoint, so none
+        is sent; in password mode this avoids a login just for the probe.
         """
         try:
             response = await self.request(
                 method="get",
                 path="/protocol-version",
                 api_prefix="api",
+                authenticated=False,
             )
         except InceptionApiClientCommunicationError as err:
             if "404" in str(err):
@@ -508,9 +534,66 @@ class InceptionApiClient:
         )
         return delay
 
+    async def _ensure_session(self, stale: str | None = None) -> str:
+        """
+        Return a valid login session ID, logging in if needed.
+
+        Pass ``stale`` to replace a session the server rejected; it is logged
+        out first so the panel does not keep it open. The lock stops
+        concurrent requests (e.g. the long-poll and a door command) from each
+        logging in when the same session expires.
+        """
+        if stale is None and self._session_id is not None:
+            return self._session_id
+        async with self._login_lock:
+            if self._closed:
+                msg = "Client is closed"
+                raise InceptionApiClientError(msg)
+            if self._login_error is not None:
+                raise InceptionApiClientAuthenticationError(self._login_error)
+            if self._session_id is not None and self._session_id == stale:
+                self._session_id = None
+                await self._logout(stale)
+            if self._session_id is None:
+                try:
+                    self._session_id = await self._login()
+                except InceptionApiClientAuthenticationError as err:
+                    self._login_error = str(err)
+                    raise
+            return self._session_id
+
+    async def _login(self) -> str:
+        """Log in with username/password and return the new session ID."""
+        _LOGGER.debug("Logging in to Inception as %s", self._username)
+        body = await self._send(
+            "post",
+            f"{self._host}/api/v1/authentication/login",
+            data={"Username": self._username, "Password": self._password},
+        )
+        if not isinstance(body, dict):
+            body = {}
+        session_id = body.get("UserID")
+        if not session_id:
+            result = body.get("Response")
+            message = result.get("Message") if isinstance(result, dict) else None
+            msg = f"Login failed: {message or 'no session returned'}"
+            raise InceptionApiClientAuthenticationError(msg)
+        return session_id
+
+    async def _logout(self, session_id: str) -> None:
+        """Best-effort logout so the panel can drop the session immediately."""
+        with contextlib.suppress(Exception):
+            await self._send(
+                "post",
+                f"{self._host}/api/v1/authentication/logout",
+                cookies=_session_cookie(session_id),
+                api_timeout=aiohttp.ClientTimeout(total=5),
+            )
+
     async def close(self) -> None:
         """Close the session."""
         _LOGGER.debug("Closing session")
+        self._closed = True
 
         # Disable review-event bundling so a partial restart doesn't inherit it.
         self._review_events_enabled = False
@@ -530,6 +613,13 @@ class InceptionApiClient:
 
         # Reset task references
         self.rest_task = None
+
+        # Take the lock so a login already in flight finishes first and its
+        # session is the one logged out; later requests see ``_closed``.
+        async with self._login_lock:
+            session_id, self._session_id = self._session_id, None
+            if session_id:
+                await self._logout(session_id)
 
     async def _monitor_events_request(self, payload: Any) -> Any | None:
         """Monitor updates from the API."""
@@ -573,34 +663,76 @@ class InceptionApiClient:
 
         return response
 
-    async def request(
+    async def request(  # noqa: PLR0913
         self,
         method: str,
         path: str,
         data: Any | None = None,
         api_timeout: aiohttp.ClientTimeout | None = None,
         api_prefix: str = "api/v1",
+        *,
+        authenticated: bool = True,
     ) -> Any:
         """Get information from the API."""
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        }
+        session_id: str | None = None
+        if authenticated and self._token:
+            headers["Authorization"] = f"APIToken {self._token}"
+        elif authenticated:
+            session_id = await self._ensure_session()
+
+        # If path begins with a slash, remove it
+        path = path.removeprefix("/")
+        prefix = api_prefix.strip("/")
+        url = f"{self._host}/{prefix}/{path}"
+
         try:
-            if api_timeout is None:
-                api_timeout = aiohttp.ClientTimeout(total=10)
-            headers = {
-                "Authorization": f"APIToken {self._token}",
-                "Content-Type": "application/json",
-                "Accept": "application/json",
-            }
+            return await self._send(
+                method,
+                url,
+                headers=headers,
+                cookies=_session_cookie(session_id),
+                data=data,
+                api_timeout=api_timeout,
+            )
+        except InceptionApiClientAuthenticationError:
+            if session_id is None:
+                raise
 
-            # If path begins with a slash, remove it
-            path = path.removeprefix("/")
-            prefix = api_prefix.strip("/")
+        # Sessions expire after 10 idle minutes; log in again and retry once
+        # before treating it as bad credentials.
+        session_id = await self._ensure_session(stale=session_id)
+        return await self._send(
+            method,
+            url,
+            headers=headers,
+            cookies=_session_cookie(session_id),
+            data=data,
+            api_timeout=api_timeout,
+        )
 
+    async def _send(  # noqa: PLR0913
+        self,
+        method: str,
+        url: str,
+        *,
+        headers: dict[str, str] | None = None,
+        cookies: dict[str, str] | None = None,
+        data: Any | None = None,
+        api_timeout: aiohttp.ClientTimeout | None = None,
+    ) -> Any:
+        """Send one request and return its JSON body, mapping errors to ours."""
+        try:
             response = await self._session.request(
                 method=method,
-                url=f"{self._host}/{prefix}/{path}",
+                url=url,
                 headers=headers,
+                cookies=cookies,
                 json=data,
-                timeout=api_timeout,
+                timeout=api_timeout or aiohttp.ClientTimeout(total=10),
             )
             if response.status in (401, 403):
                 # Surface 401/403 as a specific auth error so the coordinator
@@ -616,7 +748,7 @@ class InceptionApiClient:
             # auth error as a generic client error.
             raise
         except TimeoutError as exception:
-            _LOGGER.debug("Timeout fetching %s", path)
+            _LOGGER.debug("Timeout fetching %s", url)
             raise TimeoutError from exception
         except (aiohttp.ClientError, socket.gaierror) as exception:
             msg = f"Error fetching information - {exception}"
