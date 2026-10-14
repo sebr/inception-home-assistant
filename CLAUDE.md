@@ -4,10 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Development Commands
 
-- **Setup**: `scripts/setup` - Install dependencies and set up development environment
+- **Bootstrap**: `scripts/bootstrap` - Create `./.venv` with uv on the host (no dev container needed)
+- **Setup**: `scripts/setup` - Dev container setup; installs system packages, then runs `scripts/bootstrap`
 - **Lint**: `scripts/lint` - Format code with ruff and run linting checks
-- **Test**: `scripts/tests` - Run pytest with verbose output 
+- **Test**: `scripts/tests` - Run pytest with verbose output
 - **Development**: `scripts/develop` - Start Home Assistant in development mode with debug logging
+  - `portree up` - Run Home Assistant on a port portree picks for this worktree; `portree ls --json` gives the `direct_url`
+  - `HA_PORT=8124 scripts/develop` - Run on a fixed port by hand
+  - `scripts/develop --watch` - Restart Home Assistant when files under `custom_components/` change (needs watchexec)
+- **Worktree**: `scripts/worktree <branch>` - Create a sibling git worktree that shares this `.venv`, seeded with this checkout's HA state
+
+Scripts use `./.venv` when it exists, otherwise whatever is on `PATH`. They call the venv directly rather than `uv run`, because `uv sync` would remove the Home Assistant component requirements that `scripts/bootstrap` installs for `--skip-pip`.
 
 ## Repository Architecture
 
@@ -35,8 +42,7 @@ This is a Home Assistant custom integration for InnerRange Inception security sy
 
 ### Development Environment
 
-The project uses a containerized development environment with:
-- Home Assistant 2025.9.0 as the base
+Development runs on the host from `./.venv` (see `scripts/bootstrap`); the dev container still works and runs the same script. In both:
 - Configuration in `config/configuration.yaml` with debug logging enabled for the inception component
 - Custom component loaded via PYTHONPATH modification in `scripts/develop`
 
