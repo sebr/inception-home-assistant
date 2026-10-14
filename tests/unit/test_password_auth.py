@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING, Any
 from unittest.mock import AsyncMock, Mock, patch
 
@@ -14,6 +15,7 @@ from custom_components.inception.const import DOMAIN
 from custom_components.inception.pyinception.api import (
     InceptionApiClient,
     InceptionApiClientAuthenticationError,
+    InceptionApiClientError,
 )
 
 if TYPE_CHECKING:
@@ -94,12 +96,13 @@ class TestPasswordLogin:
             assert "Authorization" not in call.kwargs["headers"]
 
     async def test_expired_session_relogs_in_and_retries(self) -> None:
-        """A 401 on a request triggers one re-login and a retry."""
+        """A 401 logs out the rejected session, logs in again and retries."""
         session = _session(
             [
                 _login_ok("sess-1"),
                 _Resp(),
                 _Resp(status=401),
+                _Resp(),
                 _login_ok("sess-2"),
                 _Resp(body={"ok": True}),
             ]
@@ -111,13 +114,21 @@ class TestPasswordLogin:
 
         assert result == {"ok": True}
         calls = session.request.call_args_list
-        assert calls[3].kwargs["url"] == LOGIN_URL
-        assert calls[4].kwargs["cookies"] == {"LoginSessId": "sess-2"}
+        assert calls[3].kwargs["url"] == LOGOUT_URL
+        assert calls[3].kwargs["cookies"] == {"LoginSessId": "sess-1"}
+        assert calls[4].kwargs["url"] == LOGIN_URL
+        assert calls[5].kwargs["cookies"] == {"LoginSessId": "sess-2"}
 
     async def test_persistent_401_raises_auth_error(self) -> None:
         """If the retry is also rejected, surface an auth error."""
         session = _session(
-            [_login_ok("sess-1"), _Resp(status=401), _login_ok("sess-2"), _Resp(401)]
+            [
+                _login_ok("sess-1"),
+                _Resp(status=401),
+                _Resp(),
+                _login_ok("sess-2"),
+                _Resp(401),
+            ]
         )
         client = _client(session)
 
@@ -144,6 +155,54 @@ class TestPasswordLogin:
             InceptionApiClientAuthenticationError, match="Invalid credentials"
         ):
             await client.request(method="get", path="/control/input")
+
+    async def test_failed_login_is_not_repeated(self) -> None:
+        """Concurrent requests share one failed login instead of each retrying."""
+        session = _session(
+            [_Resp(body={"Response": {"Result": "Failure", "Message": "Locked"}})]
+        )
+        client = _client(session)
+
+        results = await asyncio.gather(
+            *(client.request(method="get", path="/control/input") for _ in range(3)),
+            return_exceptions=True,
+        )
+
+        assert all(
+            isinstance(r, InceptionApiClientAuthenticationError) for r in results
+        )
+        assert session.request.call_count == 1
+
+    async def test_malformed_login_response_raises_auth_error(self) -> None:
+        """A non-dict ``Response`` is still reported as a failed login."""
+        session = _session([_Resp(body={"Response": None})])
+        client = _client(session)
+
+        with pytest.raises(
+            InceptionApiClientAuthenticationError, match="no session returned"
+        ):
+            await client.request(method="get", path="/control/input")
+
+    async def test_protocol_version_does_not_log_in(self) -> None:
+        """The unauthenticated version probe skips the login."""
+        session = _session([_Resp(body={"ProtocolVersion": 16})])
+        client = _client(session)
+
+        assert await client.get_protocol_version() == 16
+
+        (call,) = session.request.call_args_list
+        assert call.kwargs["cookies"] is None
+
+    async def test_no_login_after_close(self) -> None:
+        """A request still running after close() cannot open a new session."""
+        session = _session([_login_ok("sess-1"), _Resp(), _Resp()])
+        client = _client(session)
+        await client.request(method="get", path="/control/input")
+        await client.close()
+
+        with pytest.raises(InceptionApiClientError, match="closed"):
+            await client.request(method="get", path="/control/input")
+        assert session.request.call_count == 3
 
     async def test_close_logs_out(self) -> None:
         """Closing the client invalidates the panel session."""
@@ -228,6 +287,20 @@ class TestConfigFlowCredentials:
             username="ha",
             password="secret",
         )
+
+    async def test_timeout_shows_connection_error(self, hass: HomeAssistant) -> None:
+        """A timeout while testing credentials maps to the connection error."""
+        with patch(
+            "custom_components.inception.config_flow.InceptionFlowHandler._test_credentials",
+            side_effect=TimeoutError,
+        ):
+            result = await self._submit(
+                hass,
+                {"name": "Test", "host": "h.test", "username": "ha", "password": "x"},
+            )
+
+        assert result["type"] is FlowResultType.FORM
+        assert result["errors"] == {"base": "connection"}
 
     async def test_token_wins_over_password(self, hass: HomeAssistant) -> None:
         """When a token is given, username/password are not stored."""

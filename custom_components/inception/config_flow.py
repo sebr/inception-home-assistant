@@ -39,6 +39,23 @@ if TYPE_CHECKING:
     from homeassistant.config_entries import ConfigFlowResult
 
 
+_TOKEN_SELECTOR = selector.TextSelector(
+    selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD),
+)
+_USERNAME_SELECTOR = selector.TextSelector(
+    selector.TextSelectorConfig(
+        type=selector.TextSelectorType.TEXT,
+        autocomplete="username",
+    ),
+)
+_PASSWORD_SELECTOR = selector.TextSelector(
+    selector.TextSelectorConfig(
+        type=selector.TextSelectorType.PASSWORD,
+        autocomplete="current-password",
+    ),
+)
+
+
 class InceptionFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
     """Config flow for Inception."""
 
@@ -70,32 +87,32 @@ class InceptionFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             if cleaned_input.get(CONF_TOKEN):
                 cleaned_input.pop(CONF_USERNAME, None)
                 cleaned_input.pop(CONF_PASSWORD, None)
-            else:
+            elif cleaned_input.get(CONF_USERNAME) and cleaned_input.get(CONF_PASSWORD):
                 cleaned_input.pop(CONF_TOKEN, None)
-            try:
-                if not cleaned_input.get(CONF_TOKEN) and not (
-                    cleaned_input.get(CONF_USERNAME)
-                    and cleaned_input.get(CONF_PASSWORD)
-                ):
-                    _errors["base"] = "missing_credentials"
-                else:
+            else:
+                _errors["base"] = "missing_credentials"
+
+            if not _errors:
+                try:
                     await self._test_credentials(
                         host=cleaned_input[CONF_HOST],
                         token=cleaned_input.get(CONF_TOKEN),
                         username=cleaned_input.get(CONF_USERNAME),
                         password=cleaned_input.get(CONF_PASSWORD),
                     )
-            except InceptionApiClientAuthenticationError as exception:
-                LOGGER.warning(exception)
-                _errors["base"] = "auth"
-            except InceptionApiClientCommunicationError as exception:
-                LOGGER.error(exception)
-                _errors["base"] = "connection"
-            except InceptionApiClientError as exception:
-                LOGGER.exception(exception)
-                _errors["base"] = "unknown"
-            else:
-                if not _errors:
+                except InceptionApiClientAuthenticationError as exception:
+                    LOGGER.warning(exception)
+                    _errors["base"] = "auth"
+                except (
+                    InceptionApiClientCommunicationError,
+                    TimeoutError,
+                ) as exception:
+                    LOGGER.error(exception)
+                    _errors["base"] = "connection"
+                except InceptionApiClientError as exception:
+                    LOGGER.exception(exception)
+                    _errors["base"] = "unknown"
+                else:
                     return self.async_create_entry(
                         title=cleaned_input[CONF_NAME],
                         data=cleaned_input,
@@ -124,26 +141,12 @@ class InceptionFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                     vol.Optional(
                         CONF_TOKEN,
                         default=(user_input or {}).get(CONF_TOKEN, vol.UNDEFINED),
-                    ): selector.TextSelector(
-                        selector.TextSelectorConfig(
-                            type=selector.TextSelectorType.PASSWORD,
-                        ),
-                    ),
+                    ): _TOKEN_SELECTOR,
                     vol.Optional(
                         CONF_USERNAME,
                         default=(user_input or {}).get(CONF_USERNAME, vol.UNDEFINED),
-                    ): selector.TextSelector(
-                        selector.TextSelectorConfig(
-                            type=selector.TextSelectorType.TEXT,
-                            autocomplete="username",
-                        ),
-                    ),
-                    vol.Optional(CONF_PASSWORD): selector.TextSelector(
-                        selector.TextSelectorConfig(
-                            type=selector.TextSelectorType.PASSWORD,
-                            autocomplete="current-password",
-                        ),
-                    ),
+                    ): _USERNAME_SELECTOR,
+                    vol.Optional(CONF_PASSWORD): _PASSWORD_SELECTOR,
                 },
             ),
             errors=_errors,
@@ -196,7 +199,7 @@ class InceptionFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             except InceptionApiClientAuthenticationError as exception:
                 LOGGER.warning(exception)
                 errors["base"] = "auth"
-            except InceptionApiClientCommunicationError as exception:
+            except (InceptionApiClientCommunicationError, TimeoutError) as exception:
                 LOGGER.error(exception)
                 errors["base"] = "connection"
             except InceptionApiClientError as exception:
@@ -208,24 +211,17 @@ class InceptionFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                     data_updates=user_input,
                 )
 
-        password_selector = selector.TextSelector(
-            selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD),
-        )
         if uses_password:
             schema = vol.Schema(
                 {
                     vol.Required(
                         CONF_USERNAME, default=entry.data.get(CONF_USERNAME)
-                    ): selector.TextSelector(
-                        selector.TextSelectorConfig(
-                            type=selector.TextSelectorType.TEXT,
-                        ),
-                    ),
-                    vol.Required(CONF_PASSWORD): password_selector,
+                    ): _USERNAME_SELECTOR,
+                    vol.Required(CONF_PASSWORD): _PASSWORD_SELECTOR,
                 },
             )
         else:
-            schema = vol.Schema({vol.Required(CONF_TOKEN): password_selector})
+            schema = vol.Schema({vol.Required(CONF_TOKEN): _TOKEN_SELECTOR})
 
         return self.async_show_form(
             step_id="reauth_confirm",
