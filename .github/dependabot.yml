@@ -13,3 +13,7 @@ updates:
     ignore:
       # Dependabot should not update Home Assistant as that should match the homeassistant key in hacs.json
       - dependency-name: "homeassistant"
+      # Home Assistant pins aiodns 3.x, which needs pycares 4.x.
+      # Drop this once the minimum Home Assistant version moves to aiodns 4.
+      - dependency-name: "pycares"
+        update-types: ["version-update:semver-major"]
