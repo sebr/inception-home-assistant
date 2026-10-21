@@ -32,6 +32,8 @@ if TYPE_CHECKING:
 
 _LOGGER = logging.getLogger(__name__)
 
+_NIL_SESSION_ID = "00000000-0000-0000-0000-000000000000"
+
 
 class InceptionApiClientError(Exception):
     """Exception to indicate a general API error."""
@@ -573,9 +575,14 @@ class InceptionApiClient:
         if not isinstance(body, dict):
             body = {}
         session_id = body.get("UserID")
-        if not session_id:
-            result = body.get("Response")
-            message = result.get("Message") if isinstance(result, dict) else None
+        result = body.get("Response")
+        if not isinstance(result, dict):
+            result = {}
+        # A failed login can still return HTTP 200 with a nil UserID
+        # ("00000000-...") alongside Result "Failure", so check both.
+        failed = result.get("Result", "Success") != "Success"
+        if failed or not session_id or session_id == _NIL_SESSION_ID:
+            message = result.get("Message")
             msg = f"Login failed: {message or 'no session returned'}"
             raise InceptionApiClientAuthenticationError(msg)
         return session_id

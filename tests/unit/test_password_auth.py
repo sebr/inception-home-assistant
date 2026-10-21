@@ -156,6 +156,31 @@ class TestPasswordLogin:
         ):
             await client.request(method="get", path="/control/input")
 
+    async def test_failed_login_with_nil_session_raises_auth_error(self) -> None:
+        """Real firmware answers a bad login with HTTP 200 and a nil UserID."""
+        session = _session(
+            [
+                _Resp(
+                    body={
+                        "Response": {
+                            "Result": "Failure",
+                            "Message": "Invalid credentials provided",
+                            "FailureReason": 1,
+                        },
+                        "UserID": "00000000-0000-0000-0000-000000000000",
+                    }
+                )
+            ]
+        )
+        client = _client(session)
+
+        with pytest.raises(
+            InceptionApiClientAuthenticationError,
+            match="Invalid credentials provided",
+        ):
+            await client.request(method="get", path="/control/input")
+        assert session.request.call_count == 1
+
     async def test_failed_login_is_not_repeated(self) -> None:
         """Concurrent requests share one failed login instead of each retrying."""
         session = _session(
