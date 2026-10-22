@@ -21,7 +21,8 @@ from custom_components.inception.pyinception.api import (
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
 
-LOGIN_URL = "http://h.test/api/v1/authentication/login"
+LOGIN_URL = "http://h.test/api/v1/authentication/hashed-login"
+PLAIN_LOGIN_URL = "http://h.test/api/v1/authentication/login"
 LOGOUT_URL = "http://h.test/api/v1/authentication/logout"
 
 
@@ -90,7 +91,11 @@ class TestPasswordLogin:
         calls = session.request.call_args_list
         assert len(calls) == 3
         assert calls[0].kwargs["url"] == LOGIN_URL
-        assert calls[0].kwargs["json"] == {"Username": "ha", "Password": "secret"}
+        # The hash of "ha:secret", base64-encoded.
+        assert calls[0].kwargs["json"] == {
+            "Username": "ha",
+            "PasswordHash": "YTBF3c9aX3Xt0x5CGmuxSscxZ75sOy8uuRsu5pWFM+M=",
+        }
         for call in calls[1:]:
             assert call.kwargs["cookies"] == {"LoginSessId": "sess-1"}
             assert "Authorization" not in call.kwargs["headers"]
@@ -196,6 +201,38 @@ class TestPasswordLogin:
         assert all(
             isinstance(r, InceptionApiClientAuthenticationError) for r in results
         )
+        assert session.request.call_count == 1
+
+    async def test_falls_back_to_plain_login_without_hashed_login(self) -> None:
+        """Firmware without hashed-login gets the plain endpoint from then on."""
+        session = _session(
+            [
+                _Resp(status=404),
+                _login_ok("sess-1"),
+                _Resp(status=401),
+                _Resp(),
+                _login_ok("sess-2"),
+                _Resp(),
+            ]
+        )
+        client = _client(session)
+
+        await client.request(method="get", path="/control/input")
+
+        calls = session.request.call_args_list
+        assert calls[0].kwargs["url"] == LOGIN_URL
+        assert calls[1].kwargs["url"] == PLAIN_LOGIN_URL
+        assert calls[1].kwargs["json"] == {"Username": "ha", "Password": "secret"}
+        # The re-login after the 401 skips hashed-login.
+        assert calls[4].kwargs["url"] == PLAIN_LOGIN_URL
+
+    async def test_hashed_login_server_error_does_not_fall_back(self) -> None:
+        """Only a missing endpoint falls back; other errors propagate."""
+        session = _session([_Resp(status=500)])
+        client = _client(session)
+
+        with pytest.raises(InceptionApiClientError):
+            await client.request(method="get", path="/control/input")
         assert session.request.call_count == 1
 
     async def test_malformed_login_response_raises_auth_error(self) -> None:

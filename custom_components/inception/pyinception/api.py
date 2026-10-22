@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import contextlib
+import hashlib
 import logging
 import socket
 from typing import TYPE_CHECKING, Any, ClassVar, TypeVar
@@ -90,6 +92,9 @@ class InceptionApiClient:
         # Set once a login is rejected, so later requests fail fast instead of
         # each retrying the same bad password and tripping the panel lockout.
         self._login_error: str | None = None
+        # Hashed login keeps the password off the wire; cleared if the
+        # firmware lacks the endpoint, so later logins go straight to plain.
+        self._hashed_login = True
         self._closed = False
         self._host = host.rstrip("/")
         self._session = session
@@ -567,11 +572,32 @@ class InceptionApiClient:
     async def _login(self) -> str:
         """Log in with username/password and return the new session ID."""
         _LOGGER.debug("Logging in to Inception as %s", self._username)
-        body = await self._send(
-            "post",
-            f"{self._host}/api/v1/authentication/login",
-            data={"Username": self._username, "Password": self._password},
-        )
+        body = None
+        if self._hashed_login:
+            try:
+                body = await self._send(
+                    "post",
+                    f"{self._host}/api/v1/authentication/hashed-login",
+                    data={
+                        "Username": self._username,
+                        "PasswordHash": self._password_hash(),
+                    },
+                )
+            except InceptionApiClientCommunicationError as err:
+                cause = err.__cause__
+                if not (
+                    isinstance(cause, aiohttp.ClientResponseError)
+                    and cause.status in (404, 405)
+                ):
+                    raise
+                _LOGGER.debug("No hashed-login endpoint; using plain login")
+                self._hashed_login = False
+        if not self._hashed_login:
+            body = await self._send(
+                "post",
+                f"{self._host}/api/v1/authentication/login",
+                data={"Username": self._username, "Password": self._password},
+            )
         if not isinstance(body, dict):
             body = {}
         session_id = body.get("UserID")
@@ -586,6 +612,11 @@ class InceptionApiClient:
             msg = f"Login failed: {message or 'no session returned'}"
             raise InceptionApiClientAuthenticationError(msg)
         return session_id
+
+    def _password_hash(self) -> str:
+        """Return base64(sha256(lower(username) + ":" + password))."""
+        text = f"{(self._username or '').lower()}:{self._password}"
+        return base64.b64encode(hashlib.sha256(text.encode()).digest()).decode()
 
     async def _logout(self, session_id: str) -> None:
         """Best-effort logout so the panel can drop the session immediately."""
