@@ -149,6 +149,10 @@ class InceptionFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                     vol.Optional(CONF_PASSWORD): _PASSWORD_SELECTOR,
                 },
             ),
+            description_placeholders={
+                "skytunnel_example": "https://skytunnel.com.au/inception/SERIAL",
+                "default_scheme": "http://",
+            },
             errors=_errors,
         )
 

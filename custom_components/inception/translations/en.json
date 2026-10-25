@@ -13,7 +13,7 @@
                 "data_description": {
                     "name": "A name for this Inception hub",
                     "token": "An Inception User API token. Available under Users > Remote / Web Access > User API Token. Leave blank to log in with a username and password instead.",
-                    "host": "The host address of your Inception hub, e.g. 192.168.0.10 or https://skytunnel.com.au/inception/SERIAL. If no protocol is specified, http:// will be used.",
+                    "host": "The host address of your Inception hub, e.g. 192.168.0.10 or {skytunnel_example}. If no protocol is specified, {default_scheme} will be used.",
                     "username": "Web login username of a user with the 'REST Web API User' web page profile. Only used when no token is given.",
                     "password": "Web login password for that user."
                 }
