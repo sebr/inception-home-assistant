@@ -2,33 +2,42 @@
     "config": {
         "step": {
             "user": {
-                "description": "Connect to InnerRange inception",
+                "description": "Connect to InnerRange Inception. Enter either a User API token, or the web login username and password of an API user (for firmware without API tokens).",
                 "data": {
                     "name": "Name",
+                    "host": "Host",
                     "token": "Token",
-                    "host": "Host"
+                    "username": "Username",
+                    "password": "Password"
                 },
                 "data_description": {
                     "name": "A name for this Inception hub",
-                    "token": "An Inception User API token. Available under Users > Remote / Web Access > User API Token.",
-                    "host": "The host address of your Inception hub. If no protocol is specified, http:// will be used."
+                    "token": "An Inception User API token. Available under Users > Remote / Web Access > User API Token. Leave blank to log in with a username and password instead.",
+                    "host": "The host address of your Inception hub, e.g. 192.168.0.10 or {skytunnel_example}. If no protocol is specified, {default_scheme} will be used.",
+                    "username": "Web login username of a user with the 'REST Web API User' web page profile. Only used when no token is given.",
+                    "password": "Web login password for that user."
                 }
             },
             "reauth_confirm": {
                 "title": "Re-authenticate with Inception",
-                "description": "The API token for **{name}** was rejected by the Inception controller. Check the token under Users \u2192 Remote / Web Access \u2192 User API Token in the Inception web interface, then paste the current token below.",
+                "description": "The credentials for **{name}** were rejected by the Inception controller. Enter current credentials below.",
                 "data": {
-                    "token": "Token"
+                    "token": "Token",
+                    "username": "Username",
+                    "password": "Password"
                 },
                 "data_description": {
-                    "token": "A valid Inception User API token."
+                    "token": "A valid Inception User API token.",
+                    "username": "Web login username.",
+                    "password": "Web login password."
                 }
             }
         },
         "error": {
             "auth": "Unable to authenticate to Inception",
             "connection": "Unable to connect to Inception.",
-            "unknown": "Unknown error occurred."
+            "unknown": "Unknown error occurred.",
+            "missing_credentials": "Enter either a token, or both a username and password."
         },
         "abort": {
             "reauth_successful": "Re-authentication was successful."
