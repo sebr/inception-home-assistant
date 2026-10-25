@@ -476,6 +476,7 @@ class TestProtocolVersion:
             method="get",
             path="/protocol-version",
             api_prefix="api",
+            authenticated=False,
         )
 
     @pytest.mark.asyncio
